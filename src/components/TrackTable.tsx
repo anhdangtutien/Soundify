@@ -234,7 +234,7 @@ export const TrackTable: React.FC<TrackTableProps> = ({
                     className={`font-semibold truncate text-xs ${
                       isSelected ? 'font-bold' : 'text-white'
                     }`}
-                    style={{ color: isSelected ? accentColor : '#ffffff' }}
+                    style={{ color: isSelected ? accentColor : undefined }}
                   >
                     {track.title}
                   </span>

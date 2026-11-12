@@ -554,38 +554,80 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {getTranslation(language, 'profile.themeMode')}
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Ô Dark Mode — Luôn hiển thị nền tối đặc trưng để nhìn vào phân biệt ngay */}
             <button
               onClick={() => themeMode === 'light' && onToggleThemeMode()}
-              className={`p-3.5 rounded-xl border text-left flex items-center gap-3.5 transition-all cursor-pointer ${
-                themeMode === 'dark'
-                  ? 'bg-[#15151e] border-white shadow-[0_0_12px_rgba(255,255,255,0.15)] scale-[1.01]'
-                  : 'bg-[#0d0d12] border-[#1e1e28] hover:border-[#333] hover:bg-[#121218]'
+              style={{
+                backgroundColor: '#0b0b12',
+                borderColor: themeMode === 'dark' ? accentColor : '#27273a',
+                boxShadow: themeMode === 'dark' ? `0 0 16px ${accentColor}40` : '0 2px 8px rgba(0,0,0,0.2)',
+              }}
+              className={`p-3.5 rounded-xl border-2 text-left flex items-center justify-between gap-3 transition-all cursor-pointer ${
+                themeMode === 'dark' ? 'scale-[1.01]' : 'opacity-85 hover:opacity-100'
               }`}
             >
-              <div className="w-8 h-8 rounded-lg bg-[#000000] border border-[#333] flex items-center justify-center text-white">
-                <Moon className="w-4 h-4 text-indigo-400" />
+              <div className="flex items-center gap-3.5 overflow-hidden">
+                <div
+                  className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 border"
+                  style={{ backgroundColor: '#161624', borderColor: '#2e2e42' }}
+                >
+                  <Moon className="w-4 h-4 text-indigo-400" />
+                </div>
+                <div className="overflow-hidden">
+                  <p className="text-xs font-bold truncate" style={{ color: '#f8fafc' }}>
+                    {getTranslation(language, 'profile.darkStealth')}
+                  </p>
+                  <p className="text-[10px] font-mono truncate" style={{ color: '#94a3b8' }}>
+                    {getTranslation(language, 'profile.darkStealthDesc')}
+                  </p>
+                </div>
               </div>
-              <div className="overflow-hidden">
-                <p className="text-xs font-bold text-white">{getTranslation(language, 'profile.darkStealth')}</p>
-                <p className="text-[10px] text-[#777] font-mono">{getTranslation(language, 'profile.darkStealthDesc')}</p>
-              </div>
+              {themeMode === 'dark' && (
+                <div
+                  className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: accentColor, color: '#ffffff' }}
+                >
+                  <Check className="w-3 h-3" />
+                </div>
+              )}
             </button>
 
+            {/* Ô Light Mode — Luôn hiển thị nền sáng trắng kem để nhìn vào thấy ngay */}
             <button
               onClick={() => themeMode === 'dark' && onToggleThemeMode()}
-              className={`p-3.5 rounded-xl border text-left flex items-center gap-3.5 transition-all cursor-pointer ${
-                themeMode === 'light'
-                  ? 'bg-white border-black text-black shadow-[0_0_12px_rgba(0,0,0,0.1)] scale-[1.01]'
-                  : 'bg-[#0d0d12] border-[#1e1e28] hover:border-[#333] hover:bg-[#121218]'
+              style={{
+                backgroundColor: '#ffffff',
+                borderColor: themeMode === 'light' ? accentColor : '#cbd5e1',
+                boxShadow: themeMode === 'light' ? `0 0 16px ${accentColor}40` : '0 2px 8px rgba(15,23,42,0.08)',
+              }}
+              className={`p-3.5 rounded-xl border-2 text-left flex items-center justify-between gap-3 transition-all cursor-pointer ${
+                themeMode === 'light' ? 'scale-[1.01]' : 'opacity-90 hover:opacity-100'
               }`}
             >
-              <div className="w-8 h-8 rounded-lg bg-white border border-[#ccc] flex items-center justify-center text-black">
-                <Sun className="w-4 h-4 text-amber-500" />
+              <div className="flex items-center gap-3.5 overflow-hidden">
+                <div
+                  className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 border"
+                  style={{ backgroundColor: '#fffbeb', borderColor: '#fde68a' }}
+                >
+                  <Sun className="w-4 h-4 text-amber-500" />
+                </div>
+                <div className="overflow-hidden">
+                  <p className="text-xs font-bold truncate" style={{ color: '#0f172a' }}>
+                    {getTranslation(language, 'profile.lightDossier')}
+                  </p>
+                  <p className="text-[10px] font-mono truncate" style={{ color: '#475569' }}>
+                    {getTranslation(language, 'profile.lightDossierDesc')}
+                  </p>
+                </div>
               </div>
-              <div className="overflow-hidden">
-                <p className="text-xs font-bold text-white">{getTranslation(language, 'profile.lightDossier')}</p>
-                <p className="text-[10px] text-[#777] font-mono">{getTranslation(language, 'profile.lightDossierDesc')}</p>
-              </div>
+              {themeMode === 'light' && (
+                <div
+                  className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: accentColor, color: '#ffffff' }}
+                >
+                  <Check className="w-3 h-3" />
+                </div>
+              )}
             </button>
           </div>
         </div>

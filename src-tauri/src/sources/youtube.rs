@@ -159,7 +159,9 @@ fn parse_video_renderer(video: &Value) -> Option<SearchResult> {
         .and_then(|v| v.as_str())
         .unwrap_or("YouTube Artist");
 
-    let is_live_video = video.pointer("/badges").map(|b| b.to_string().to_lowercase().contains("live")).unwrap_or(false);
+    let is_live_video = video.pointer("/badges").map(|b| b.to_string().to_lowercase().contains("live")).unwrap_or(false)
+        || video.pointer("/thumbnailOverlays").map(|o| o.to_string().to_lowercase().contains("\"live\"")).unwrap_or(false)
+        || (video.pointer("/lengthText").is_none() && video.pointer("/viewCountText/runs").is_some());
     let duration_secs = if is_live_video {
         0
     } else {

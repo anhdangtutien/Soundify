@@ -13,7 +13,7 @@ interface AlbumsViewProps {
   onCreateAlbum: (title: string, description: string) => void;
   onDeleteAlbum: (albumId: string) => void;
   onRemoveTrackFromAlbum: (albumId: string, trackId: string) => void;
-  onPlayTrack: (track: Track) => void;
+  onPlayTrack: (track: Track, albumTracks?: Track[]) => void;
   onPlayAlbum: (album: UserAlbum) => void;
   currentTrack: Track | null;
   isPlaying: boolean;
@@ -257,7 +257,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                     className="p-2.5 rounded-xl bg-[#09090c] hover:bg-[#121218] border border-[#161620] flex items-center justify-between gap-3 group transition-colors"
                   >
                     <div
-                      onClick={() => onPlayTrack(track)}
+                      onClick={() => onPlayTrack(track, cleanAlbumTracks)}
                       className="flex items-center gap-3 overflow-hidden flex-1 cursor-pointer"
                     >
                       <span className="w-5 text-center text-xs font-mono text-[#555] group-hover:text-white">
@@ -388,6 +388,14 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                       )}
 
                       <div 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (album.tracks.length > 0) {
+                            onPlayAlbum({ ...album, tracks: deduplicateTracks(album.tracks) });
+                          } else {
+                            setSelectedAlbumId(album.id);
+                          }
+                        }}
                         className="absolute right-2 bottom-2 w-9 h-9 rounded-full flex items-center justify-center shadow-lg opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all cursor-pointer"
                         style={{
                           backgroundColor: accentColor,

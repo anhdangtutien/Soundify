@@ -21,18 +21,95 @@ use tauri::{
 };
 
 #[cfg(target_os = "windows")]
-pub fn trim_process_memory() {
+fn trim_single_process_tree() {
     unsafe {
+        #[repr(C)]
+        struct ProcessEntry32W {
+            dw_size: u32,
+            cnt_usage: u32,
+            th32_process_id: u32,
+            th32_default_heap_id: usize,
+            th32_module_id: u32,
+            cnt_threads: u32,
+            th32_parent_process_id: u32,
+            pc_pri_class_base: i32,
+            dw_flags: u32,
+            sz_exe_file: [u16; 260],
+        }
+
         #[link(name = "kernel32")]
         extern "system" {
             fn GetCurrentProcess() -> isize;
+            fn GetCurrentProcessId() -> u32;
+            fn OpenProcess(desired_access: u32, inherit_handle: i32, process_id: u32) -> isize;
+            fn CloseHandle(object: isize) -> i32;
             fn SetProcessWorkingSetSize(process: isize, min: usize, max: usize) -> i32;
             fn K32EmptyWorkingSet(process: isize) -> i32;
+            fn CreateToolhelp32Snapshot(flags: u32, process_id: u32) -> isize;
+            fn Process32FirstW(snapshot: isize, lppe: *mut ProcessEntry32W) -> i32;
+            fn Process32NextW(snapshot: isize, lppe: *mut ProcessEntry32W) -> i32;
         }
-        let proc = GetCurrentProcess();
-        K32EmptyWorkingSet(proc);
-        SetProcessWorkingSetSize(proc, usize::MAX, usize::MAX);
+
+        // 1. Trim current Rust host process
+        let self_proc = GetCurrentProcess();
+        K32EmptyWorkingSet(self_proc);
+        SetProcessWorkingSetSize(self_proc, usize::MAX, usize::MAX);
+
+        // 2. Trim all child/descendant WebView2 processes (Browser, Renderer, GPU, Utility)
+        let root_pid = GetCurrentProcessId();
+        let snapshot = CreateToolhelp32Snapshot(0x00000002, 0); // TH32CS_SNAPPROCESS
+        if snapshot != -1 && snapshot != 0 {
+            let mut entries: Vec<(u32, u32)> = Vec::new();
+            let mut entry: ProcessEntry32W = std::mem::zeroed();
+            entry.dw_size = std::mem::size_of::<ProcessEntry32W>() as u32;
+
+            if Process32FirstW(snapshot, &mut entry) != 0 {
+                loop {
+                    entries.push((entry.th32_process_id, entry.th32_parent_process_id));
+                    if Process32NextW(snapshot, &mut entry) == 0 {
+                        break;
+                    }
+                }
+            }
+            CloseHandle(snapshot);
+
+            // Collect all descendant PIDs of root_pid
+            let mut tree_pids = std::collections::HashSet::new();
+            tree_pids.insert(root_pid);
+            let mut added = true;
+            while added {
+                added = false;
+                for &(pid, ppid) in &entries {
+                    if tree_pids.contains(&ppid) && !tree_pids.contains(&pid) {
+                        tree_pids.insert(pid);
+                        added = true;
+                    }
+                }
+            }
+
+            // PROCESS_QUERY_INFORMATION (0x0400) | PROCESS_SET_QUOTA (0x0100)
+            for pid in tree_pids {
+                if pid == root_pid {
+                    continue;
+                }
+                let h_proc = OpenProcess(0x0400 | 0x0100, 0, pid);
+                if h_proc != 0 {
+                    K32EmptyWorkingSet(h_proc);
+                    SetProcessWorkingSetSize(h_proc, usize::MAX, usize::MAX);
+                    CloseHandle(h_proc);
+                }
+            }
+        }
     }
+}
+
+#[cfg(target_os = "windows")]
+pub fn trim_process_memory() {
+    trim_single_process_tree();
+    std::thread::spawn(|| {
+        std::thread::sleep(std::time::Duration::from_millis(450));
+        trim_single_process_tree();
+    });
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -178,7 +255,7 @@ async fn get_trending_hits(category: String) -> Result<Vec<SearchResult>, String
         }
         "audius" => return sources::audius::get_trending_audius(20).await,
         "lofi" => {
-            sources::youtube::search_youtube("lofi chill beats study relax official audio").await
+            return sources::youtube::search_youtube("lofi hip hop radio beats to relax study to live chill").await;
         }
         "edm" => {
             sources::youtube::search_youtube("festival edm electronic dance banger official audio").await

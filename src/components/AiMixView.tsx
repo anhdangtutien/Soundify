@@ -242,8 +242,10 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
         </div>
         <button
           onClick={onToggleSmartDj}
-          className="w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors"
-          style={{ backgroundColor: smartDjEnabled ? accentColor : '#22222a' }}
+          className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
+            smartDjEnabled ? '' : 'bg-[#22222a]'
+          }`}
+          style={smartDjEnabled ? { backgroundColor: accentColor } : undefined}
         >
           <div
             className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
@@ -348,7 +350,11 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
               <button
                 key={genre}
                 onClick={() => setSelectedGenre(genre)}
-                className="px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer border"
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer border ${
+                  isSelected
+                    ? ''
+                    : 'bg-[#121218] text-[#9e9ea7] border-[#1e1e28] hover:text-white hover:bg-[#1a1a24]'
+                }`}
                 style={
                   isSelected
                     ? {
@@ -357,11 +363,7 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
                         borderColor: accentColor,
                         boxShadow: `0 0 10px ${accentColor}35`,
                       }
-                    : {
-                        backgroundColor: '#121218',
-                        color: '#9e9ea7',
-                        borderColor: '#1e1e28',
-                      }
+                    : undefined
                 }
               >
                 {idx === 0 && <span className="text-[10px]">⭐</span>}
@@ -384,6 +386,7 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {genreTracks.map((track) => {
+              const isLiveItem = track.source === 'youtube' && (!track.duration_secs || track.duration_secs <= 0);
               const mins = Math.floor(track.duration_secs / 60);
               const secs = (track.duration_secs % 60).toString().padStart(2, '0');
               const durStr = track.duration_secs > 0 ? `${mins}:${secs}` : '';
@@ -416,10 +419,19 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {durStr && <span className="text-[10px] text-[#555] font-mono">{durStr}</span>}
-                    <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#181822] text-[#888] border border-[#22222e]">
-                      {track.source === 'youtube' ? 'YT Stream' : track.source === 'soundcloud' ? 'SoundCloud' : track.source === 'audius' ? 'Audius' : 'Local'}
-                    </span>
+                    {isLiveItem ? (
+                      <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                        LIVE
+                      </span>
+                    ) : (
+                      <>
+                        {durStr && <span className="text-[10px] text-[#555] font-mono">{durStr}</span>}
+                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#181822] text-[#888] border border-[#22222e]">
+                          {track.source === 'youtube' ? 'YT Stream' : track.source === 'soundcloud' ? 'SoundCloud' : track.source === 'audius' ? 'Audius' : 'Local'}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               );

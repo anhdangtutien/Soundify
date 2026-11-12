@@ -314,6 +314,42 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
   ],
   lofi: [
     {
+      title: 'lofi hip hop radio 📚 beats to relax/study to [LIVE 24/7]',
+      artist: 'Lofi Girl',
+      album: 'Lofi Girl 24/7 Live Radio',
+      duration_secs: 0,
+      source: 'youtube',
+      url_or_id: 'jfKfPfyJRdk',
+      thumbnail: 'https://i.ytimg.com/vi/jfKfPfyJRdk/hqdefault.jpg',
+    },
+    {
+      title: 'synthwave radio 🌌 beats to chill/game to [LIVE 24/7]',
+      artist: 'Lofi Girl',
+      album: 'Lofi Girl Synthwave Live',
+      duration_secs: 0,
+      source: 'youtube',
+      url_or_id: '4xDzrJKXOOY',
+      thumbnail: 'https://i.ytimg.com/vi/4xDzrJKXOOY/hqdefault.jpg',
+    },
+    {
+      title: 'lofi hip hop radio 💤 beats to sleep/chill to [LIVE 24/7]',
+      artist: 'Lofi Girl',
+      album: 'Lofi Sleep Live Stream',
+      duration_secs: 0,
+      source: 'youtube',
+      url_or_id: 'rUxyKA_-grg',
+      thumbnail: 'https://i.ytimg.com/vi/rUxyKA_-grg/hqdefault.jpg',
+    },
+    {
+      title: 'Chillhop Radio - jazzy & lofi hip hop beats 🐾 [LIVE 24/7]',
+      artist: 'Chillhop Music',
+      album: 'Chillhop 24/7 Live Radio',
+      duration_secs: 0,
+      source: 'youtube',
+      url_or_id: '5yx6BWlEVcY',
+      thumbnail: 'https://i.ytimg.com/vi/5yx6BWlEVcY/hqdefault.jpg',
+    },
+    {
       title: 'Snowman (Lofi Version)',
       artist: 'Lofi Fruits Music',
       album: 'Chillhop Beats',
@@ -348,6 +384,24 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       source: 'youtube',
       url_or_id: 'gR30cRz-W7Y',
       thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Biscuit (Lofi Chill)',
+      artist: 'Lukrembo',
+      album: 'Daily Lofi Vibes',
+      duration_secs: 112,
+      source: 'youtube',
+      url_or_id: 'EtZ2m2Zm3vY',
+      thumbnail: 'https://i.ytimg.com/vi/EtZ2m2Zm3vY/hqdefault.jpg',
+    },
+    {
+      title: '5:32pm (Lofi Beat)',
+      artist: 'The Deli',
+      album: 'Vibes 2',
+      duration_secs: 132,
+      source: 'youtube',
+      url_or_id: '2f9sM6vM7gM',
+      thumbnail: 'https://i.ytimg.com/vi/2f9sM6vM7gM/hqdefault.jpg',
     },
   ],
   all: [
@@ -466,9 +520,10 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
     try {
       const results = await invoke<SearchResult[]>('get_trending_hits', { category });
       if (results && results.length > 0) {
-        // Merge fetched tracks with curated tracks (prevent duplicate titles/IDs)
-        const combined = [...results];
-        curated.forEach(item => {
+        // For lofi, keep curated top lofi live streams & hits at the top, followed by live YouTube search results
+        const combined = category === 'lofi' ? [...curated] : [...results];
+        const secondary = category === 'lofi' ? results : curated;
+        secondary.forEach(item => {
           const itemTitleNorm = item.title.trim().toLowerCase();
           if (!combined.some(c => c.url_or_id === item.url_or_id || c.title.trim().toLowerCase() === itemTitleNorm)) {
             combined.push(item);
@@ -580,7 +635,14 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
               <Play className="w-4 h-4 fill-current ml-0.5" />
               <span>{getTranslation(language, 'trending.playNow')}</span>
             </button>
-            <span className="text-xs font-mono text-[#777]">{formatTime(featured.duration_secs)}</span>
+            {(!featured.duration_secs || featured.duration_secs <= 0) ? (
+              <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                LIVE 24/7
+              </span>
+            ) : (
+              <span className="text-xs font-mono text-[#777]">{formatTime(featured.duration_secs)}</span>
+            )}
           </div>
         </div>
 
@@ -743,8 +805,17 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
 
                 {/* Right metadata */}
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {getSourceBadge(item.source)}
-                  <span className="text-[11px] font-mono text-[#666]">{formatTime(item.duration_secs)}</span>
+                  {(!item.duration_secs || item.duration_secs <= 0) ? (
+                    <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                      LIVE
+                    </span>
+                  ) : (
+                    <>
+                      {getSourceBadge(item.source)}
+                      <span className="text-[11px] font-mono text-[#666]">{formatTime(item.duration_secs)}</span>
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -764,9 +835,9 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
             { title: 'Billboard US/UK', desc: 'Lady Gaga, Bruno Mars, Sabrina', query: 'usuk' },
             { title: 'J-Pop & Anime Viral', desc: 'YOASOBI, Creepy Nuts, Fujii Kaze', query: 'kpop_jpop' },
             { title: 'K-Pop All-Kill', desc: 'ROSÉ, aespa, ILLIT, Jung Kook', query: 'kpop_jpop' },
-            { title: 'V-Pop Quán Quân', desc: 'Sơn Tùng, Wren Evans, HIEUTHUHAI', query: 'vpop' },
-            { title: 'Audius 320K Hi-Fi', desc: 'Lossless underground không giới hạn', query: 'audius' },
-            { title: 'Covert Ops Beats', desc: 'Giai điệu mật vụ tập trung sâu', query: 'lofi' },
+            { title: getTranslation(language, 'trending.colVpopTitle'), desc: 'Sơn Tùng, Wren Evans, HIEUTHUHAI', query: 'vpop' },
+            { title: 'Audius 320K Hi-Fi', desc: getTranslation(language, 'trending.colAudiusDesc'), query: 'audius' },
+            { title: 'Covert Ops Beats', desc: getTranslation(language, 'trending.colLofiDesc'), query: 'lofi' },
           ].map((col, idx) => (
             <button
               key={idx}
@@ -774,7 +845,9 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
               className="p-3.5 rounded-xl bg-[#0c0c10] hover:bg-[#14141a] border border-[#1a1a24] hover:border-[#2a2a38] transition-all text-left flex flex-col justify-between h-28 group cursor-pointer shadow-sm"
             >
               <div className="flex items-center justify-between w-full">
-                <span className="text-[10px] font-mono font-bold uppercase" style={{ color: accentColor }}>CHỦ ĐỀ #{idx + 1}</span>
+                <span className="text-[10px] font-mono font-bold uppercase" style={{ color: accentColor }}>
+                  {getTranslation(language, 'trending.topicBadge', { index: idx + 1 })}
+                </span>
                 <Play className="w-3.5 h-3.5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <div>
@@ -792,9 +865,9 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
           <div className="flex items-center justify-between border-b border-[#161620] pb-2">
             <h2 className="text-sm font-bold text-white flex items-center gap-2">
               <Compass className="w-4 h-4 text-white" />
-              Khám phá thêm
+              {getTranslation(language, 'trending.discoverMore')}
             </h2>
-            <span className="text-xs text-[#777] font-mono">{remaining.length} bài hát</span>
+            <span className="text-xs text-[#777] font-mono">{getTranslation(language, 'album.trackCount', { count: remaining.length })}</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">

@@ -242,6 +242,15 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'mode.queuePopup': '📋 Tiếp theo trong danh sách',
     'mode.randomPopup': '🔀 Phát ngẫu nhiên',
     'mode.startPopup': '📋 Bắt đầu danh sách',
+    'mode.newTrackTag': 'Bài mới',
+    'mode.playlistTag': 'Playlist',
+
+    // Section Views (Local, Favorites, Audius)
+    'view.localBadge': 'Ổ CỨNG NỘI BỘ',
+    'view.localTitle': 'Nhạc Lossless trên máy',
+    'view.favoritesBadge': 'DANH SÁCH YÊU THÍCH (SQLITE)',
+    'view.favoritesTitle': 'Bài hát yêu thích',
+    'view.dbSyncedCount': '{count} bài hát • Đồng bộ cơ sở dữ liệu',
 
     // Trending
     'trending.title': 'Top Bài Hát Thịnh Hành',
@@ -253,6 +262,11 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'trending.globalRank': 'BÀI HÁT QUÁN QUÂN TOÀN CẦU #1',
     'trending.playNow': 'Phát ngay',
     'trending.preview': 'Nghe thử',
+    'trending.topicBadge': 'CHỦ ĐỀ #{index}',
+    'trending.colVpopTitle': 'V-Pop Quán Quân',
+    'trending.colAudiusDesc': 'Lossless underground không giới hạn',
+    'trending.colLofiDesc': 'Giai điệu mật vụ tập trung sâu',
+    'trending.discoverMore': 'Khám phá thêm',
 
     // Notifications
     'toast.langChanged': 'Đã đổi ngôn ngữ sang',
@@ -513,6 +527,15 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'mode.queuePopup': '📋 Next in Queue',
     'mode.randomPopup': '🔀 Shuffle Play',
     'mode.startPopup': '📋 Queue Beginning',
+    'mode.newTrackTag': 'New Track',
+    'mode.playlistTag': 'Playlist',
+
+    // Section Views (Local, Favorites, Audius)
+    'view.localBadge': 'LOCAL DRIVE',
+    'view.localTitle': 'Local Lossless Music',
+    'view.favoritesBadge': 'FAVORITES LIST (SQLITE)',
+    'view.favoritesTitle': 'Favorite Tracks',
+    'view.dbSyncedCount': '{count} tracks • Database synchronized',
 
     // Trending
     'trending.title': 'Top Trending Songs',
@@ -524,6 +547,11 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'trending.globalRank': 'GLOBAL #1 SMASH HIT',
     'trending.playNow': 'Play Now',
     'trending.preview': 'Preview',
+    'trending.topicBadge': 'TOPIC #{index}',
+    'trending.colVpopTitle': 'V-Pop Top Hits',
+    'trending.colAudiusDesc': 'Unlimited underground 320K lossless',
+    'trending.colLofiDesc': 'Deep focus covert agent beats',
+    'trending.discoverMore': 'Discover More',
 
     // Notifications
     'toast.langChanged': 'Language changed to',
@@ -784,6 +812,15 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'mode.queuePopup': '📋 キューの次の曲',
     'mode.randomPopup': '🔀 シャッフル再生',
     'mode.startPopup': '📋 リストの先頭',
+    'mode.newTrackTag': '新曲',
+    'mode.playlistTag': 'プレイリスト',
+
+    // Section Views (Local, Favorites, Audius)
+    'view.localBadge': '内蔵ストレージ',
+    'view.localTitle': 'ローカル高音質楽曲',
+    'view.favoritesBadge': 'お気に入りリスト (SQLITE)',
+    'view.favoritesTitle': 'お気に入りの楽曲',
+    'view.dbSyncedCount': '{count} 曲 • データベース同期済み',
 
     // Trending
     'trending.title': '注目のトレンド曲',
@@ -795,6 +832,11 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'trending.globalRank': 'グローバルNo.1ヒット',
     'trending.playNow': '今すぐ再生',
     'trending.preview': '試聴',
+    'trending.topicBadge': 'トピック #{index}',
+    'trending.colVpopTitle': 'V-Pop トップヒット',
+    'trending.colAudiusDesc': '無制限の320K高音質アンダーグラウンド',
+    'trending.colLofiDesc': '深い集中のためのシークレットビート',
+    'trending.discoverMore': 'さらに発見する',
 
     // Notifications
     'toast.langChanged': '言語を変更しました:',
@@ -1055,6 +1097,15 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'mode.queuePopup': '📋 播放队列下一首',
     'mode.randomPopup': '🔀 随机播放',
     'mode.startPopup': '📋 列表首首',
+    'mode.newTrackTag': '新歌',
+    'mode.playlistTag': '播放列表',
+
+    // Section Views (Local, Favorites, Audius)
+    'view.localBadge': '本地存储',
+    'view.localTitle': '本地无损音乐',
+    'view.favoritesBadge': '收藏列表 (SQLITE)',
+    'view.favoritesTitle': '喜爱的歌曲',
+    'view.dbSyncedCount': '{count} 首歌曲 • 数据库已同步',
 
     // Trending
     'trending.title': '热门流行歌曲',
@@ -1066,6 +1117,11 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'trending.globalRank': '全球榜首冠军单曲 #1',
     'trending.playNow': '立即播放',
     'trending.preview': '试听',
+    'trending.topicBadge': '主题 #{index}',
+    'trending.colVpopTitle': 'V-Pop 冠军单曲',
+    'trending.colAudiusDesc': '无限畅听 320K 无损独立音乐',
+    'trending.colLofiDesc': '深度专注特工律动节拍',
+    'trending.discoverMore': '发现更多',
 
     // Notifications
     'toast.langChanged': '语言已切换为',

@@ -12,6 +12,7 @@ import { LanguageCode, getTranslation } from '../locales/i18n';
 interface PlayerBarProps {
   currentTrack: Track | null;
   upcomingTrack?: Track | null;
+  upcomingModeLabel?: string;
   isPlaying: boolean;
   currentTime: number;
   duration: number;
@@ -47,7 +48,7 @@ interface PlayerBarProps {
 }
 
 export const PlayerBar: React.FC<PlayerBarProps> = ({
-  currentTrack, upcomingTrack, isPlaying, currentTime, duration, volume, isFavorite,
+  currentTrack, upcomingTrack, upcomingModeLabel, isPlaying, currentTime, duration, volume, isFavorite,
   repeatMode, isShuffle, onToggleRepeat, onToggleShuffle,
   onTogglePlay, onPrev, onNext, onSeek, onVolumeChange,
   onToggleFavorite, onAddToAlbum, onDownload, isDownloading = false, onToggleVisualizer, showVisualizer,
@@ -105,27 +106,33 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   };
 
   // Detect true live broadcast (never for local files or recorded sessions)
+  const lowerTitle = currentTrack ? currentTrack.title.toLowerCase() : '';
+  const isRecordedSession =
+    lowerTitle.includes('live lounge') ||
+    lowerTitle.includes('live session') ||
+    lowerTitle.includes('live at') ||
+    lowerTitle.includes('live in') ||
+    lowerTitle.includes('live acoustic') ||
+    lowerTitle.includes('live version') ||
+    lowerTitle.includes('live performance') ||
+    lowerTitle.includes('live cover');
+
   const isLive = Boolean(
     currentTrack &&
     currentTrack.source === 'youtube' &&
+    !isRecordedSession &&
     (
       currentTime > 86400 ||
-      (
-        duration <= 0 &&
-        (!currentTrack.duration_secs || currentTrack.duration_secs <= 0) &&
-        !currentTrack.title.toLowerCase().includes('live lounge') &&
-        !currentTrack.title.toLowerCase().includes('live session') &&
-        !currentTrack.title.toLowerCase().includes('live at') &&
-        !currentTrack.title.toLowerCase().includes('live in') &&
-        !currentTrack.title.toLowerCase().includes('live acoustic') &&
-        (
-          currentTrack.title.toLowerCase().includes('24/7') ||
-          currentTrack.title.toLowerCase().includes('trực tiếp') ||
-          currentTrack.title.toLowerCase().includes('livestream') ||
-          currentTrack.title.toLowerCase().includes('live stream') ||
-          currentTrack.title.toLowerCase().includes('live radio')
-        )
-      )
+      (!currentTrack.duration_secs || currentTrack.duration_secs <= 0) ||
+      lowerTitle.includes('24/7') ||
+      lowerTitle.includes('trực tiếp') ||
+      lowerTitle.includes('livestream') ||
+      lowerTitle.includes('live stream') ||
+      lowerTitle.includes('live radio') ||
+      lowerTitle.includes('hip hop radio') ||
+      lowerTitle.includes('lofi radio') ||
+      lowerTitle.includes('chill radio') ||
+      (lowerTitle.includes('radio') && (currentTrack.duration_secs <= 0 || currentTrack.duration_secs > 7200))
     )
   );
 
@@ -334,8 +341,8 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                   <SkipForward className="w-3 h-3 fill-current" />
                   {getTranslation(language, 'popup.nextTrack')}
                 </span>
-                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#161622] text-[#88889f]">
-                  {recommendMode === 'fresh' ? getTranslation(language, 'player.modeFresh') : recommendMode === 'mix' ? getTranslation(language, 'player.modeRecommend') : getTranslation(language, 'player.modeDefault')}
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#161622] text-[#88889f] truncate max-w-[120px]">
+                  {upcomingModeLabel || (recommendMode === 'fresh' ? getTranslation(language, 'player.modeFresh') : recommendMode === 'mix' ? getTranslation(language, 'player.modeRecommend') : getTranslation(language, 'player.modeDefault'))}
                 </span>
               </div>
 
@@ -536,6 +543,10 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                   setIsDragging(true);
                   setDragValue(Number((e.target as HTMLInputElement).value));
                 }}
+                onTouchStart={(e) => {
+                  setIsDragging(true);
+                  setDragValue(Number((e.target as HTMLInputElement).value));
+                }}
                 onChange={(e) => {
                   const v = Number(e.target.value);
                   setDragValue(v);
@@ -544,6 +555,23 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                   const v = Number((e.target as HTMLInputElement).value);
                   setIsDragging(false);
                   onSeek(v);
+                }}
+                onTouchEnd={(e) => {
+                  const v = Number((e.target as HTMLInputElement).value);
+                  setIsDragging(false);
+                  onSeek(v);
+                }}
+                onPointerUp={(e) => {
+                  const v = Number((e.target as HTMLInputElement).value);
+                  if (isDragging) {
+                    setIsDragging(false);
+                    onSeek(v);
+                  }
+                }}
+                onBlur={() => {
+                  if (isDragging) {
+                    setIsDragging(false);
+                  }
                 }}
                 className="absolute w-full opacity-0 h-full cursor-pointer z-10"
               />

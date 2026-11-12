@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
@@ -19,7 +19,7 @@ import { cloudSyncPull, cloudSyncPush, isSupabaseConfigured } from './services/s
 import { deduplicateTracks, optimizeThumbnailUrl } from './utils/trackUtils';
 import { Track, PlaybackStatus, SearchResult, ViewType, User, UserAlbum } from './types';
 import { FolderPlus, Disc, CheckCircle2, Tv, X, Radio, ArrowUpRight, LogIn, Sun, Moon, Music, Play, Globe, Languages, ChevronDown, ChevronUp, EyeOff } from 'lucide-react';
-import { YoutubeIcon, SoundCloudIcon } from './components/Icons';
+import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './components/Icons';
 import { LanguageCode, SUPPORTED_LANGUAGES, getTranslation } from './locales/i18n';
 
 export default function App() {
@@ -291,9 +291,14 @@ export default function App() {
   };
 
   const handlePlayAlbum = (album: UserAlbum) => {
-    if (album.tracks.length > 0) {
-      setTracks(album.tracks);
-      playTrackInternal(album.tracks[0]);
+    const clean = deduplicateTracks(album.tracks || []);
+    if (clean.length > 0) {
+      setTracks(prev => deduplicateTracks([...clean, ...prev]));
+      activeQueueRef.current = clean;
+      setActiveQueue(clean);
+      activeQueueContextRef.current = 'albums';
+      setActiveQueueContext('albums');
+      playTrackInternal(clean[0]);
       showNotification(`${getTranslation(language, 'toast.playingAlbum')}: ${album.title}`);
     }
   };
@@ -303,6 +308,140 @@ export default function App() {
     try { return new Set(JSON.parse(localStorage.getItem('soundify_favorites') || '[]')); }
     catch { return new Set(); }
   });
+  const favoritesRef = useRef<Set<string>>(favorites);
+  useEffect(() => { favoritesRef.current = favorites; }, [favorites]);
+
+  const albumsRef = useRef<UserAlbum[]>(albums);
+  useEffect(() => { albumsRef.current = albums; }, [albums]);
+
+  const [activeQueue, setActiveQueue] = useState<Track[]>([]);
+  const activeQueueRef = useRef<Track[]>([]);
+  useEffect(() => { activeQueueRef.current = activeQueue; }, [activeQueue]);
+
+  const [activeQueueContext, setActiveQueueContext] = useState<string>('library');
+  const activeQueueContextRef = useRef<string>('library');
+  useEffect(() => { activeQueueContextRef.current = activeQueueContext; }, [activeQueueContext]);
+
+  // Tracks whether the next song in 'mix' mode should be a brand-new discovery (true)
+  // or the next song from the current playlist (false), strictly alternating 1-by-1.
+  const mixNextIsNewRef = useRef<boolean>(true);
+  const lastPlaylistIndexRef = useRef<number>(0);
+  const lockedPlaylistNextRef = useRef<{
+    forTrackId: string | null;
+    isShuffle: boolean;
+    ctx: string;
+    track: Track | null;
+  }>({ forTrackId: null, isShuffle: false, ctx: '', track: null });
+
+  const isScopedPlaylistContext = (ctx: string): boolean => {
+    return ctx === 'local' || ctx === 'favorites' || ctx === 'albums';
+  };
+
+  // Checks if a candidate track is already in any user playlist (Active Queue, Favorites, User Albums, or Local Music)
+  const isTrackInUserPlaylists = (title: string, urlOrId?: string): boolean => {
+    const normTitle = title.trim().toLowerCase();
+    const normId = (urlOrId || '').trim().toLowerCase();
+
+    const matchesTrack = (t: Track) => {
+      const tTitle = t.title.trim().toLowerCase();
+      const tId = t.id.toLowerCase();
+      const tPath = (t.path_or_url || '').toLowerCase();
+      if (tTitle === normTitle || tTitle.includes(normTitle) || normTitle.includes(tTitle)) return true;
+      if (normId && (tId === normId || tPath === normId || tId.includes(normId))) return true;
+      return false;
+    };
+
+    if (activeQueueRef.current.some(matchesTrack)) return true;
+    if (tracksRef.current.some(t => (t.source === 'local' || favoritesRef.current.has(t.id)) && matchesTrack(t))) return true;
+    for (const alb of albumsRef.current) {
+      if ((alb.tracks || []).some(matchesTrack)) return true;
+    }
+    return false;
+  };
+
+  const getEffectiveQueue = (): Track[] => {
+    const ctx = activeQueueContextRef.current;
+    if (ctx === 'local') {
+      const locals = deduplicateTracks(tracksRef.current.filter(t => t.source === 'local'));
+      return locals.length > 0 ? locals : activeQueueRef.current;
+    }
+    if (ctx === 'favorites') {
+      const favs = deduplicateTracks(tracksRef.current.filter(t => favoritesRef.current.has(t.id)));
+      return favs.length > 0 ? favs : activeQueueRef.current;
+    }
+    if (ctx === 'albums') {
+      return activeQueueRef.current.length > 0 ? activeQueueRef.current : tracksRef.current;
+    }
+    if (activeQueueRef.current.length > 0) {
+      return activeQueueRef.current;
+    }
+    return displayedTracksRef.current.length > 0 ? displayedTracksRef.current : tracksRef.current;
+  };
+
+  const getNextPlaylistTrack = (cur: Track | null): Track | null => {
+    const queue = getEffectiveQueue();
+    if (!queue.length) return null;
+
+    const curId = cur?.id || null;
+    const shuf = isShuffleRef.current;
+    const ctx = activeQueueContextRef.current;
+    const cached = lockedPlaylistNextRef.current;
+
+    if (
+      cached.track &&
+      cached.forTrackId === curId &&
+      cached.isShuffle === shuf &&
+      cached.ctx === ctx &&
+      queue.some(t => t.id === cached.track!.id) &&
+      (queue.length === 1 || cached.track.id !== curId)
+    ) {
+      return cached.track;
+    }
+
+    let picked: Track | null = null;
+    if (shuf && queue.length > 1) {
+      const remaining = queue.filter(t => t.id !== curId);
+      picked = remaining[Math.floor(Math.random() * remaining.length)] || queue[0];
+    } else {
+      const idx = cur ? queue.findIndex(t => t.id === cur.id) : -1;
+      if (idx !== -1) {
+        picked = queue[(idx + 1) % queue.length];
+      } else {
+        picked = queue[(lastPlaylistIndexRef.current + 1) % queue.length] || queue[0];
+      }
+    }
+
+    lockedPlaylistNextRef.current = {
+      forTrackId: curId,
+      isShuffle: shuf,
+      ctx,
+      track: picked,
+    };
+    return picked;
+  };
+
+  const shouldNextBeNewDiscovery = (): boolean => {
+    if (recommendModeRef.current === 'fresh') return true;
+    if (recommendModeRef.current === 'mix') {
+      const queue = getEffectiveQueue();
+      if (!queue.length) return true;
+      return mixNextIsNewRef.current;
+    }
+    return false;
+  };
+
+  const getPlaylistModeLabel = (ctx: string): string => {
+    if (recommendModeRef.current === 'fresh') return getTranslation(language, 'mode.freshPopup');
+    if (recommendModeRef.current === 'mix') {
+      return mixNextIsNewRef.current
+        ? `${getTranslation(language, 'mode.mixPopup')} • ${getTranslation(language, 'mode.newTrackTag')}`
+        : `${getTranslation(language, 'mode.mixPopup')} • ${getTranslation(language, 'mode.playlistTag')}`;
+    }
+    if (ctx === 'local') return getTranslation(language, 'nav.localMusic');
+    if (ctx === 'favorites') return getTranslation(language, 'nav.favorites');
+    if (ctx === 'albums') return getTranslation(language, 'nav.myAlbums');
+    return getTranslation(language, 'mode.queuePopup');
+  };
   const [showVisualizer, setShowVisualizer] = useState(true);
   const [showYoutubeVideo, setShowYoutubeVideo] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -358,18 +497,89 @@ export default function App() {
   const playbackHistoryStackRef = useRef<Track[]>([]);
   const playbackForwardStackRef = useRef<Track[]>([]);
 
+  const checkIsLiveTrack = (t: Track | null): boolean => {
+    if (!t || t.source !== 'youtube') return false;
+    const title = t.title.toLowerCase();
+    const isRecordedLive =
+      title.includes('live lounge') ||
+      title.includes('live session') ||
+      title.includes('live at') ||
+      title.includes('live in') ||
+      title.includes('live acoustic') ||
+      title.includes('live version') ||
+      title.includes('live performance') ||
+      title.includes('live cover');
+    if (isRecordedLive) return false;
+    return (
+      !t.duration_secs ||
+      t.duration_secs <= 0 ||
+      title.includes('24/7') ||
+      title.includes('trực tiếp') ||
+      title.includes('livestream') ||
+      title.includes('live stream') ||
+      title.includes('live radio') ||
+      title.includes('hip hop radio') ||
+      title.includes('lofi radio') ||
+      title.includes('chill radio') ||
+      (title.includes('radio') && (t.duration_secs <= 0 || t.duration_secs > 7200)) ||
+      (title.includes('live') && (t.duration_secs <= 0 || t.duration_secs > 7200))
+    );
+  };
+
+  const buildImmediatePopupData = (): NextTrackPopupData | null => {
+    const allList = getEffectiveQueue();
+    const cur = currentTrackRef.current;
+    const fallbackNext = getNextPlaylistTrack(cur);
+    const useNewDiscovery = shouldNextBeNewDiscovery();
+
+    const nextToUse = useNewDiscovery
+      ? (preloadedNextTrackRef.current || fallbackNext || cur)
+      : (fallbackNext || preloadedNextTrackRef.current || cur);
+    if (!nextToUse) return null;
+
+    const altList = (useNewDiscovery && preloadedAlternativesRef.current.length > 0)
+      ? preloadedAlternativesRef.current.slice(0, 3)
+      : allList.filter(t => t.id !== cur?.id && t.id !== nextToUse.id).slice(0, 3);
+
+    return {
+      title: nextToUse.title,
+      artist: nextToUse.artist,
+      thumbnail: nextToUse.cover_art || undefined,
+      source: nextToUse.source,
+      modeLabel: getPlaylistModeLabel(activeQueueContextRef.current),
+      isCountdown: false,
+      alternatives: altList,
+    };
+  };
+
   const handleToggleNextTrackPopupEnabled = () => {
-    setIsNextTrackPopupEnabled(prev => {
-      const nextVal = !prev;
-      localStorage.setItem('spytify_next_popup_enabled', String(nextVal));
-      if (!nextVal) {
-        setNextTrackPopup(null);
-        showNotification(getTranslation(language, 'popup.disabledToast'));
+    const isCurrentlyVisible = Boolean(isNextTrackPopupEnabled && nextTrackPopup);
+    if (isCurrentlyVisible) {
+      setIsNextTrackPopupEnabled(false);
+      isNextTrackPopupEnabledRef.current = false;
+      localStorage.setItem('spytify_next_popup_enabled', 'false');
+      setNextTrackPopup(null);
+      showNotification(getTranslation(language, 'popup.disabledToast'));
+    } else {
+      setIsNextTrackPopupEnabled(true);
+      isNextTrackPopupEnabledRef.current = true;
+      localStorage.setItem('spytify_next_popup_enabled', 'true');
+      setIsNextTrackPopupCollapsed(false);
+      const immediateData = buildImmediatePopupData();
+      if (immediateData) {
+        setNextTrackPopup(immediateData);
       } else {
-        showNotification(getTranslation(language, 'popup.enabledToast'));
+        setNextTrackPopup({
+          title: 'AI Smart DJ Ready',
+          artist: 'Spytify Intelligence',
+          source: 'youtube',
+          modeLabel: getTranslation(language, 'mode.freshPopup'),
+          isCountdown: false,
+          alternatives: [],
+        });
       }
-      return nextVal;
-    });
+      showNotification(getTranslation(language, 'popup.enabledToast'));
+    }
   };
 
   const currentTimeRef = useRef(0);
@@ -394,14 +604,18 @@ export default function App() {
     });
   };
 
-  // Keep refs in sync
-  useEffect(() => { currentTrackRef.current = currentTrack; }, [currentTrack]);
-  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
-  useEffect(() => { tracksRef.current = tracks; }, [tracks]);
-  useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
-  useEffect(() => { repeatModeRef.current = repeatMode; }, [repeatMode]);
-  useEffect(() => { recommendModeRef.current = recommendMode; }, [recommendMode]);
-  useEffect(() => { isShuffleRef.current = isShuffle; }, [isShuffle]);
+  // Keep refs in sync synchronously during render so useMemo/useEffect always see latest state
+  currentTrackRef.current = currentTrack;
+  isPlayingRef.current = isPlaying;
+  tracksRef.current = tracks;
+  currentUserRef.current = currentUser;
+  repeatModeRef.current = repeatMode;
+  recommendModeRef.current = recommendMode;
+  isShuffleRef.current = isShuffle;
+  activeQueueRef.current = activeQueue;
+  activeQueueContextRef.current = activeQueueContext;
+  favoritesRef.current = favorites;
+  albumsRef.current = albums;
 
   // Load history from SQLite to seed listenedHistoryTitlesRef
   useEffect(() => {
@@ -440,14 +654,24 @@ export default function App() {
           const listened = listenedHistoryTitlesRef.current;
           const curTitleLower = currentTrack.title.toLowerCase();
 
-          const candidates = related.filter(r => {
+          // Filter out tracks already in any user playlist (Favorites, Albums, Local, Active Queue) or listened history
+          const strictOutsideCandidates = related.filter(r => {
             const rTitle = r.title.toLowerCase();
-            return !rTitle.includes(curTitleLower) && !curTitleLower.includes(rTitle) && !listened.has(rTitle);
-          }).map((r): Track => ({
+            if (rTitle.includes(curTitleLower) || curTitleLower.includes(rTitle)) return false;
+            if (listened.has(rTitle) || listened.has(r.url_or_id.toLowerCase())) return false;
+            if (isTrackInUserPlaylists(r.title, r.url_or_id)) return false;
+            return true;
+          });
+
+          const rawPool = strictOutsideCandidates.length > 0
+            ? strictOutsideCandidates
+            : related.filter(r => !isTrackInUserPlaylists(r.title, r.url_or_id));
+
+          const candidates = (rawPool.length > 0 ? rawPool : related).map((r): Track => ({
             id: `${r.source}_rec_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
             title: r.title,
             artist: r.artist,
-            album: r.album || 'Gợi ý cùng thể loại',
+            album: r.album || 'Gợi ý ngoài Playlist',
             duration_secs: r.duration_secs || 210,
             path_or_url: r.url_or_id,
             cover_art: r.thumbnail,
@@ -455,19 +679,21 @@ export default function App() {
           }));
 
           if (candidates.length > 0) {
-            preloadedNextTrackRef.current = candidates[0];
-            setPreloadedNextTrack(candidates[0]);
-            preloadedAlternativesRef.current = candidates.slice(1, 6);
-            if (isNextTrackPopupEnabledRef.current) {
-              setNextTrackPopup({
-                title: candidates[0].title,
-                artist: candidates[0].artist,
-                thumbnail: candidates[0].cover_art || undefined,
-                source: candidates[0].source,
-                modeLabel: recommendModeRef.current === 'fresh' ? getTranslation(language, 'mode.freshPopup') : getTranslation(language, 'mode.mixPopup'),
-                isCountdown: false,
-                alternatives: candidates.slice(1, 4),
-              });
+            if (!preloadedNextTrackRef.current) {
+              preloadedNextTrackRef.current = candidates[0];
+              setPreloadedNextTrack(candidates[0]);
+              preloadedAlternativesRef.current = candidates.slice(1, 6);
+            } else {
+              const lockedNorm = preloadedNextTrackRef.current.title.trim().toLowerCase();
+              preloadedAlternativesRef.current = candidates
+                .filter(c => c.title.trim().toLowerCase() !== lockedNorm)
+                .slice(0, 5);
+            }
+            if (isNextTrackPopupEnabledRef.current && !isTrayModeRef.current) {
+              const immediate = buildImmediatePopupData();
+              if (immediate) {
+                setNextTrackPopup(immediate);
+              }
             }
           }
         }
@@ -551,6 +777,7 @@ export default function App() {
       if (prev === 'fresh') next = 'mix';
       else if (prev === 'mix') next = 'off';
       else next = 'fresh';
+      recommendModeRef.current = next;
       localStorage.setItem('spytify_recommend_mode', next);
       if (next === 'fresh') {
         showNotification(getTranslation(language, 'toast.modeFresh'));
@@ -558,6 +785,12 @@ export default function App() {
         showNotification(getTranslation(language, 'toast.modeMix'));
       } else {
         showNotification(getTranslation(language, 'toast.modeOff'));
+      }
+      if (isNextTrackPopupEnabledRef.current) {
+        setTimeout(() => {
+          const immediate = buildImmediatePopupData();
+          if (immediate) setNextTrackPopup(immediate);
+        }, 0);
       }
       return next;
     });
@@ -580,21 +813,38 @@ export default function App() {
   displayedTracksRef.current = displayedTracks;
 
   const upcomingTrack = useMemo(() => {
-    if (!currentTrack || displayedTracks.length === 0) return null;
-    const idx = displayedTracks.findIndex(t => t.id === currentTrack.id);
-    if (idx !== -1 && idx < displayedTracks.length - 1) {
-      return displayedTracks[idx + 1];
-    }
-    if (displayedTracks.length > 0) return displayedTracks[0];
-    return null;
-  }, [currentTrack, displayedTracks]);
+    return getNextPlaylistTrack(currentTrack);
+  }, [currentTrack, displayedTracks, activeQueue, activeQueueContext, isShuffle]);
 
   const effectiveUpcomingTrack = useMemo(() => {
-    if (recommendMode !== 'off') {
-      return preloadedNextTrack;
+    const useNew = shouldNextBeNewDiscovery();
+    if (useNew) {
+      return preloadedNextTrack || upcomingTrack;
     }
-    return upcomingTrack;
-  }, [recommendMode, preloadedNextTrack, upcomingTrack]);
+    return upcomingTrack || preloadedNextTrack;
+  }, [recommendMode, preloadedNextTrack, upcomingTrack, currentTrack, isShuffle, activeQueueContext]);
+
+  // Keep Next Track Floating Popup 100% synchronized with effectiveUpcomingTrack
+  useEffect(() => {
+    if (!isNextTrackPopupEnabledRef.current || !effectiveUpcomingTrack) return;
+    const allList = getEffectiveQueue();
+    const cur = currentTrackRef.current;
+    const useNew = shouldNextBeNewDiscovery();
+    const altList = (useNew && preloadedAlternativesRef.current.length > 0)
+      ? preloadedAlternativesRef.current.slice(0, 3)
+      : allList.filter(t => t.id !== cur?.id && t.id !== effectiveUpcomingTrack.id).slice(0, 3);
+
+    setNextTrackPopup(prev => ({
+      title: effectiveUpcomingTrack.title,
+      artist: effectiveUpcomingTrack.artist,
+      thumbnail: effectiveUpcomingTrack.cover_art || undefined,
+      source: effectiveUpcomingTrack.source,
+      modeLabel: getPlaylistModeLabel(activeQueueContextRef.current),
+      isCountdown: prev?.isCountdown || false,
+      remainingSecs: prev?.remainingSecs,
+      alternatives: altList,
+    }));
+  }, [effectiveUpcomingTrack, recommendMode, isShuffle, activeQueueContext, language]);
 
   // ─── AUTO-PLAY NEXT TRACK & AUTO-RECOMMEND ENGINE ──────────────────────────
   const handleNext = useCallback(async (isManualSkip = false) => {
@@ -605,9 +855,9 @@ export default function App() {
     accumulatedTimeRef.current = 0;
 
     try {
-      const all = tracksRef.current;
+      const all = getEffectiveQueue();
       const cur = currentTrackRef.current;
-      if (!all.length) return;
+      if (!all.length && !cur) return;
 
       // 0. Check if sleep timer is set to "End of current track"
       if (!isManualSkip && sleepTimerMinutesRef.current === 0) {
@@ -628,172 +878,116 @@ export default function App() {
         return;
       }
 
-      // 2. Repeat off and NOT in recommendation mode (only when track ends naturally)
+      // 2. Repeat off and NOT in recommendation mode (stop when reaching end of playlist)
       if (!isManualSkip && repeatModeRef.current === 'off' && recommendModeRef.current === 'off') {
-        setIsPlaying(false);
-        return;
+        const curIdx = cur ? all.findIndex(t => t.id === cur.id) : -1;
+        if (curIdx === -1 || curIdx >= all.length - 1) {
+          setIsPlaying(false);
+          return;
+        }
       }
 
-      // 3. Shuffle mode within playlist
+      // 3. Shuffle mode within playlist when recommendMode === 'off'
       if (isShuffleRef.current && all.length > 1 && recommendModeRef.current === 'off') {
-        const remaining = all.filter(t => t.id !== cur?.id);
-        const randomTrack = remaining[Math.floor(Math.random() * remaining.length)];
+        const randomTrack = getNextPlaylistTrack(cur);
         if (randomTrack) {
-          triggerNextTrackPopup(randomTrack, getTranslation(language, 'mode.randomPopup'));
           playTrackInternal(randomTrack);
           return;
         }
       }
 
-      // 4. CHẾ ĐỘ ĐỀ XUẤT NHẠC TIẾP THEO (FRESH DISCOVERY vs SMART MIX)
+      // 4. CHẾ ĐỘ ĐỀ XUẤT NHẠC TIẾP THEO:
+      // - 'fresh' (Mới): Bài tiếp theo luôn là bài MỚI hoàn toàn nằm ngoài mọi Playlist (Yêu thích, Album, Local)
+      // - 'mix' (Mix): Xen kẽ 1 bài cũ (trong Playlist đang phát) ↔ 1 bài mới hoàn toàn (ngoài Playlist)
       if (recommendModeRef.current !== 'off') {
-        // Fast path: nếu đã tải sẵn bài đề xuất trong bộ đệm, phát ngay lập tức không cần fetch lại!
-        if (preloadedNextTrackRef.current) {
+        const mode = recommendModeRef.current;
+
+        // 4A. Nếu ở chế độ 'mix' và tới lượt phát bài CŨ trong Playlist:
+        if (mode === 'mix' && !mixNextIsNewRef.current && all.length > 0) {
+          const nextPlaylistTrack = getNextPlaylistTrack(cur);
+          if (nextPlaylistTrack) {
+            mixNextIsNewRef.current = true;
+            playTrackInternal(nextPlaylistTrack);
+            showNotification(`🎵 Mix [${getTranslation(language, 'mode.playlistTag')}]: ${nextPlaylistTrack.title} - ${nextPlaylistTrack.artist}`);
+            return;
+          }
+        }
+
+        // 4B. Lượt phát bài MỚI hoàn toàn ngoài Playlist (áp dụng cho 100% chế độ 'fresh', hoặc lượt bài mới của 'mix'):
+        if (preloadedNextTrackRef.current && !isTrackInUserPlaylists(preloadedNextTrackRef.current.title, preloadedNextTrackRef.current.path_or_url)) {
           const next = preloadedNextTrackRef.current;
           preloadedNextTrackRef.current = null;
-          setPreloadedNextTrack(null);
+          mixNextIsNewRef.current = false;
           setTracks(prev => deduplicateTracks([...prev, next]));
-          triggerNextTrackPopup(
-            next,
-            recommendModeRef.current === 'fresh'
-              ? getTranslation(language, 'mode.freshPopup')
-              : getTranslation(language, 'mode.mixPopup')
-          );
           playTrackInternal(next);
           const srcLabel = next.source === 'soundcloud' ? 'SoundCloud' : next.source === 'audius' ? 'Audius 320K' : 'YouTube';
-          showNotification(`🌟 ${getTranslation(language, 'toast.newDiscovery')} [${srcLabel}]: ${next.title} - ${next.artist}`);
+          showNotification(`🌟 ${mode === 'fresh' ? getTranslation(language, 'toast.newDiscovery') : `Mix [${getTranslation(language, 'mode.newTrackTag')}]`} [${srcLabel}]: ${next.title} - ${next.artist}`);
           return;
         }
 
-        const mode = recommendModeRef.current;
         if (cur) {
-          // 4A. CHẾ ĐỘ 'fresh': 100% ƯU TIÊN BÀI MỚI NGẪU NHIÊN TỪ YOUTUBE, SOUNDCLOUD & AUDIUS (< 10 PHÚT)
-          if (mode === 'fresh') {
-            try {
-              showNotification(`🌟 ${getTranslation(language, 'toast.findingNewTracks')}`);
-              const related = await invoke<SearchResult[]>('get_related_tracks', {
-                title: cur.title,
-                artist: cur.artist,
+          try {
+            showNotification(`🌟 ${getTranslation(language, 'toast.findingNewTracks')}`);
+            const related = await invoke<SearchResult[]>('get_related_tracks', {
+              title: cur.title,
+              artist: cur.artist,
+            });
+
+            if (related && related.length > 0) {
+              const listened = listenedHistoryTitlesRef.current;
+              const curTitleNorm = cur.title.trim().toLowerCase();
+
+              // Lọc nghiêm ngặt: bài mới phải nằm ngoài hoàn toàn Playlist (Yêu thích, Album, Local) và chưa nghe
+              const outsideUnlistened = related.filter(r => {
+                if (r.duration_secs && r.duration_secs > 600) return false;
+                const rTitle = r.title.trim().toLowerCase();
+                const rId = r.url_or_id.toLowerCase();
+                if (rTitle === curTitleNorm || rTitle.includes(curTitleNorm) || curTitleNorm.includes(rTitle)) return false;
+                if (listened.has(rTitle) || listened.has(rId)) return false;
+                if (isTrackInUserPlaylists(r.title, r.url_or_id)) return false;
+                return true;
               });
 
-              if (related && related.length > 0) {
-                const listened = listenedHistoryTitlesRef.current;
-                const curTitleNorm = cur.title.trim().toLowerCase();
+              const candidate = outsideUnlistened.length > 0 ? outsideUnlistened[0] : (
+                related.find(r => !isTrackInUserPlaylists(r.title, r.url_or_id) && r.title.trim().toLowerCase() !== curTitleNorm && (!r.duration_secs || r.duration_secs <= 600)) || related[0]
+              );
 
-                // Filter out tracks already heard, and strictly eliminate tracks > 10 mins (600s)
-                const unlistened = related.filter(r => {
-                  if (r.duration_secs && r.duration_secs > 600) return false;
-                  const rTitle = r.title.trim().toLowerCase();
-                  const rId = r.url_or_id.toLowerCase();
-                  if (rTitle === curTitleNorm || rTitle.includes(curTitleNorm) || curTitleNorm.includes(rTitle)) return false;
-                  if (listened.has(rTitle) || listened.has(rId)) return false;
-                  if (all.some(t => t.id.toLowerCase() === rId || t.title.trim().toLowerCase() === rTitle)) return false;
-                  return true;
-                });
-
-                // Pick the first completely fresh unheard song under 10 minutes
-                const candidate = unlistened.length > 0 ? unlistened[0] : (
-                  related.find(r => r.title.trim().toLowerCase() !== curTitleNorm && (!r.duration_secs || r.duration_secs <= 600)) || related[0]
-                );
-
-                if (candidate) {
-                  const newTrack: Track = {
-                    id: `${candidate.source}_fresh_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-                    title: candidate.title,
-                    artist: candidate.artist,
-                    album: candidate.album || 'Multi-Source Discovery',
-                    duration_secs: candidate.duration_secs || 210,
-                    path_or_url: candidate.url_or_id,
-                    cover_art: candidate.thumbnail,
-                    source: candidate.source,
-                  };
-
-                  setTracks(prev => deduplicateTracks([...prev, newTrack]));
-                  triggerNextTrackPopup(newTrack, `🌟 ${getTranslation(language, 'toast.newDiscovery')} (<10p)`);
-                  playTrackInternal(newTrack);
-                  const srcLabel = newTrack.source === 'soundcloud' ? 'SoundCloud' : newTrack.source === 'audius' ? 'Audius 320K' : 'YouTube';
-                  showNotification(`🌟 ${getTranslation(language, 'toast.newDiscovery')} [${srcLabel}]: ${newTrack.title} - ${newTrack.artist}`);
-                  return;
-                }
-              }
-            } catch (err) {
-              console.error('Error discovering fresh track:', err);
-            }
-          }
-
-          // 4B. CHẾ ĐỘ 'mix': PHA TRỘN GIỮA BÀI QUEN THUỘC TRONG THƯ VIỆN & BÀI MỚI (< 10 PHÚT)
-          if (mode === 'mix') {
-            // If we have multiple tracks in playlist, chance to pick from library via AI Smart DJ
-            if (all.length > 1 && Math.random() > 0.35) {
-              try {
-                const nextAiTrack = await invoke<Track | null>('ai_smart_dj_next', {
-                  currentTrack: cur,
-                  candidates: all,
-                });
-                if (nextAiTrack && nextAiTrack.id !== cur.id) {
-                  triggerNextTrackPopup(nextAiTrack, `🎵 ${getTranslation(language, 'toast.mixRecommendation')}`);
-                  playTrackInternal(nextAiTrack);
-                  showNotification(`🎵 ${getTranslation(language, 'toast.aiMix')}: ${nextAiTrack.title}`);
-                  return;
-                }
-              } catch (e) {
-                console.error('AI Smart DJ error:', e);
-              }
-            }
-
-            // Fetch related from YouTube, SoundCloud, Audius
-            try {
-              const related = await invoke<SearchResult[]>('get_related_tracks', {
-                title: cur.title,
-                artist: cur.artist,
-              });
-
-              if (related && related.length > 0) {
-                const curTitleNorm = cur.title.trim().toLowerCase();
-                const candidates = related.filter(r => 
-                  r.title.trim().toLowerCase() !== curTitleNorm && 
-                  (!r.duration_secs || r.duration_secs <= 600)
-                );
-                const pick = candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : related[0];
-
+              if (candidate) {
                 const newTrack: Track = {
-                  id: `${pick.source}_mix_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-                  title: pick.title,
-                  artist: pick.artist,
-                  album: pick.album || 'Smart Mix',
-                  duration_secs: pick.duration_secs || 210,
-                  path_or_url: pick.url_or_id,
-                  cover_art: pick.thumbnail,
-                  source: pick.source,
+                  id: `${candidate.source}_${mode}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                  title: candidate.title,
+                  artist: candidate.artist,
+                  album: candidate.album || (mode === 'fresh' ? 'Multi-Source Discovery' : 'Smart Mix Discovery'),
+                  duration_secs: candidate.duration_secs || 210,
+                  path_or_url: candidate.url_or_id,
+                  cover_art: candidate.thumbnail,
+                  source: candidate.source,
                 };
 
+                mixNextIsNewRef.current = false;
                 setTracks(prev => deduplicateTracks([...prev, newTrack]));
-                triggerNextTrackPopup(newTrack, `🎵 ${getTranslation(language, 'toast.mixRecommendation')} (<10p)`);
                 playTrackInternal(newTrack);
                 const srcLabel = newTrack.source === 'soundcloud' ? 'SoundCloud' : newTrack.source === 'audius' ? 'Audius 320K' : 'YouTube';
-                showNotification(`🎵 ${getTranslation(language, 'toast.mixRecommendation')} [${srcLabel}]: ${newTrack.title} - ${newTrack.artist}`);
+                showNotification(`🌟 ${mode === 'fresh' ? getTranslation(language, 'toast.newDiscovery') : `Mix [${getTranslation(language, 'mode.newTrackTag')}]`} [${srcLabel}]: ${newTrack.title} - ${newTrack.artist}`);
                 return;
               }
-            } catch (err) {
-              console.error(err);
             }
+          } catch (err) {
+            console.error('Error discovering outside-playlist track:', err);
           }
         }
       }
 
-      // 5. Default sequential next
+      // 5. Default sequential next within active playlist (when recommendMode === 'off' or fallback)
       if (!cur) {
         if (all[0]) {
-          triggerNextTrackPopup(all[0], getTranslation(language, 'mode.startPopup'));
           playTrackInternal(all[0]);
         }
         return;
       }
 
-      const idx = all.findIndex(t => t.id === cur.id);
-      const nextTrack = all[(idx + 1) % all.length];
+      const nextTrack = getNextPlaylistTrack(cur);
       if (nextTrack) {
-        triggerNextTrackPopup(nextTrack, getTranslation(language, 'mode.queuePopup'));
         playTrackInternal(nextTrack);
       }
     } finally {
@@ -803,7 +997,10 @@ export default function App() {
     }
   }, [language]);
 
-  // â”€â”€â”€ WALL-CLOCK TIME TICKER (IMMUNE TO BACKGROUND TAB THROTTLING) â”€â”€â”€â”€â”€â”€â”€â”€
+  const [isTrayMode, setIsTrayMode] = useState(false);
+  const isTrayModeRef = useRef(false);
+
+  // ─── WALL-CLOCK TIME TICKER (IMMUNE TO BACKGROUND TAB THROTTLING) ────────
   useEffect(() => {
     const interval = setInterval(() => {
       const track = currentTrackRef.current;
@@ -816,7 +1013,10 @@ export default function App() {
         if (playStartTimestampRef.current) {
           const elapsed = accumulatedTimeRef.current + (Date.now() - playStartTimestampRef.current) / 1000;
           curTime = elapsed;
-          setCurrentTime(elapsed);
+          currentTimeRef.current = elapsed;
+          if (!isTrayModeRef.current) {
+            setCurrentTime(elapsed);
+          }
 
           // Safety fallback: only auto-skip if elapsed well exceeds true duration (+8s grace period)
           if (trueDur > 0 && elapsed >= (trueDur + 8)) {
@@ -830,23 +1030,24 @@ export default function App() {
         curTime = currentTimeRef.current || 0;
       }
 
+      if (isTrayModeRef.current) return;
+
       // Update real-time countdown when 10s or less remains
       if (trueDur > 15 && curTime > 5) {
         const remaining = trueDur - curTime;
         if (remaining <= 10 && remaining >= 1) {
           if (isNextTrackPopupEnabledRef.current) {
-            const nextOne = (recommendModeRef.current !== 'off' && preloadedNextTrackRef.current) || preloadedNextTrackRef.current || upcomingTrack;
+            const useNew = shouldNextBeNewDiscovery();
+            const nextOne = useNew
+              ? (preloadedNextTrackRef.current || upcomingTrack)
+              : (upcomingTrack || preloadedNextTrackRef.current);
             if (nextOne) {
               setNextTrackPopup(prev => ({
                 title: nextOne.title,
                 artist: nextOne.artist,
                 thumbnail: nextOne.cover_art || undefined,
                 source: nextOne.source,
-                modeLabel: recommendModeRef.current === 'fresh' 
-                  ? getTranslation(language, 'mode.freshPopup') 
-                  : recommendModeRef.current === 'mix' 
-                  ? getTranslation(language, 'mode.mixPopup') 
-                  : getTranslation(language, 'mode.queuePopup'),
+                modeLabel: getPlaylistModeLabel(activeQueueContextRef.current),
                 isCountdown: true,
                 remainingSecs: Math.round(remaining),
                 alternatives: prev?.alternatives || preloadedAlternativesRef.current.slice(0, 3),
@@ -859,41 +1060,69 @@ export default function App() {
     return () => clearInterval(interval);
   }, [handleNext, upcomingTrack]);
 
-  // â”€â”€â”€ INSTANT RESYNC WHEN SWITCHING BACK TO APP WINDOW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  useEffect(() => {
-    const onWindowRegainedFocus = async () => {
-      const track = currentTrackRef.current;
-      if (!track) return;
+  // ─── INSTANT RESYNC WHEN SWITCHING BACK TO APP WINDOW ────────────────────
+  const syncPlaybackStateNow = useCallback(async () => {
+    const track = currentTrackRef.current;
+    if (!track) return;
 
-      if (track.source === 'local') {
+    if (track.source === 'local') {
+      if (onlineAudioRef.current && onlineAudioRef.current.src) {
+        const playing = !onlineAudioRef.current.paused;
+        isPlayingRef.current = playing;
+        setIsPlaying(playing);
+        currentTimeRef.current = onlineAudioRef.current.currentTime;
+        setCurrentTime(onlineAudioRef.current.currentTime);
+        if (onlineAudioRef.current.duration > 0 && !isNaN(onlineAudioRef.current.duration)) {
+          durationRef.current = onlineAudioRef.current.duration;
+          setDuration(onlineAudioRef.current.duration);
+        }
+      } else {
         try {
           const status = await invoke<PlaybackStatus>('get_playback_status');
+          isPlayingRef.current = status.is_playing;
           setIsPlaying(status.is_playing);
+          currentTimeRef.current = status.current_time_secs;
           setCurrentTime(status.current_time_secs);
+          if (status.duration_secs > 0) {
+            durationRef.current = status.duration_secs;
+            setDuration(status.duration_secs);
+          }
         } catch {}
-      } else if (track.source === 'audius') {
-        if (onlineAudioRef.current) {
-          setIsPlaying(!onlineAudioRef.current.paused);
-          setCurrentTime(onlineAudioRef.current.currentTime);
-        }
-      } else if (isPlayingRef.current && playStartTimestampRef.current) {
-        // Instantly recalculate true elapsed time from real system clock!
-        const elapsed = accumulatedTimeRef.current + (Date.now() - playStartTimestampRef.current) / 1000;
-        setCurrentTime(elapsed);
-        // Ping YouTube to ensure state is fresh
-        if (track.source === 'youtube' && ytIframeRef.current?.contentWindow) {
-          ytIframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1 }), '*');
+      }
+    } else if (track.source === 'audius') {
+      if (onlineAudioRef.current) {
+        const playing = !onlineAudioRef.current.paused;
+        isPlayingRef.current = playing;
+        setIsPlaying(playing);
+        currentTimeRef.current = onlineAudioRef.current.currentTime;
+        setCurrentTime(onlineAudioRef.current.currentTime);
+        if (onlineAudioRef.current.duration > 0 && !isNaN(onlineAudioRef.current.duration)) {
+          durationRef.current = onlineAudioRef.current.duration;
+          setDuration(onlineAudioRef.current.duration);
         }
       }
-    };
-
-    window.addEventListener('focus', onWindowRegainedFocus);
-    document.addEventListener('visibilitychange', onWindowRegainedFocus);
-    return () => {
-      window.removeEventListener('focus', onWindowRegainedFocus);
-      document.removeEventListener('visibilitychange', onWindowRegainedFocus);
-    };
+    } else if (isPlayingRef.current && playStartTimestampRef.current) {
+      // Instantly recalculate true elapsed time from real system clock!
+      const elapsed = accumulatedTimeRef.current + (Date.now() - playStartTimestampRef.current) / 1000;
+      currentTimeRef.current = elapsed;
+      setCurrentTime(elapsed);
+      // Ping YouTube to ensure state is fresh
+      if (track.source === 'youtube' && ytIframeRef.current?.contentWindow) {
+        ytIframeRef.current.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1 }), '*');
+      }
+    } else {
+      setCurrentTime(currentTimeRef.current || accumulatedTimeRef.current || 0);
+      setIsPlaying(isPlayingRef.current);
+      if (durationRef.current > 0) setDuration(durationRef.current);
+    }
   }, []);
+
+  useEffect(() => {
+    window.addEventListener('focus', syncPlaybackStateNow);
+    return () => {
+      window.removeEventListener('focus', syncPlaybackStateNow);
+    };
+  }, [syncPlaybackStateNow]);
 
   useEffect(() => {
     const onMsg = (event: MessageEvent) => {
@@ -915,15 +1144,25 @@ export default function App() {
         if (data.event === 'onStateChange') {
           if (currentTrackRef.current?.source !== 'youtube') return;
           if (data.info === 1) {
+            isPlayingRef.current = true;
             setIsPlaying(true);
+            if (!playStartTimestampRef.current) {
+              playStartTimestampRef.current = Date.now();
+            }
             ytHasStartedPlayingRef.current = true;
             if (ytUnavailableTimerRef.current) clearTimeout(ytUnavailableTimerRef.current);
           } else if (data.info === 3) {
             ytHasStartedPlayingRef.current = true;
             if (ytUnavailableTimerRef.current) clearTimeout(ytUnavailableTimerRef.current);
           } else if (data.info === 2) {
+            isPlayingRef.current = false;
             setIsPlaying(false);
+            if (playStartTimestampRef.current) {
+              accumulatedTimeRef.current += (Date.now() - playStartTimestampRef.current) / 1000;
+              playStartTimestampRef.current = null;
+            }
           } else if (data.info === 0) {
+            isPlayingRef.current = false;
             setIsPlaying(false);
             playStartTimestampRef.current = null;
             accumulatedTimeRef.current = 0;
@@ -932,30 +1171,49 @@ export default function App() {
         }
         if (data.event === 'infoDelivery' && data.info) {
           if (currentTrackRef.current?.source !== 'youtube') return;
+          const isCurLive = checkIsLiveTrack(currentTrackRef.current);
           if (typeof data.info.currentTime === 'number') {
             const rawCur = data.info.currentTime;
             if (rawCur > 0) {
               ytHasStartedPlayingRef.current = true;
               if (ytUnavailableTimerRef.current) clearTimeout(ytUnavailableTimerRef.current);
             }
-            // Guard against YouTube Live streams sending epoch timestamps (>86400 seconds)
-            if (rawCur > 86400) {
-              setDuration(0);
+            // Guard against YouTube Live streams sending DVR/epoch timestamps
+            if (isCurLive || rawCur > 86400) {
+              durationRef.current = 0;
+              if (!isTrayModeRef.current) setDuration(0);
             } else if (rawCur >= 0) {
-              setCurrentTime(rawCur);
+              currentTimeRef.current = rawCur;
               accumulatedTimeRef.current = rawCur;
               if (isPlayingRef.current) playStartTimestampRef.current = Date.now();
+              if (!isTrayModeRef.current) setCurrentTime(rawCur);
             }
           }
           if (typeof data.info.duration === 'number') {
-            if (data.info.duration > 0 && data.info.duration < 86400) {
-              setDuration(data.info.duration);
+            if (isCurLive) {
+              durationRef.current = 0;
+              if (!isTrayModeRef.current) setDuration(0);
+            } else if (data.info.duration > 0 && data.info.duration < 86400) {
+              durationRef.current = data.info.duration;
+              if (!isTrayModeRef.current) setDuration(data.info.duration);
             } else if (data.info.duration === 0) {
-              setDuration(0);
+              durationRef.current = 0;
+              if (!isTrayModeRef.current) setDuration(0);
             }
           }
-          if (data.info.playerState === 1) setIsPlaying(true);
-          if (data.info.playerState === 2) setIsPlaying(false);
+          if (data.info.playerState === 1) {
+            isPlayingRef.current = true;
+            if (!playStartTimestampRef.current) playStartTimestampRef.current = Date.now();
+            if (!isTrayModeRef.current) setIsPlaying(true);
+          }
+          if (data.info.playerState === 2) {
+            isPlayingRef.current = false;
+            if (playStartTimestampRef.current) {
+              accumulatedTimeRef.current += (Date.now() - playStartTimestampRef.current) / 1000;
+              playStartTimestampRef.current = null;
+            }
+            if (!isTrayModeRef.current) setIsPlaying(false);
+          }
         }
 
         // SoundCloud Widget events
@@ -967,13 +1225,18 @@ export default function App() {
           const rawDur = data.data?.duration ?? data.value?.duration ?? data.duration;
           if (typeof rawDur === 'number' && rawDur > 0) {
             const durSecs = Math.round(rawDur / 1000);
-            if (durSecs > 0 && durSecs < 86400) setDuration(durSecs);
+            if (durSecs > 0 && durSecs < 86400) {
+              durationRef.current = durSecs;
+              if (!isTrayModeRef.current) setDuration(durSecs);
+            }
           }
           if (scEvent === 'play') {
+            isPlayingRef.current = true;
             setIsPlaying(true);
             playStartTimestampRef.current = Date.now();
           }
           if (scEvent === 'pause') {
+            isPlayingRef.current = false;
             setIsPlaying(false);
             if (playStartTimestampRef.current) {
               accumulatedTimeRef.current += (Date.now() - playStartTimestampRef.current) / 1000;
@@ -981,6 +1244,7 @@ export default function App() {
             }
           }
           if (scEvent === 'finish') {
+            isPlayingRef.current = false;
             setIsPlaying(false);
             playStartTimestampRef.current = null;
             accumulatedTimeRef.current = 0;
@@ -990,9 +1254,10 @@ export default function App() {
             const rawPos = data.data?.currentPosition ?? data.value?.currentPosition ?? 0;
             const posSecs = rawPos / 1000;
             if (posSecs > 0) {
-              setCurrentTime(posSecs);
+              currentTimeRef.current = posSecs;
               accumulatedTimeRef.current = posSecs;
               if (isPlayingRef.current) playStartTimestampRef.current = Date.now();
+              if (!isTrayModeRef.current) setCurrentTime(posSecs);
             }
           }
         }
@@ -1027,13 +1292,20 @@ export default function App() {
     onlineAudioRef.current = audio;
     const onTimeUpdate = () => {
       if (currentTrackRef.current?.source === 'audius' || currentTrackRef.current?.source === 'local') {
-        setCurrentTime(audio.currentTime);
+        currentTimeRef.current = audio.currentTime;
         if (audio.duration > 0 && !isNaN(audio.duration)) {
-          setDuration(audio.duration);
+          durationRef.current = audio.duration;
+        }
+        if (!isTrayModeRef.current) {
+          setCurrentTime(audio.currentTime);
+          if (audio.duration > 0 && !isNaN(audio.duration)) {
+            setDuration(audio.duration);
+          }
         }
       }
     };
     const onEnded = () => {
+      isPlayingRef.current = false;
       setIsPlaying(false);
       playStartTimestampRef.current = null;
       accumulatedTimeRef.current = 0;
@@ -1044,19 +1316,24 @@ export default function App() {
     return () => { audio.pause(); audio.removeEventListener('timeupdate', onTimeUpdate); audio.removeEventListener('ended', onEnded); };
   }, [handleNext]);
 
-  // â”€â”€â”€ LOCAL playback polling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── LOCAL playback polling ───────────────────────────────────────────────
   useEffect(() => {
     const interval = setInterval(async () => {
       if (currentTrackRef.current?.source !== 'local') return;
       // If native browser HTML5 audio is currently playing, it manages its own timeupdate & isPlaying
-      if (onlineAudioRef.current && onlineAudioRef.current.src && !onlineAudioRef.current.paused) {
+      if (onlineAudioRef.current && onlineAudioRef.current.src) {
         return;
       }
       try {
         const status = await invoke<PlaybackStatus>('get_playback_status');
-        setIsPlaying(status.is_playing);
-        setCurrentTime(status.current_time_secs);
-        if (status.duration_secs > 0) setDuration(status.duration_secs);
+        isPlayingRef.current = status.is_playing;
+        currentTimeRef.current = status.current_time_secs;
+        if (status.duration_secs > 0) durationRef.current = status.duration_secs;
+        if (!isTrayModeRef.current) {
+          setIsPlaying(status.is_playing);
+          setCurrentTime(status.current_time_secs);
+          if (status.duration_secs > 0) setDuration(status.duration_secs);
+        }
 
         // Auto-play next track when local audio finishes
         if (
@@ -1105,47 +1382,72 @@ export default function App() {
       playbackForwardStackRef.current = [];
     }
 
+    // Track position in active playlist and alternate 'mix' mode (Old Playlist Track <-> New Discovery Track)
+    const activeQ = getEffectiveQueue();
+    const qIdx = activeQ.findIndex(t => t.id === track.id);
+    if (qIdx !== -1) {
+      lastPlaylistIndexRef.current = qIdx;
+      mixNextIsNewRef.current = true;
+    } else {
+      mixNextIsNewRef.current = false;
+    }
+
     currentTrackRef.current = track;
     setCurrentTrack(track);
+    currentTimeRef.current = 0;
     setCurrentTime(0);
-    preloadedNextTrackRef.current = null;
-    setPreloadedNextTrack(null);
 
-    const title = track.title.toLowerCase();
-    const isRecordedLive = title.includes('live lounge') ||
-      title.includes('live session') ||
-      title.includes('live at') ||
-      title.includes('live in') ||
-      title.includes('live acoustic') ||
-      title.includes('live version');
+    // Record into in-memory listened set immediately so candidate promotion never picks the currently playing track
+    if (track.title) listenedHistoryTitlesRef.current.add(track.title.trim().toLowerCase());
+    if (track.id) listenedHistoryTitlesRef.current.add(track.id.toLowerCase());
+    if (track.path_or_url) listenedHistoryTitlesRef.current.add(track.path_or_url.toLowerCase());
 
-    const isLiveTrack = track.source === 'youtube' &&
-      !isRecordedLive &&
-      (
-        title.includes('24/7') ||
-        title.includes('trực tiếp') ||
-        title.includes('livestream') ||
-        title.includes('live stream') ||
-        title.includes('live radio') ||
-        (title.includes('radio') && (!track.duration_secs || track.duration_secs > 7200)) ||
-        (title.includes('live') && (!track.duration_secs || track.duration_secs > 7200))
+    // Immediately promote an existing pre-fetched discovery candidate (0ms delay, no waiting for network!)
+    const trackTitleNorm = track.title.trim().toLowerCase();
+    const isValidNewCandidate = (c: Track | null): c is Track =>
+      Boolean(
+        c &&
+        c.id !== track.id &&
+        c.title.trim().toLowerCase() !== trackTitleNorm &&
+        !listenedHistoryTitlesRef.current.has(c.title.trim().toLowerCase()) &&
+        !isTrackInUserPlaylists(c.title, c.path_or_url)
       );
 
-    setDuration(isLiveTrack ? 0 : (track.duration_secs || 0));
+    let nextPreloaded: Track | null = null;
+    if (isValidNewCandidate(preloadedNextTrackRef.current)) {
+      nextPreloaded = preloadedNextTrackRef.current;
+    } else {
+      const remainingAlts = preloadedAlternativesRef.current.filter(c => isValidNewCandidate(c));
+      if (remainingAlts.length > 0) {
+        nextPreloaded = remainingAlts[0];
+        preloadedAlternativesRef.current = remainingAlts.slice(1);
+      }
+    }
+    preloadedNextTrackRef.current = nextPreloaded;
+    setPreloadedNextTrack(nextPreloaded);
+
+    const isLiveTrack = checkIsLiveTrack(track);
+    const initialDur = isLiveTrack ? 0 : (track.duration_secs || 0);
+    durationRef.current = initialDur;
+    setDuration(initialDur);
+    isPlayingRef.current = false;
     setIsPlaying(false);
 
-    // Reset Wall-clock timer
+    if (isNextTrackPopupEnabledRef.current && !isTrayModeRef.current) {
+      const immediateData = buildImmediatePopupData();
+      if (immediateData) {
+        setNextTrackPopup(immediateData);
+      }
+    }
+
+    // Reset Wall-clock timer (start timestamp only when playback actually begins for online streams)
     accumulatedTimeRef.current = 0;
-    playStartTimestampRef.current = Date.now();
+    playStartTimestampRef.current = track.source === 'youtube' ? null : Date.now();
 
     // Record history to SQLite if logged in
     if (currentUserRef.current) {
       invoke('db_add_history', { userId: currentUserRef.current.id, track }).catch(console.error);
     }
-    // Record into in-memory listened set to prevent repeating in 'fresh' mode
-    if (track.title) listenedHistoryTitlesRef.current.add(track.title.trim().toLowerCase());
-    if (track.id) listenedHistoryTitlesRef.current.add(track.id.toLowerCase());
-    if (track.path_or_url) listenedHistoryTitlesRef.current.add(track.path_or_url.toLowerCase());
 
     if (track.source === 'local') {
       if (ytUnavailableTimerRef.current) clearTimeout(ytUnavailableTimerRef.current);
@@ -1167,6 +1469,7 @@ export default function App() {
           onlineAudioRef.current.src = fileUrl;
           onlineAudioRef.current.volume = volume;
           await onlineAudioRef.current.play();
+          isPlayingRef.current = true;
           setIsPlaying(true);
           playedViaBrowser = true;
           showNotification(`▶ ${track.title} - ${track.artist}`);
@@ -1178,7 +1481,9 @@ export default function App() {
       // 2. If browser could not play, fallback to Rust Rodio with Symphonia
       if (!playedViaBrowser) {
         try {
+          if (onlineAudioRef.current) onlineAudioRef.current.src = '';
           await invoke('play_track', { track });
+          isPlayingRef.current = true;
           setIsPlaying(true);
           showNotification(`▶ ${track.title} - ${track.artist}`);
         } catch (err) {
@@ -1193,12 +1498,16 @@ export default function App() {
       sendScCmd('pause');
       setScTrackUrl(null);
 
-      onlineAudioRef.current?.pause();
+      if (onlineAudioRef.current) {
+        onlineAudioRef.current.pause();
+        onlineAudioRef.current.src = '';
+      }
 
       let videoId = track.path_or_url || track.id;
       if (videoId.startsWith('yt_')) videoId = videoId.replace('yt_', '');
       if (videoId.includes('v=')) videoId = videoId.split('v=')[1].split('&')[0];
       setYtVideoId(videoId);
+      isPlayingRef.current = true;
       setIsPlaying(true);
       showNotification(`▶ YouTube Hi-Fi: ${track.title}`);
 
@@ -1222,7 +1531,10 @@ export default function App() {
       setYtVideoId(null);
       setShowYoutubeVideo(false);
 
-      onlineAudioRef.current?.pause();
+      if (onlineAudioRef.current) {
+        onlineAudioRef.current.pause();
+        onlineAudioRef.current.src = '';
+      }
 
       let scUrl = track.path_or_url;
       if (!scUrl || !scUrl.startsWith('http')) {
@@ -1237,6 +1549,7 @@ export default function App() {
       }
       if (scUrl) {
         setScTrackUrl(scUrl);
+        isPlayingRef.current = true;
         setIsPlaying(true);
         showNotification(`▶ SoundCloud: ${track.title}`);
       } else {
@@ -1261,6 +1574,7 @@ export default function App() {
         onlineAudioRef.current.volume = volume;
         onlineAudioRef.current.play()
           .then(() => {
+            isPlayingRef.current = true;
             setIsPlaying(true);
             showNotification(`▶ Audius Hi-Fi 320K: ${track.title}`);
           })
@@ -1272,18 +1586,32 @@ export default function App() {
     }
   };
 
-  const handlePlayTrack = (track: Track) => playTrackInternal(track);
+  const handlePlayTrack = (track: Track, customQueue?: Track[]) => {
+    if (customQueue && customQueue.length > 0) {
+      activeQueueRef.current = customQueue;
+      setActiveQueue(customQueue);
+      activeQueueContextRef.current = 'albums';
+      setActiveQueueContext('albums');
+    } else {
+      activeQueueContextRef.current = currentView;
+      setActiveQueueContext(currentView);
+      activeQueueRef.current = displayedTracksRef.current;
+      setActiveQueue(displayedTracksRef.current);
+    }
+    playTrackInternal(track);
+  };
 
   const handleTogglePlay = async () => {
-    const track = currentTrack;
+    const track = currentTrackRef.current;
     if (!track) return;
 
-    if (isPlaying) {
+    if (isPlayingRef.current) {
       // Transitioning to PAUSE
       if (playStartTimestampRef.current) {
         accumulatedTimeRef.current += (Date.now() - playStartTimestampRef.current) / 1000;
         playStartTimestampRef.current = null;
       }
+      isPlayingRef.current = false;
       setIsPlaying(false);
 
       if (track.source === 'local') {
@@ -1300,6 +1628,7 @@ export default function App() {
     } else {
       // Transitioning to PLAY
       playStartTimestampRef.current = Date.now();
+      isPlayingRef.current = true;
       setIsPlaying(true);
 
       if (track.source === 'local') {
@@ -1324,12 +1653,27 @@ export default function App() {
   handleNextRef.current = handleNext;
   const handleUserPrevRef = useRef<() => void>(() => {});
 
-  // ─── SYSTEM TRAY & RAM OPTIMIZER (MỤC 3: GIẢI PHÓNG BỘ NHỚ KHI ẨN / THU NHỎ) ───
+  // ─── SYSTEM TRAY & RAM OPTIMIZER (MỤC 3: GIẢI PHÓNG BỘ NHỚ KHI ẨN / THU NHỎ <= 150MB) ───
   useEffect(() => {
     let unlistenPlay: (() => void) | undefined;
     let unlistenPrev: (() => void) | undefined;
     let unlistenNext: (() => void) | undefined;
     let unlistenState: (() => void) | undefined;
+
+    const enterTrayLowMemoryMode = () => {
+      isTrayModeRef.current = true;
+      setIsTrayMode(true);
+      setShowYoutubeVideo(false);
+      document.documentElement.classList.add('app-minimized');
+      invoke('trim_memory').catch(() => {});
+    };
+
+    const exitTrayLowMemoryMode = () => {
+      isTrayModeRef.current = false;
+      setIsTrayMode(false);
+      document.documentElement.classList.remove('app-minimized');
+      syncPlaybackStateNow();
+    };
 
     // Lắng nghe sự kiện từ menu System Tray
     listen('tray-toggle-play', () => {
@@ -1347,20 +1691,18 @@ export default function App() {
     // Lắng nghe trạng thái cửa sổ từ Tauri backend (minimized / hidden / normal)
     listen<string>('app-window-state', (event) => {
       if (event.payload === 'hidden' || event.payload === 'minimized') {
-        document.documentElement.classList.add('app-minimized');
-        invoke('trim_memory').catch(() => {});
+        enterTrayLowMemoryMode();
       } else {
-        document.documentElement.classList.remove('app-minimized');
+        exitTrayLowMemoryMode();
       }
     }).then(fn => { unlistenState = fn; });
 
     // Lắng nghe sự kiện visibility chuẩn của trình duyệt / WebView2
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        document.documentElement.classList.add('app-minimized');
-        invoke('trim_memory').catch(() => {});
+        enterTrayLowMemoryMode();
       } else {
-        document.documentElement.classList.remove('app-minimized');
+        exitTrayLowMemoryMode();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -1373,7 +1715,7 @@ export default function App() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.documentElement.classList.remove('app-minimized');
     };
-  }, []);
+  }, [syncPlaybackStateNow]);
 
   const handleSeek = async (secs: number) => {
     if (!currentTrack) return;
@@ -1425,27 +1767,22 @@ export default function App() {
       return;
     }
 
-    // When recommendation mode is active (Fresh Discovery or Smart Mix), follow the recommendation engine
+    // When recommendation mode is active ('fresh' = 100% outside playlist, 'mix' = alternating old & new), follow handleNext
     if (recommendModeRef.current !== 'off') {
       handleNext(true);
       return;
     }
 
-    const list = tracksRef.current.length > 0 ? tracksRef.current : (displayedTracksRef.current.length > 0 ? displayedTracksRef.current : tracks);
-    if (!list.length || !currentTrackRef.current) return;
-    const curId = currentTrackRef.current.id;
-    const idx = list.findIndex(t => t.id === curId);
-    if (idx === -1) {
-      playTrackInternal(list[0]);
-    } else {
-      const nextIdx = (idx + 1) % list.length;
-      playTrackInternal(list[nextIdx]);
+    const nextTrack = getNextPlaylistTrack(currentTrackRef.current);
+    if (nextTrack) {
+      playTrackInternal(nextTrack);
     }
   };
 
   const handleUserPrev = () => {
-    // If user has a playback history stack, pop the genuine previous song that was being listened to!
-    if (playbackHistoryStackRef.current.length > 0) {
+    const isDedicatedPlaylist = isScopedPlaylistContext(activeQueueContextRef.current);
+
+    if (!isDedicatedPlaylist && playbackHistoryStackRef.current.length > 0) {
       const cur = currentTrackRef.current;
       if (cur) {
         playbackForwardStackRef.current.push(cur);
@@ -1456,8 +1793,8 @@ export default function App() {
       return;
     }
 
-    // Fallback if no history stack yet: move to previous track in playlist
-    const list = tracksRef.current.length > 0 ? tracksRef.current : (displayedTracksRef.current.length > 0 ? displayedTracksRef.current : tracks);
+    // Move to previous track in active playlist
+    const list = getEffectiveQueue();
     if (!list.length || !currentTrackRef.current) return;
     const curId = currentTrackRef.current.id;
     const idx = list.findIndex(t => t.id === curId);
@@ -1597,6 +1934,8 @@ export default function App() {
       duration_secs: result.duration_secs, path_or_url: result.url_or_id,
       cover_art: result.thumbnail, source: result.source,
     };
+    activeQueueContextRef.current = currentView;
+    setActiveQueueContext(currentView);
     setTracks(prev => [track, ...prev.filter(t => t.id !== track.id)]);
     playTrackInternal(track);
   };
@@ -1606,19 +1945,23 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen w-screen bg-black text-[#a0a0a0] overflow-hidden select-none font-sans">
       {/* Spy Cinematic Startup Screen */}
-      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+      {!isTrayMode && showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
 
       {/* ─── NEXT TRACK POPUP (SMOOTH PLAYBACK FLOATING WIDGET) ── */}
-      {nextTrackPopup && isNextTrackPopupEnabled && (
+      {!isTrayMode && nextTrackPopup && isNextTrackPopupEnabled && (
         <div 
-          className={`fixed right-6 z-50 p-3.5 rounded-2xl bg-[#0c0c14]/95 backdrop-blur-xl border shadow-2xl flex flex-col gap-2.5 transition-all duration-300 ${
+          className={`fixed right-6 z-50 p-3.5 rounded-2xl backdrop-blur-xl border shadow-2xl flex flex-col gap-2.5 transition-all duration-300 ${
+            themeMode === 'light' ? 'bg-white/95' : 'bg-[#0c0c14]/95'
+          } ${
             showYoutubeVideo ? 'bottom-[300px]' : 'bottom-24'
           } ${
             isNextTrackPopupCollapsed ? 'w-80' : 'w-88 max-w-[calc(100vw-3rem)]'
           }`}
           style={{
             borderColor: `${accentColor}60`,
-            boxShadow: `0 12px 35px rgba(0,0,0,0.8), 0 0 16px ${accentColor}30`
+            boxShadow: themeMode === 'light'
+              ? `0 12px 35px rgba(15, 23, 42, 0.14), 0 0 14px ${accentColor}25`
+              : `0 12px 35px rgba(0,0,0,0.8), 0 0 16px ${accentColor}30`
           }}
         >
           {isNextTrackPopupCollapsed ? (
@@ -1634,10 +1977,10 @@ export default function App() {
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
                   onClick={() => {
-                    if (preloadedNextTrackRef.current) {
+                    if (shouldNextBeNewDiscovery() && preloadedNextTrackRef.current) {
                       playTrackInternal(preloadedNextTrackRef.current);
                     } else {
-                      handleNext(true);
+                      handleUserNext();
                     }
                   }}
                   className="p-1 text-[#888] hover:text-white cursor-pointer"
@@ -1654,13 +1997,6 @@ export default function App() {
                 </button>
                 <button
                   onClick={handleToggleNextTrackPopupEnabled}
-                  className="p-1 text-[#666] hover:text-amber-400 cursor-pointer transition-colors"
-                  title={getTranslation(language, 'popup.disableAuto')}
-                >
-                  <EyeOff className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setNextTrackPopup(null)}
                   className="p-1 text-[#666] hover:text-white cursor-pointer text-xs leading-none"
                   title={getTranslation(language, 'popup.close')}
                 >
@@ -1695,13 +2031,6 @@ export default function App() {
                   </button>
                   <button 
                     onClick={handleToggleNextTrackPopupEnabled}
-                    className="text-[#666] hover:text-amber-400 transition-colors cursor-pointer p-1"
-                    title={getTranslation(language, 'popup.disableAuto')}
-                  >
-                    <EyeOff className="w-3.5 h-3.5" />
-                  </button>
-                  <button 
-                    onClick={() => setNextTrackPopup(null)}
                     className="text-[#666] hover:text-white transition-colors cursor-pointer text-xs p-1 leading-none"
                     title={getTranslation(language, 'popup.close')}
                   >
@@ -1740,10 +2069,10 @@ export default function App() {
                 </div>
                 <button
                   onClick={() => {
-                    if (preloadedNextTrackRef.current) {
+                    if (shouldNextBeNewDiscovery() && preloadedNextTrackRef.current) {
                       playTrackInternal(preloadedNextTrackRef.current);
                     } else {
-                      handleNext(true);
+                      handleUserNext();
                     }
                   }}
                   style={{
@@ -1809,7 +2138,7 @@ export default function App() {
         </div>
       )}
       {/* Toast Notification — Invincible Accent (Hiển thị ngay trên thanh Play) */}
-      {statusMessage && (
+      {!isTrayMode && statusMessage && (
         <div 
           className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full font-mono text-xs flex items-center gap-2.5 transition-all animate-in fade-in slide-in-from-bottom-3 duration-200 border shadow-2xl backdrop-blur-xl whitespace-nowrap pointer-events-none"
           style={{
@@ -1828,40 +2157,44 @@ export default function App() {
         </div>
       )}
 
-      <AddToAlbumModal
-        isOpen={isAddToAlbumModalOpen}
-        onClose={() => {
-          setIsAddToAlbumModalOpen(false);
-          setTrackToAddToAlbum(null);
-        }}
-        trackToAdd={trackToAddToAlbum}
-        albums={albums}
-        onAddTrackToAlbum={handleAddTrackToAlbum}
-        onCreateAlbum={handleCreateAlbum}
-        language={language}
-      />
+      {!isTrayMode && (
+        <>
+          <AddToAlbumModal
+            isOpen={isAddToAlbumModalOpen}
+            onClose={() => {
+              setIsAddToAlbumModalOpen(false);
+              setTrackToAddToAlbum(null);
+            }}
+            trackToAdd={trackToAddToAlbum}
+            albums={albums}
+            onAddTrackToAlbum={handleAddTrackToAlbum}
+            onCreateAlbum={handleCreateAlbum}
+            language={language}
+          />
 
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onSuccess={handleLoginSuccess}
-      />
+          {/* Auth Modal */}
+          <AuthModal
+            isOpen={isAuthModalOpen}
+            onClose={() => setIsAuthModalOpen(false)}
+            onSuccess={handleLoginSuccess}
+          />
+        </>
+      )}
 
       {/* YouTube iframe — stable bottom-right positioning without jumping */}
       {ytVideoId && (
         <div
           className={`fixed bottom-24 right-6 w-80 h-48 rounded-xl bg-black shadow-2xl border border-[#222] z-40 transition-all duration-300 overflow-hidden ${
-            showYoutubeVideo
+            showYoutubeVideo && !isTrayMode
               ? 'opacity-100 scale-100 pointer-events-auto shadow-[0_16px_36px_rgba(0,0,0,0.9)]'
               : 'opacity-0 scale-95 pointer-events-none'
           }`}
         >
-          {showYoutubeVideo && (
+          {showYoutubeVideo && !isTrayMode && (
             <button
               onClick={() => setShowYoutubeVideo(false)}
               className="absolute top-2 right-2 z-50 p-1.5 rounded-full bg-black/80 hover:bg-black text-white border border-[#333] cursor-pointer shadow-md transition-colors"
-              title="Thu nhỏ MV"
+              title={getTranslation(language, 'header.minimizeMv')}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -1884,7 +2217,7 @@ export default function App() {
         </div>
       )}
 
-      {/* SoundCloud Widget â€” hidden player */}
+      {/* SoundCloud Widget — hidden player */}
       {scTrackUrl && (
         <div className="fixed -top-1 -left-1 w-1 h-1 overflow-hidden opacity-0 pointer-events-none">
           <iframe
@@ -1898,7 +2231,9 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Layout */}
+      {/* Main Layout (Unmounted in Tray Mode to free all UI/Image/Canvas RAM) */}
+      {!isTrayMode && (
+      <>
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           currentView={currentView}
@@ -1995,7 +2330,7 @@ export default function App() {
                   }`}
                 >
                   <Tv className="w-3.5 h-3.5" />
-                  {showYoutubeVideo ? 'Thu nhỏ' : 'MV'}
+                  {showYoutubeVideo ? getTranslation(language, 'header.minimizeMv') : 'MV'}
                 </button>
               )}
               <button
@@ -2100,12 +2435,12 @@ export default function App() {
                     onClick={() => setCurrentView('search')}
                     className="px-4 py-2 rounded bg-white hover:bg-neutral-200 text-black font-semibold text-xs cursor-pointer transition-colors flex items-center gap-1"
                   >
-                    <span>Tìm bài hát</span>
+                    <span>{getTranslation(language, 'stream.findSong')}</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1.5 mb-5">
-                  {['Sơn Tùng M-TP', 'V-Pop Hot Hits', 'Lo-Fi Chill', 'Alan Walker', 'Nhạc Trẻ 2025', 'The Weeknd'].map(t => (
+                  {['Sơn Tùng M-TP', 'V-Pop Hot Hits', 'Lo-Fi Chill', 'Alan Walker', 'YOASOBI', 'The Weeknd'].map(t => (
                     <button
                       key={t}
                       onClick={async () => {
@@ -2144,14 +2479,14 @@ export default function App() {
                       <SoundCloudIcon className="w-3.5 h-3.5 text-orange-400" />
                       SOUNDCLOUD STREAM
                     </span>
-                    <h2 className="text-xl font-extrabold text-white mt-1 tracking-tight">SoundCloud Stream</h2>
+                    <h2 className="text-xl font-extrabold text-white mt-1 tracking-tight">{getTranslation(language, 'stream.soundcloudTitle')}</h2>
                     <p className="text-xs text-[#666] mt-0.5">{getTranslation(language, 'stream.soundcloudSub')}</p>
                   </div>
                   <button
                     onClick={() => setCurrentView('search')}
                     className="px-4 py-2 rounded bg-white hover:bg-neutral-200 text-black font-semibold text-xs cursor-pointer transition-colors flex items-center gap-1"
                   >
-                    <span>{getTranslation(language, 'nav.search')}</span>
+                    <span>{getTranslation(language, 'stream.findSong')}</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -2187,18 +2522,69 @@ export default function App() {
                   }}
                 />
               </div>
+            ) : currentView === 'audius' ? (
+              <div>
+                <div className="mb-5 p-5 rounded-xl bg-[#080808] border border-[#181818] flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 font-mono" style={{ color: accentColor }}>
+                      <AudiusIcon className="w-3.5 h-3.5" style={{ color: accentColor }} />
+                      AUDIUS OPEN HI-FI (320KBPS)
+                    </span>
+                    <h2 className="text-xl font-extrabold text-white mt-1 tracking-tight">{getTranslation(language, 'stream.audiusTitle')}</h2>
+                    <p className="text-xs text-[#666] mt-0.5">{getTranslation(language, 'stream.audiusSub')}</p>
+                  </div>
+                  <button
+                    onClick={() => setCurrentView('search')}
+                    className="px-4 py-2 rounded bg-white hover:bg-neutral-200 text-black font-semibold text-xs cursor-pointer transition-colors flex items-center gap-1"
+                  >
+                    <span>{getTranslation(language, 'stream.findSong')}</span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5 mb-5">
+                  {['EDM Festival', 'Synthwave Retro', 'Trap & Bass', 'Lo-Fi Study Beats', 'Future Bass', 'Deep House 320K'].map(t => (
+                    <button
+                      key={t}
+                      onClick={async () => {
+                        showNotification(`${getTranslation(language, 'toast.searching')}: "${t}" (Audius 320K)...`);
+                        const r = await handleSearchOnline(t, 'audius');
+                        if (r.length) handlePlaySearchResult(r[0]);
+                      }}
+                      className="px-3 py-1 bg-[#0a0a0a] hover:bg-[#141414] border border-[#1c1c1c] text-xs text-[#888] hover:text-white rounded flex items-center gap-1.5 cursor-pointer transition-colors"
+                    >
+                      <AudiusIcon className="w-3 h-3" style={{ color: accentColor }} />{t}
+                    </button>
+                  ))}
+                </div>
+                <TrackTable
+                  tracks={displayedTracks}
+                  currentTrack={currentTrack}
+                  isPlaying={isPlaying}
+                  favorites={favorites}
+                  onTrackSelect={handlePlayTrack}
+                  onTogglePlay={handleTogglePlay}
+                  accentColor={accentColor}
+                  language={language}
+                  onDownloadTrack={handleDownloadTrack}
+                  downloadingTrackIds={downloadingTrackIds}
+                  onToggleFavorite={(id) => {
+                    const t = displayedTracks.find(x => x.id === id);
+                    if (t) handleToggleFavorite(t);
+                  }}
+                />
+              </div>
             ) : (
               <div>
                 <div className="mb-5 p-5 rounded-xl bg-[#0a0a0c] border border-[#1a1a20] flex items-center justify-between shadow-sm">
                   <div>
                     <span className="text-[10px] font-black uppercase tracking-widest font-mono flex items-center gap-1.5" style={{ color: accentColor }}>
                       <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentColor }}></span>
-                      {currentView === 'local' ? 'Ổ CỨNG NỘI BỘ' : currentView === 'favorites' ? 'DANH SÁCH YÊU THÍCH (SQLITE)' : currentView === 'audius' ? 'AUDIUS OPEN HI-FI (320KBPS)' : 'TẤT CẢ NGUỒN PHÁT'}
+                      {currentView === 'local' ? getTranslation(language, 'view.localBadge') : getTranslation(language, 'view.favoritesBadge')}
                     </span>
                     <h2 className="text-2xl font-black text-white mt-1 tracking-tight">
-                      {currentView === 'local' ? 'Nhạc Lossless trên máy' : currentView === 'favorites' ? 'Bài hát yêu thích' : currentView === 'audius' ? 'Nền Tảng Mở Audius Hi-Fi' : 'Thư viện âm nhạc'}
+                      {currentView === 'local' ? getTranslation(language, 'view.localTitle') : getTranslation(language, 'view.favoritesTitle')}
                     </h2>
-                    <p className="text-xs text-[#777] mt-0.5">{displayedTracks.length} bài hát • Đồng bộ cơ sở dữ liệu</p>
+                    <p className="text-xs text-[#777] mt-0.5">{getTranslation(language, 'view.dbSyncedCount', { count: displayedTracks.length })}</p>
                   </div>
                   {displayedTracks.length > 0 && (
                     <button
@@ -2241,6 +2627,7 @@ export default function App() {
         language={language}
         currentTrack={currentTrack}
         upcomingTrack={effectiveUpcomingTrack}
+        upcomingModeLabel={nextTrackPopup?.modeLabel || getPlaylistModeLabel(activeQueueContext)}
         isPlaying={isPlaying}
         currentTime={currentTime}
         duration={duration}
@@ -2279,9 +2666,11 @@ export default function App() {
         themeMode={themeMode}
         recommendMode={recommendMode}
         onCycleRecommendMode={handleCycleRecommendMode}
-        isNextTrackPopupEnabled={isNextTrackPopupEnabled}
+        isNextTrackPopupEnabled={Boolean(isNextTrackPopupEnabled && nextTrackPopup)}
         onToggleNextTrackPopupEnabled={handleToggleNextTrackPopupEnabled}
       />
+      </>
+      )}
     </div>
   );
 }

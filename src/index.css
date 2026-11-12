@@ -111,54 +111,60 @@ input[type="range"] {
   background-color: #ffffff !important;
 }
 
+.light-mode .bg-black\/95,
+.light-mode .bg-black\/90,
+.light-mode .bg-black\/80 {
+  background-color: rgba(255, 255, 255, 0.94) !important;
+}
+
 .light-mode .bg-\[\#000000\] {
   background-color: #f8fafc !important;
 }
 
-.light-mode .bg-\[\#080808\],
-.light-mode .bg-\[\#08080b\],
-.light-mode .bg-\[\#09090c\],
-.light-mode .bg-\[\#0a0a0c\],
-.light-mode .bg-\[\#0a0a0d\],
-.light-mode .bg-\[\#0c0c10\],
-.light-mode .bg-\[\#0d0d12\],
-.light-mode .bg-\[\#0e0e12\],
-.light-mode .bg-\[\#101014\],
-.light-mode .bg-\[\#121212\],
-.light-mode .bg-\[\#121218\] {
-  background-color: #ffffff !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+.light-mode [class*="from-[#0"],
+.light-mode [class*="from-[#1"],
+.light-mode .from-\[\#0d0d12\] {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%) !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06) !important;
 }
 
-.light-mode .bg-\[\#14141a\],
-.light-mode .bg-\[\#14141c\],
-.light-mode .bg-\[\#15151e\],
-.light-mode .bg-\[\#161620\],
-.light-mode .bg-\[\#181824\],
-.light-mode .bg-\[\#16161c\] {
+/* Universal dark hex background override (#05.. to #0f..) */
+.light-mode [class*="bg-[#0"] {
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+/* Universal secondary surface override (#10.. to #2a..) */
+.light-mode [class*="bg-[#1"],
+.light-mode [class*="bg-[#2"],
+.light-mode .bg-zinc-800,
+.light-mode .bg-zinc-900,
+.light-mode .bg-white\/10,
+.light-mode .bg-white\/5 {
   background-color: #f1f5f9 !important;
 }
 
-/* Borders */
-.light-mode .border-\[\#141416\],
-.light-mode .border-\[\#141418\],
-.light-mode .border-\[\#161620\],
-.light-mode .border-\[\#181818\],
-.light-mode .border-\[\#181822\],
-.light-mode .border-\[\#1a1a20\],
-.light-mode .border-\[\#1a1a22\],
-.light-mode .border-\[\#1b1b24\],
-.light-mode .border-\[\#1e1e24\],
-.light-mode .border-\[\#1e1e28\],
-.light-mode .border-\[\#22222a\],
-.light-mode .border-\[\#222\],
-.light-mode .border-\[\#252535\],
-.light-mode .border-\[\#262630\],
-.light-mode .border-\[\#262632\],
-.light-mode .border-\[\#262634\],
-.light-mode .border-\[\#2b2b3a\],
-.light-mode .border-\[\#333\],
-.light-mode .border-\[\#38384a\] {
+/* High-contrast active pill buttons in Light Mode */
+.light-mode button.bg-white.text-black {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  border-color: #0f172a !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15) !important;
+}
+
+/* Borders & Dividers */
+.light-mode .divide-\[\#101014\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e2e8f0 !important;
+}
+
+.light-mode [class*="border-[#1"],
+.light-mode [class*="border-[#2"],
+.light-mode [class*="border-[#3"],
+.light-mode .border-zinc-700,
+.light-mode .border-white\/10,
+.light-mode .border-white\/20,
+.light-mode .border-white\/40 {
   border-color: #e2e8f0 !important;
 }
 
@@ -167,22 +173,31 @@ input[type="range"] {
   color: #0f172a !important;
 }
 
-.light-mode .text-\[\#8e8e9f\],
-.light-mode .text-\[\#888899\],
-.light-mode .text-\[\#888\],
-.light-mode .text-\[\#777\],
-.light-mode .text-\[\#666\],
-.light-mode .text-\[\#666677\],
-.light-mode .text-\[\#555\],
-.light-mode .text-\[\#aaa\] {
+.light-mode [class*="text-[#a"],
+.light-mode [class*="text-[#9"],
+.light-mode [class*="text-[#8"],
+.light-mode [class*="text-[#7"],
+.light-mode [class*="text-[#6"],
+.light-mode [class*="text-[#5"],
+.light-mode [class*="text-[#4"],
+.light-mode [class*="text-[#3"],
+.light-mode .text-\[\#bbb\],
+.light-mode .text-\[\#ccc\],
+.light-mode .text-zinc-400 {
   color: #64748b !important;
 }
 
-/* Hover background in light mode */
-.light-mode .hover\:bg-\[\#0e0e12\]:hover,
-.light-mode .hover\:bg-\[\#121218\]:hover,
-.light-mode .hover\:bg-\[\#141418\]:hover,
-.light-mode .hover\:bg-\[\#181820\]:hover,
-.light-mode .hover\:bg-\[\#1c1c1c\]:hover {
-  background-color: #f1f5f9 !important;
+/* Hover background & text in light mode */
+.light-mode [class*="hover:bg-[#0"]:hover,
+.light-mode [class*="hover:bg-[#1"]:hover,
+.light-mode [class*="hover:bg-[#2"]:hover,
+.light-mode .hover\:bg-white\/5:hover,
+.light-mode .hover\:bg-white\/10:hover {
+  background-color: #e2e8f0 !important;
+}
+
+.light-mode .hover\:text-white:hover,
+.light-mode .group:hover .group-hover\:text-white,
+.light-mode .group:hover .group-hover\:text-cyan-300 {
+  color: #0f172a !important;
 }
