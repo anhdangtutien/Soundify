@@ -61,7 +61,12 @@ export const SearchView: React.FC<SearchViewProps> = ({ onPlaySearchResult, onSe
   return (
     <div className="flex-1 p-6 overflow-y-auto">
       <div className="max-w-2xl mb-6">
-        <h2 className="text-xl font-bold tracking-tight text-white mb-3">TÌM KIẾM ÂM NHẠC</h2>
+        <h2 className="text-xl font-black tracking-tight text-white mb-3 flex items-center gap-2">
+          <span>TÌM KIẾM ÂM NHẠC</span>
+          <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-[#1a1910] text-[#ffe600] border border-[#ffe600]/30">
+            SPYTIFY HERO
+          </span>
+        </h2>
         <form onSubmit={handleSubmit} className="relative flex items-center">
           <Search className="w-4 h-4 text-[#666] absolute left-3.5 pointer-events-none" />
           <input
@@ -69,27 +74,27 @@ export const SearchView: React.FC<SearchViewProps> = ({ onPlaySearchResult, onSe
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Tìm nghệ sĩ, bài hát hoặc album..."
-            className="w-full pl-10 pr-28 py-2.5 bg-[#0a0a0a] hover:bg-[#111] focus:bg-[#111] text-white rounded-lg text-xs outline-none border border-[#1e1e1e] focus:border-[#00e5ff] transition-all"
+            className="w-full pl-10 pr-28 py-2.5 bg-[#0a0a0c] hover:bg-[#111114] focus:bg-[#111114] text-white rounded-lg text-xs outline-none border border-[#1e1e24] focus:border-[#ffe600] transition-all"
           />
           <button
             type="submit"
             disabled={loading}
-            className="absolute right-1.5 px-3.5 py-1.5 bg-white hover:bg-[#00e5ff] disabled:opacity-50 text-black text-[11px] font-bold rounded-md cursor-pointer transition-all flex items-center gap-1.5"
+            className="absolute right-1.5 px-3.5 py-1.5 bg-[#ffe600] hover:bg-[#00e5ff] disabled:opacity-50 text-black text-[11px] font-black rounded-md cursor-pointer transition-all flex items-center gap-1.5 shadow-[0_0_8px_rgba(255,230,0,0.3)]"
           >
             {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Tìm'}
           </button>
         </form>
 
-        {/* Filter Pills — Monochrome TIDAL Style */}
+        {/* Filter Pills — Invincible Hero Style */}
         <div className="flex gap-1.5 mt-3 flex-wrap">
           {filters.map(f => (
             <button
               key={f.id}
               onClick={() => handleFilterChange(f.id)}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded text-[11px] font-medium transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
                 filter === f.id
-                  ? 'bg-white text-black font-semibold'
-                  : 'bg-[#0d0d0d] text-[#777] hover:text-white hover:bg-[#161616] border border-[#1c1c1c]'
+                  ? 'bg-gradient-to-r from-[#ffe600] to-[#00e5ff] text-black font-black shadow-[0_0_10px_rgba(255,230,0,0.35)]'
+                  : 'bg-[#0d0d10] text-[#888] hover:text-white hover:bg-[#16161c] border border-[#1c1c22]'
               }`}
             >
               {f.icon}{f.label}
@@ -99,14 +104,14 @@ export const SearchView: React.FC<SearchViewProps> = ({ onPlaySearchResult, onSe
 
         {/* Popular Tags */}
         <div className="flex items-center gap-2 mt-3 overflow-x-auto pb-1 text-[11px]">
-          <span className="text-[#555] flex items-center gap-1 font-medium flex-shrink-0">
-            <Flame className="w-3 h-3 text-[#00e5ff]" />Xu hướng:
+          <span className="text-[#666] flex items-center gap-1 font-medium flex-shrink-0">
+            <Flame className="w-3 h-3 text-[#ffe600]" />Xu hướng:
           </span>
           {POPULAR.map(t => (
             <button
               key={t}
               onClick={() => handleQuick(t)}
-              className="px-2.5 py-0.5 bg-[#080808] hover:bg-[#141414] text-[#888] hover:text-white rounded border border-[#181818] flex-shrink-0 cursor-pointer transition-colors text-[10px]"
+              className="px-2.5 py-0.5 bg-[#08080a] hover:bg-[#141418] text-[#888] hover:text-[#00e5ff] rounded border border-[#181820] flex-shrink-0 cursor-pointer transition-colors text-[10px]"
             >
               {t}
             </button>
@@ -116,8 +121,8 @@ export const SearchView: React.FC<SearchViewProps> = ({ onPlaySearchResult, onSe
 
       {/* Loading */}
       {loading && (
-        <div className="flex items-center justify-center py-12 text-[#00e5ff]">
-          <Loader2 className="w-7 h-7 animate-spin" />
+        <div className="flex items-center justify-center py-12 text-[#ffe600]">
+          <Loader2 className="w-7 h-7 animate-spin drop-shadow-[0_0_8px_#ffe600]" />
         </div>
       )}
 
@@ -150,7 +155,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ onPlaySearchResult, onSe
                     </div>
                   )}
                   {/* Play Overlay */}
-                  <div className="absolute right-2 bottom-2 w-8 h-8 rounded-full bg-white hover:bg-[#00e5ff] text-black flex items-center justify-center shadow-lg opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
+                  <div className="absolute right-2 bottom-2 w-8 h-8 rounded-full bg-[#ffe600] hover:bg-[#00e5ff] text-black flex items-center justify-center shadow-[0_0_10px_rgba(255,230,0,0.4)] opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200">
                     <Play className="w-4 h-4 fill-current ml-0.5" />
                   </div>
                   {/* Format Tag */}

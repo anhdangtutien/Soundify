@@ -1,8 +1,8 @@
 [package]
 name = "snutify"
 version = "0.1.0"
-description = "Soundify - Minimalist Hi-Fi Music Player & Browser"
-authors = ["Soundify Team"]
+description = "Spytify - Invincible Hi-Fi Music Player & Browser"
+authors = ["Spytify Team", "anhdangtutien"]
 edition = "2021"
 
 [lib]

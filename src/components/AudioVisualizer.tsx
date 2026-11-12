@@ -37,11 +37,12 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ isPlaying }) =
         const x = i * (barWidth + gap);
         const y = (canvas.height - height) / 2;
 
-        // Amazon Music Electric Cyan -> Pure White gradient (TIDAL Hi-Res style)
+        // Invincible Hero Waveform: Golden Yellow -> Electric Cyan -> Pure White
         const gradient = ctx.createLinearGradient(0, y, 0, y + height);
         gradient.addColorStop(0, '#ffffff');
-        gradient.addColorStop(0.5, '#00e5ff');
-        gradient.addColorStop(1, '#0099b8');
+        gradient.addColorStop(0.35, '#ffe600');
+        gradient.addColorStop(0.75, '#00e5ff');
+        gradient.addColorStop(1, '#0088a8');
 
         ctx.fillStyle = gradient;
         ctx.beginPath();
@@ -64,13 +65,16 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ isPlaying }) =
   }, [isPlaying]);
 
   return (
-    <div className="w-full bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl px-4 py-2.5 flex items-center justify-between mb-5">
+    <div className="w-full bg-[#0a0a0c] border border-[#1a1a20] rounded-xl px-4 py-2.5 flex items-center justify-between mb-5 shadow-sm">
       <div className="flex items-center gap-2.5">
-        <Activity className={`w-3.5 h-3.5 ${isPlaying ? 'text-[#00e5ff] animate-pulse' : 'text-[#444]'}`} />
+        <Activity className={`w-3.5 h-3.5 ${isPlaying ? 'text-[#ffe600] animate-pulse drop-shadow-[0_0_6px_#ffe600]' : 'text-[#444]'}`} />
         <span className="text-[11px] font-semibold tracking-wider uppercase text-white/90 flex items-center gap-2">
-          {isPlaying ? 'Ultra HD Playback' : 'Sound Engine Standby'}
-          <span className="text-[9px] px-1.5 py-0.2 text-[#00e5ff] bg-[#00e5ff]/10 border border-[#00e5ff]/30 rounded font-mono">
-            24-Bit / 96kHz
+          {isPlaying ? 'Spytify Ultra HD' : 'Invincible Audio Standby'}
+          <span className="text-[9px] px-1.5 py-0.5 text-[#ffe600] bg-[#1a1910] border border-[#ffe600]/30 rounded font-mono font-bold shadow-[0_0_6px_rgba(255,230,0,0.15)]">
+            24-Bit / 192kHz
+          </span>
+          <span className="text-[9px] px-1.5 py-0.5 text-[#00e5ff] bg-[#0d161a] border border-[#00e5ff]/30 rounded font-mono font-semibold">
+            HERO EQ
           </span>
         </span>
       </div>

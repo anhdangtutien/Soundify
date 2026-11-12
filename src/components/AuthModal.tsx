@@ -148,13 +148,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
         {/* Brand Header */}
         <div className="text-center mb-5">
-          <div className="w-10 h-10 rounded-xl bg-white text-black flex items-center justify-center mx-auto mb-2 shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ffe600] to-[#00e5ff] text-black flex items-center justify-center mx-auto mb-2 shadow-[0_0_12px_rgba(255,230,0,0.35)]">
             <Disc className="w-6 h-6 text-black" />
           </div>
-          <h2 className="text-base font-bold tracking-tight text-white uppercase flex items-center justify-center gap-1.5">
-            SOUNDIFY ACCOUNT
+          <h2 className="text-base font-black tracking-tight text-white uppercase flex items-center justify-center gap-1.5">
+            SPYTIFY ACCOUNT
           </h2>
-          <p className="text-[11px] text-[#666] font-mono">SQLite Local Auth • Hoạt động 100% Offline</p>
+          <p className="text-[11px] text-[#00e5ff] font-mono">SQLite Local Auth • Hoạt động 100% Offline</p>
         </div>
 
         {/* Google OAuth Help / Config Modal */}
@@ -362,7 +362,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 py-2.5 px-4 bg-white hover:bg-[#00e5ff] text-black font-bold text-xs uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-50"
+                className="w-full mt-2 py-2.5 px-4 bg-gradient-to-r from-[#ffe600] to-[#00e5ff] hover:opacity-95 text-black font-black text-xs uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_12px_rgba(255,230,0,0.3)] disabled:opacity-50"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

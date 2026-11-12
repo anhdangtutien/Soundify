@@ -617,10 +617,10 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-black text-[#a0a0a0] overflow-hidden select-none font-sans">
-      {/* Toast Notification */}
+      {/* Toast Notification — Invincible Accent */}
       {statusMessage && (
-        <div className="fixed top-4 right-4 z-50 bg-[#141414] text-white border border-[#00e5ff]/50 px-4 py-2 rounded-lg font-mono text-xs shadow-2xl flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-[#00e5ff]" />
+        <div className="fixed top-4 right-4 z-50 bg-[#121216] text-white border border-[#ffe600]/50 px-4 py-2 rounded-lg font-mono text-xs shadow-[0_0_15px_rgba(255,230,0,0.25)] flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-[#ffe600]" />
           <span>{statusMessage}</span>
         </div>
       )}
@@ -689,14 +689,14 @@ export default function App() {
 
         <main className="flex-1 flex flex-col overflow-hidden bg-[#000000]">
           {/* Header Bar */}
-          <header className="h-14 px-7 flex items-center justify-between border-b border-[#141414] bg-black/90 backdrop-blur z-20">
+          <header className="h-14 px-7 flex items-center justify-between border-b border-[#141416] bg-black/90 backdrop-blur z-20">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold tracking-widest text-white uppercase flex items-center gap-2">
-                <Disc className="w-4 h-4 text-[#00e5ff]" />
-                Soundify Audio
+              <span className="text-xs font-black tracking-widest text-white uppercase flex items-center gap-2">
+                <Disc className="w-4 h-4 text-[#ffe600] drop-shadow-[0_0_6px_#ffe600]" />
+                Spytify Invincible Audio
               </span>
-              <span className="text-[10px] text-[#777] bg-[#0c0c0c] px-2 py-0.5 rounded border border-[#1a1a1a] font-mono">
-                SQLite 3 • Ultra Fast DB
+              <span className="text-[10px] text-[#00e5ff] bg-[#0c1214] px-2 py-0.5 rounded border border-[#00e5ff]/30 font-mono font-semibold">
+                SQLite 3 • Invincible Core
               </span>
             </div>
             <div className="flex items-center gap-2.5">
@@ -846,20 +846,21 @@ export default function App() {
               </div>
             ) : (
               <div>
-                <div className="mb-5 p-5 rounded-xl bg-[#0a0a0a] border border-[#161616] flex items-center justify-between">
+                <div className="mb-5 p-5 rounded-xl bg-[#0a0a0c] border border-[#1a1a20] flex items-center justify-between shadow-sm">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#00e5ff] font-mono">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[#ffe600] font-mono flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#00e5ff]"></span>
                       {currentView === 'local' ? 'Ổ CỨNG NỘI BỘ' : currentView === 'favorites' ? 'DANH SÁCH YÊU THÍCH (SQLITE)' : currentView === 'audius' ? 'AUDIUS OPEN HI-FI (320KBPS)' : 'TẤT CẢ NGUỒN PHÁT'}
                     </span>
-                    <h2 className="text-2xl font-extrabold text-white mt-1 tracking-tight">
+                    <h2 className="text-2xl font-black text-white mt-1 tracking-tight">
                       {currentView === 'local' ? 'Nhạc Lossless trên máy' : currentView === 'favorites' ? 'Bài hát yêu thích' : currentView === 'audius' ? 'Nền Tảng Mở Audius Hi-Fi' : 'Thư viện âm nhạc'}
                     </h2>
-                    <p className="text-xs text-[#666] mt-0.5">{displayedTracks.length} bài hát • Đồng bộ cơ sở dữ liệu</p>
+                    <p className="text-xs text-[#777] mt-0.5">{displayedTracks.length} bài hát • Đồng bộ cơ sở dữ liệu</p>
                   </div>
                   {displayedTracks.length > 0 && (
                     <button
                       onClick={() => handlePlayTrack(displayedTracks[0])}
-                      className="w-11 h-11 rounded-full bg-white hover:bg-[#00e5ff] text-black flex items-center justify-center transition-all cursor-pointer shadow-lg"
+                      className="w-11 h-11 rounded-full bg-gradient-to-br from-[#ffe600] to-[#00e5ff] hover:scale-105 active:scale-95 text-black flex items-center justify-center transition-all cursor-pointer shadow-[0_0_12px_rgba(255,230,0,0.35)]"
                     >
                       <Disc className="w-5 h-5 text-black" />
                     </button>

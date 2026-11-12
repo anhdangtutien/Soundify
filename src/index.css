@@ -30,7 +30,7 @@
   background: rgba(255, 255, 255, 0.35);
 }
 
-/* Amazon Music & TIDAL Accents */
+/* Invincible Hero Accents: Electric Yellow & Vibrant Cyan */
 .accent-cyan {
   color: #00e5ff;
 }
@@ -43,7 +43,29 @@
   border-color: #00e5ff;
 }
 
+.accent-yellow {
+  color: #ffe600;
+}
+
+.bg-accent-yellow {
+  background-color: #ffe600;
+}
+
+.border-accent-yellow {
+  border-color: #ffe600;
+}
+
+.invincible-gradient {
+  background: linear-gradient(135deg, #ffe600 0%, #00e5ff 100%);
+}
+
+.invincible-text-gradient {
+  background: linear-gradient(135deg, #ffe600 0%, #00e5ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 /* Range input styling */
 input[type="range"] {
-  accent-color: #00e5ff;
+  accent-color: #ffe600;
 }

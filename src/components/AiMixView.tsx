@@ -79,18 +79,18 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
 
   return (
     <div className="flex-1 p-8 overflow-y-auto max-w-5xl mx-auto">
-      {/* Header Banner — TIDAL AI Studio */}
-      <div className="mb-6 p-6 rounded-2xl bg-[#080808] border border-[#1a1a1a] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Header Banner — Invincible AI Studio */}
+      <div className="mb-6 p-6 rounded-2xl bg-[#08080a] border border-[#1a1a22] flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[10px] font-bold tracking-widest text-[#00e5ff] uppercase px-2 py-0.5 rounded bg-[#00e5ff]/10 border border-[#00e5ff]/30 font-mono flex items-center gap-1">
-              <Cpu className="w-3 h-3 text-[#00e5ff]" />
-              ON-DEVICE MACHINE LEARNING
+            <span className="text-[10px] font-black tracking-widest text-[#ffe600] uppercase px-2 py-0.5 rounded bg-[#1a1910] border border-[#ffe600]/40 font-mono flex items-center gap-1 shadow-[0_0_8px_rgba(255,230,0,0.15)]">
+              <Cpu className="w-3 h-3 text-[#ffe600]" />
+              SPYTIFY NEURAL HERO DJ
             </span>
-            <span className="text-[10px] text-[#555] font-mono">100% Offline • Rust Matrix Engine</span>
+            <span className="text-[10px] text-[#00e5ff] font-mono">100% Offline • Rust Matrix Engine</span>
           </div>
-          <h2 className="text-2xl font-extrabold text-white tracking-tight">AI Discovery Mix &amp; Smart DJ</h2>
-          <p className="text-xs text-[#777] mt-1 max-w-lg">
+          <h2 className="text-2xl font-black text-white tracking-tight">AI Discovery Mix &amp; Smart DJ</h2>
+          <p className="text-xs text-[#888] mt-1 max-w-lg">
             Hệ thống AI tự học gu âm nhạc từ tần suất nghe, bài hát yêu thích và thời lượng để cá nhân hóa danh sách đề xuất. Không gửi dữ liệu ra ngoài máy.
           </p>
         </div>
@@ -99,16 +99,16 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
           <button
             onClick={handleTrainAi}
             disabled={training}
-            className="px-4 py-2.5 rounded-xl bg-white hover:bg-[#00e5ff] text-black font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg disabled:opacity-50"
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#ffe600] to-[#00e5ff] hover:opacity-90 text-black font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-[0_0_12px_rgba(255,230,0,0.35)] disabled:opacity-50"
           >
             {training ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin text-black" />
                 <span>Đang train ({trainingProgress}%)...</span>
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4" />
+                <Sparkles className="w-4 h-4 text-black" />
                 <span>Huấn luyện AI ngay</span>
               </>
             )}
@@ -119,30 +119,30 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
       {/* Model Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
         {/* Card 1: Accuracy */}
-        <div className="p-4 rounded-xl bg-[#0a0a0a] border border-[#161616]">
-          <div className="flex items-center justify-between text-[#666] text-xs font-mono uppercase mb-1">
+        <div className="p-4 rounded-xl bg-[#0a0a0c] border border-[#1a1a20]">
+          <div className="flex items-center justify-between text-[#777] text-xs font-mono uppercase mb-1">
             <span>Độ chính xác mô hình</span>
-            <Zap className="w-4 h-4 text-[#00e5ff]" />
+            <Zap className="w-4 h-4 text-[#ffe600]" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-extrabold text-white font-mono">
+            <span className="text-2xl font-black text-white font-mono">
               {report ? `${report.accuracy.toFixed(1)}%` : '96.4%'}
             </span>
             <span className="text-[10px] text-[#00e5ff] font-mono">Loss &lt; 0.015</span>
           </div>
-          <p className="text-[11px] text-[#555] mt-1">Matrix Factorization &amp; Cosine Sim</p>
+          <p className="text-[11px] text-[#666] mt-1">Matrix Factorization &amp; Cosine Sim</p>
         </div>
 
         {/* Card 2: Analyzed samples */}
-        <div className="p-4 rounded-xl bg-[#0a0a0a] border border-[#161616]">
-          <div className="flex items-center justify-between text-[#666] text-xs font-mono uppercase mb-1">
+        <div className="p-4 rounded-xl bg-[#0a0a0c] border border-[#1a1a20]">
+          <div className="flex items-center justify-between text-[#777] text-xs font-mono uppercase mb-1">
             <span>Mẫu dữ liệu đã học</span>
-            <Sliders className="w-4 h-4 text-purple-400" />
+            <Sliders className="w-4 h-4 text-[#00e5ff]" />
           </div>
-          <span className="text-2xl font-extrabold text-white font-mono">
+          <span className="text-2xl font-black text-white font-mono">
             {report ? report.tracks_analyzed : allTracks.length}
           </span>
-          <p className="text-[11px] text-[#555] mt-1">Từ lịch sử phát SQLite &amp; Yêu thích</p>
+          <p className="text-[11px] text-[#666] mt-1">Từ lịch sử phát SQLite &amp; Yêu thích</p>
         </div>
 
         {/* Card 3: Smart DJ Toggle */}
@@ -150,24 +150,24 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
           onClick={onToggleSmartDj}
           className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
             smartDjEnabled
-              ? 'bg-[#0f1a1d] border-[#00e5ff]/40 text-white'
-              : 'bg-[#0a0a0a] border-[#161616] text-[#666]'
+              ? 'bg-[#181810] border-[#ffe600]/40 text-white shadow-[0_0_12px_rgba(255,230,0,0.15)]'
+              : 'bg-[#0a0a0c] border-[#1a1a20] text-[#666]'
           }`}
         >
           <div className="flex items-center justify-between text-xs font-mono uppercase">
-            <span className="text-white font-semibold flex items-center gap-1.5">
-              <Flame className="w-4 h-4 text-[#00e5ff]" />
+            <span className="text-white font-bold flex items-center gap-1.5">
+              <Flame className="w-4 h-4 text-[#ffe600]" />
               AI Smart DJ Auto-Queue
             </span>
             <span
-              className={`text-[9px] px-2 py-0.5 rounded font-mono font-bold ${
-                smartDjEnabled ? 'bg-[#00e5ff] text-black' : 'bg-[#181818] text-[#555]'
+              className={`text-[9px] px-2 py-0.5 rounded font-mono font-black ${
+                smartDjEnabled ? 'bg-[#ffe600] text-black shadow-[0_0_8px_#ffe600]' : 'bg-[#181818] text-[#555]'
               }`}
             >
               {smartDjEnabled ? 'BẬT' : 'TẮT'}
             </span>
           </div>
-          <p className="text-[11px] text-[#777] mt-2">
+          <p className="text-[11px] text-[#888] mt-2">
             Tự động chọn bài nối tiếp mượt mà khi hết bài dựa trên độ tương đồng vector âm thanh.
           </p>
         </div>

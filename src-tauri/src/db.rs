@@ -18,10 +18,20 @@ impl DatabaseManager {
                     .map(std::path::PathBuf::from)
                     .unwrap_or_else(|_| std::env::temp_dir())
             })
-            .join("Soundify");
+            .join("Spytify");
 
         std::fs::create_dir_all(&db_dir).map_err(|e| e.to_string())?;
-        let db_path = db_dir.join("soundify.db");
+        let db_path = db_dir.join("spytify.db");
+
+        // Seamless migration from Soundify database if available
+        if !db_path.exists() {
+            if let Some(parent) = db_dir.parent() {
+                let old_db = parent.join("Soundify").join("soundify.db");
+                if old_db.exists() {
+                    let _ = std::fs::copy(&old_db, &db_path);
+                }
+            }
+        }
 
         let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
 

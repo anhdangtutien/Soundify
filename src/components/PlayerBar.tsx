@@ -74,13 +74,13 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
         );
       case 'audius':
         return (
-          <span className="text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#161616] text-[#cc00ff] border border-[#cc00ff]/30 flex items-center gap-1 font-mono">
+          <span className="text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#161616] text-[#00e5ff] border border-[#00e5ff]/30 flex items-center gap-1 font-mono">
             <AudiusIcon className="w-2.5 h-2.5 text-[#cc00ff]" />AUDIUS 320K
           </span>
         );
       default:
         return (
-          <span className="text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#161616] text-[#00e5ff] border border-[#00e5ff]/30 font-mono">
+          <span className="text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#181812] text-[#ffe600] border border-[#ffe600]/30 font-mono shadow-[0_0_6px_rgba(255,230,0,0.15)]">
             LOSSLESS
           </span>
         );
@@ -88,27 +88,27 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   };
 
   return (
-    <footer className="h-22 bg-[#050505] border-t border-[#141414] px-6 flex items-center justify-between select-none z-50">
-      {/* Left: Track Info — TIDAL Minimalist style */}
+    <footer className="h-22 bg-[#050505] border-t border-[#141416] px-6 flex items-center justify-between select-none z-50">
+      {/* Left: Track Info — Invincible Minimalist style */}
       <div className="flex items-center gap-3.5 w-1/4 min-w-[220px]">
         {currentTrack ? (
           <>
-            <div className="w-12 h-12 rounded-lg overflow-hidden bg-[#121212] flex-shrink-0 border border-[#202020] relative group">
+            <div className="w-12 h-12 rounded-lg overflow-hidden bg-[#121212] flex-shrink-0 border border-[#222] relative group shadow-sm">
               {currentTrack.cover_art ? (
                 <img src={currentTrack.cover_art} alt={currentTrack.title} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-[#111] text-[#555]">
-                  <Music className="w-5 h-5" />
+                  <Music className="w-5 h-5 text-[#ffe600]/60" />
                 </div>
               )}
             </div>
             <div className="flex flex-col overflow-hidden pr-2 flex-1 min-w-0">
               <span className="text-xs font-bold text-white tracking-tight truncate">{currentTrack.title}</span>
-              <span className="text-[11px] text-[#777] truncate mt-0.5">{currentTrack.artist}</span>
+              <span className="text-[11px] text-[#00e5ff]/80 truncate mt-0.5">{currentTrack.artist}</span>
             </div>
             <button
               onClick={onToggleFavorite}
-              className={`p-1.5 rounded-full transition-colors flex-shrink-0 ${isFavorite ? 'text-[#00e5ff]' : 'text-[#555] hover:text-white'}`}
+              className={`p-1.5 rounded-full transition-colors flex-shrink-0 ${isFavorite ? 'text-[#ffe600] drop-shadow-[0_0_6px_#ffe600]' : 'text-[#555] hover:text-white'}`}
             >
               <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
             </button>
@@ -123,17 +123,17 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
         )}
       </div>
 
-      {/* Center: Controls + Hi-Fi Seekbar */}
+      {/* Center: Controls + Invincible Dual-Tone Seekbar */}
       <div className="flex flex-col items-center gap-1.5 max-w-[620px] w-2/4">
         <div className="flex items-center gap-6">
           <button
             onClick={onToggleShuffle}
             title={isShuffle ? 'Bật phát ngẫu nhiên' : 'Tắt phát ngẫu nhiên'}
-            className={`transition-colors cursor-pointer ${isShuffle ? 'text-[#00e5ff]' : 'text-[#666] hover:text-white'}`}
+            className={`transition-colors cursor-pointer ${isShuffle ? 'text-[#00e5ff] drop-shadow-[0_0_6px_#00e5ff]' : 'text-[#666] hover:text-white'}`}
           >
             <Shuffle className="w-3.5 h-3.5" />
           </button>
-          <button onClick={onPrev} className="text-[#888] hover:text-white transition-colors cursor-pointer">
+          <button onClick={onPrev} className="text-[#888] hover:text-[#ffe600] transition-colors cursor-pointer">
             <SkipBack className="w-4 h-4 fill-current" />
           </button>
           <button
@@ -141,45 +141,45 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
             disabled={!currentTrack}
             className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
               currentTrack
-                ? 'bg-white text-black hover:bg-[#00e5ff] hover:scale-105 active:scale-95 shadow-md shadow-white/5'
+                ? 'bg-[#ffe600] text-black hover:bg-[#00e5ff] hover:scale-105 active:scale-95 shadow-[0_0_12px_rgba(255,230,0,0.4)]'
                 : 'bg-[#222] text-[#555] cursor-not-allowed'
             }`}
           >
             {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
           </button>
-          <button onClick={onNext} className="text-[#888] hover:text-white transition-colors cursor-pointer">
+          <button onClick={onNext} className="text-[#888] hover:text-[#ffe600] transition-colors cursor-pointer">
             <SkipForward className="w-4 h-4 fill-current" />
           </button>
           <button
             onClick={onToggleRepeat}
             title={repeatMode === 'all' ? 'Tự động chuyển bài (Lặp lại danh sách)' : repeatMode === 'one' ? 'Lặp lại 1 bài' : 'Dừng khi hết bài'}
-            className={`transition-colors cursor-pointer relative flex items-center justify-center ${repeatMode !== 'off' ? 'text-[#00e5ff]' : 'text-[#666] hover:text-white'}`}
+            className={`transition-colors cursor-pointer relative flex items-center justify-center ${repeatMode !== 'off' ? 'text-[#ffe600]' : 'text-[#666] hover:text-white'}`}
           >
             <Repeat className="w-3.5 h-3.5" />
             {repeatMode === 'one' && (
-              <span className="absolute -top-1.5 -right-1.5 text-[8px] font-bold font-mono bg-[#00e5ff] text-black rounded-full px-1 leading-tight">
+              <span className="absolute -top-1.5 -right-1.5 text-[8px] font-black font-mono bg-[#ffe600] text-black rounded-full px-1 leading-tight">
                 1
               </span>
             )}
           </button>
         </div>
 
-        {/* Minimalist Seekbar — White + Amazon Cyan indicator */}
+        {/* Invincible Hero Seekbar — Yellow to Cyan Gradient */}
         <div className="w-full flex items-center gap-3 text-[11px] text-[#666] font-mono">
-          <span className="w-9 text-right text-[#999]">{formatTime(displayTime)}</span>
+          <span className="w-9 text-right text-[#ffe600]">{formatTime(displayTime)}</span>
           <div className="relative flex-1 flex items-center group h-4 cursor-pointer">
             {/* Background track */}
-            <div className="absolute w-full h-[3px] bg-[#1c1c1c] rounded-full group-hover:h-[5px] transition-all overflow-hidden">
-              {/* Progress fill (TIDAL White / Amazon Cyan) */}
+            <div className="absolute w-full h-[3px] bg-[#1c1c1e] rounded-full group-hover:h-[5px] transition-all overflow-hidden">
+              {/* Progress fill (Invincible Yellow to Cyan Gradient) */}
               <div
-                className="h-full bg-white group-hover:bg-[#00e5ff] transition-colors rounded-full"
+                className="h-full bg-gradient-to-r from-[#ffe600] to-[#00e5ff] transition-all rounded-full shadow-[0_0_8px_rgba(255,230,0,0.5)]"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
 
             {/* Glowing thumb handle on hover */}
             <div
-              className="absolute w-2.5 h-2.5 bg-white rounded-full shadow-md shadow-white/50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none -translate-x-1/2"
+              className="absolute w-3 h-3 bg-[#ffe600] rounded-full shadow-[0_0_10px_#ffe600] border border-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none -translate-x-1/2"
               style={{ left: `${progressPercent}%` }}
             />
 
@@ -206,7 +206,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
               className="absolute w-full opacity-0 h-full cursor-pointer z-10"
             />
           </div>
-          <span className="w-9 text-[#666]">{formatTime(duration)}</span>
+          <span className="w-9 text-[#00e5ff]">{formatTime(duration)}</span>
         </div>
       </div>
 
@@ -215,8 +215,8 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
         {/* Visualizer Toggle */}
         <button
           onClick={onToggleVisualizer}
-          title="Bật/Tắt sóng âm thanh"
-          className={`p-1.5 rounded-md transition-colors ${showVisualizer ? 'text-[#00e5ff] bg-[#141414]' : 'text-[#555] hover:text-white'}`}
+          title="Bật/Tắt sóng âm thanh Invincible"
+          className={`p-1.5 rounded-md transition-colors ${showVisualizer ? 'text-[#ffe600] bg-[#181812] border border-[#ffe600]/30 shadow-[0_0_6px_rgba(255,230,0,0.3)]' : 'text-[#555] hover:text-white'}`}
         >
           <Sparkles className="w-4 h-4" />
         </button>
@@ -226,12 +226,12 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
 
         {/* Volume Slider */}
         <div className="flex items-center gap-2">
-          <button onClick={handleMuteToggle} className="text-[#666] hover:text-white transition-colors cursor-pointer">
+          <button onClick={handleMuteToggle} className="text-[#666] hover:text-[#ffe600] transition-colors cursor-pointer">
             {volume === 0 ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4" />}
           </button>
           <div className="relative flex items-center w-20 h-4 group cursor-pointer">
-            <div className="absolute w-full h-[3px] bg-[#1c1c1c] rounded-full group-hover:h-[4px] transition-all">
-              <div className="h-full bg-white group-hover:bg-[#00e5ff] transition-colors rounded-full" style={{ width: `${volume * 100}%` }} />
+            <div className="absolute w-full h-[3px] bg-[#1c1c1e] rounded-full group-hover:h-[4px] transition-all">
+              <div className="h-full bg-gradient-to-r from-[#ffe600] to-[#00e5ff] transition-colors rounded-full" style={{ width: `${volume * 100}%` }} />
             </div>
             <input
               type="range" min={0} max={1} step={0.01} value={volume}

@@ -47,16 +47,16 @@ export const TrackTable: React.FC<TrackTableProps> = ({
         );
       case 'audius':
         return (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-[#141414] text-[#cc00ff] border border-[#cc00ff]/20">
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-[#141416] text-[#00e5ff] border border-[#00e5ff]/30">
             <AudiusIcon className="w-3 h-3 text-[#cc00ff]" />
             <span>AUDIUS 320K</span>
           </div>
         );
       default:
         return (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-[#141414] text-white/80 border border-white/10">
-            <HardDrive className="w-3 h-3 text-[#00e5ff]" />
-            <span>FLAC</span>
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-[#161612] text-[#ffe600] border border-[#ffe600]/30">
+            <HardDrive className="w-3 h-3 text-[#ffe600]" />
+            <span>LOSSLESS</span>
           </div>
         );
     }
@@ -101,13 +101,13 @@ export const TrackTable: React.FC<TrackTableProps> = ({
               onDoubleClick={() => onTrackSelect(track)}
               className={`grid grid-cols-[40px_1fr_1fr_90px_70px] items-center px-3 py-2 rounded-md transition-colors group cursor-pointer ${
                 isSelected
-                  ? 'bg-[#101010] text-white border-l-2 border-[#00e5ff]'
-                  : 'hover:bg-[#0a0a0a] text-[#888] hover:text-white'
+                  ? 'bg-[#141416] text-white border-l-2 border-[#ffe600]'
+                  : 'hover:bg-[#0c0c0e] text-[#888] hover:text-white'
               }`}
             >
               {/* Col 1: Play button / Number */}
               <div className="flex items-center justify-center relative">
-                <span className={`text-[11px] font-mono ${isSelected ? 'text-[#00e5ff] font-bold' : 'group-hover:hidden text-[#444]'}`}>
+                <span className={`text-[11px] font-mono ${isSelected ? 'text-[#ffe600] font-bold' : 'group-hover:hidden text-[#444]'}`}>
                   {idx + 1}
                 </span>
                 <button
@@ -124,9 +124,9 @@ export const TrackTable: React.FC<TrackTableProps> = ({
                   }`}
                 >
                   {isSelected && isPlaying ? (
-                    <Pause className="w-3.5 h-3.5 fill-current text-[#00e5ff]" />
+                    <Pause className="w-3.5 h-3.5 fill-current text-[#ffe600]" />
                   ) : (
-                    <Play className="w-3.5 h-3.5 fill-current text-white" />
+                    <Play className="w-3.5 h-3.5 fill-current text-white hover:text-[#00e5ff]" />
                   )}
                 </button>
               </div>
@@ -150,12 +150,12 @@ export const TrackTable: React.FC<TrackTableProps> = ({
                 <div className="flex flex-col overflow-hidden">
                   <span
                     className={`font-semibold truncate text-xs ${
-                      isSelected ? 'text-[#00e5ff]' : 'text-white'
+                      isSelected ? 'text-[#ffe600] font-bold' : 'text-white'
                     }`}
                   >
                     {track.title}
                   </span>
-                  <span className="text-[11px] text-[#666] truncate group-hover:text-[#999]">
+                  <span className="text-[11px] text-[#00e5ff]/70 truncate group-hover:text-[#00e5ff]">
                     {track.artist}
                   </span>
                 </div>
@@ -180,8 +180,8 @@ export const TrackTable: React.FC<TrackTableProps> = ({
                   }}
                   className={`p-1 transition-colors ${
                     isFav
-                      ? 'text-[#00e5ff] fill-[#00e5ff]'
-                      : 'opacity-0 group-hover:opacity-100 text-[#444] hover:text-white'
+                      ? 'text-[#ffe600] fill-[#ffe600] drop-shadow-[0_0_6px_#ffe600]'
+                      : 'opacity-0 group-hover:opacity-100 text-[#444] hover:text-[#00e5ff]'
                   }`}
                 >
                   <Heart className={`w-3.5 h-3.5 ${isFav ? 'fill-current' : ''}`} />

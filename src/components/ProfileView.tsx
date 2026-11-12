@@ -56,7 +56,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </p>
         <button
           onClick={onOpenAuth}
-          className="py-2.5 px-6 bg-white hover:bg-[#00e5ff] text-black text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer shadow-lg"
+          className="py-2.5 px-6 bg-gradient-to-r from-[#ffe600] to-[#00e5ff] hover:opacity-95 text-black text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer shadow-[0_0_12px_rgba(255,230,0,0.35)]"
         >
           Đăng nhập / Đăng ký
         </button>
@@ -67,9 +67,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   return (
     <div className="flex-1 p-8 overflow-y-auto max-w-4xl mx-auto">
       {/* Profile Header */}
-      <div className="flex items-center justify-between pb-6 border-b border-[#141414] mb-6">
+      <div className="flex items-center justify-between pb-6 border-b border-[#141416] mb-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#161616] to-[#262626] border border-[#333] flex items-center justify-center text-white font-bold text-xl shadow-lg">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#ffe600] to-[#00e5ff] border border-white/20 flex items-center justify-center text-black font-black text-2xl shadow-[0_0_15px_rgba(255,230,0,0.3)]">
             {currentUser.avatar ? (
               <img src={currentUser.avatar} alt={currentUser.display_name} className="w-full h-full object-cover rounded-2xl" />
             ) : (
@@ -78,12 +78,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-2xl font-extrabold text-white tracking-tight">{currentUser.display_name}</h2>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-[#141414] border border-[#00e5ff]/30 text-[#00e5ff] font-mono">
-                HI-FI MEMBER
+              <h2 className="text-2xl font-black text-white tracking-tight">{currentUser.display_name}</h2>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-[#1a1910] border border-[#ffe600]/40 text-[#ffe600] font-mono font-bold shadow-[0_0_6px_rgba(255,230,0,0.15)]">
+                HI-FI HERO MEMBER
               </span>
             </div>
-            <p className="text-xs text-[#666] font-mono mt-0.5">@{currentUser.username} • SQLite Profile Active</p>
+            <p className="text-xs text-[#00e5ff] font-mono mt-0.5">@{currentUser.username} • SQLite Profile Active</p>
           </div>
         </div>
 
@@ -91,7 +91,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <button
             onClick={loadUserData}
             title="Làm mới thống kê"
-            className="p-2 rounded-lg bg-[#0e0e0e] hover:bg-[#181818] text-[#777] hover:text-white border border-[#1a1a1a] transition-colors cursor-pointer"
+            className="p-2 rounded-lg bg-[#0e0e0e] hover:bg-[#181818] text-[#777] hover:text-[#ffe600] border border-[#1a1a1a] transition-colors cursor-pointer"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -105,32 +105,32 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
       </div>
 
-      {/* Stats Cards — TIDAL Style Minimalist */}
+      {/* Stats Cards — Invincible Hero Style */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
-        <div className="p-4 rounded-xl bg-[#0a0a0a] border border-[#161616]">
-          <div className="flex items-center justify-between text-[#666] text-xs font-mono uppercase mb-2">
+        <div className="p-4 rounded-xl bg-[#0a0a0c] border border-[#1a1a20]">
+          <div className="flex items-center justify-between text-[#777] text-xs font-mono uppercase mb-2">
             <span>Tổng lượt nghe</span>
-            <Headphones className="w-4 h-4 text-[#00e5ff]" />
+            <Headphones className="w-4 h-4 text-[#ffe600]" />
           </div>
-          <span className="text-2xl font-extrabold text-white font-mono">{stats.total_played}</span>
-          <p className="text-[11px] text-[#555] mt-1">Lưu trữ trên soundify.db</p>
+          <span className="text-2xl font-black text-white font-mono">{stats.total_played}</span>
+          <p className="text-[11px] text-[#555] mt-1">Lưu trữ trên spytify.db</p>
         </div>
 
-        <div className="p-4 rounded-xl bg-[#0a0a0a] border border-[#161616]">
-          <div className="flex items-center justify-between text-[#666] text-xs font-mono uppercase mb-2">
+        <div className="p-4 rounded-xl bg-[#0a0a0c] border border-[#1a1a20]">
+          <div className="flex items-center justify-between text-[#777] text-xs font-mono uppercase mb-2">
             <span>Bài hát yêu thích</span>
-            <Heart className="w-4 h-4 text-red-400" />
+            <Heart className="w-4 h-4 text-[#ffe600] fill-current" />
           </div>
-          <span className="text-2xl font-extrabold text-white font-mono">{stats.favorite_count}</span>
+          <span className="text-2xl font-black text-white font-mono">{stats.favorite_count}</span>
           <p className="text-[11px] text-[#555] mt-1">Đồng bộ theo tài khoản</p>
         </div>
 
-        <div className="p-4 rounded-xl bg-[#0a0a0a] border border-[#161616]">
-          <div className="flex items-center justify-between text-[#666] text-xs font-mono uppercase mb-2">
+        <div className="p-4 rounded-xl bg-[#0a0a0c] border border-[#1a1a20]">
+          <div className="flex items-center justify-between text-[#777] text-xs font-mono uppercase mb-2">
             <span>Nghệ sĩ nghe nhiều nhất</span>
             <Flame className="w-4 h-4 text-[#00e5ff]" />
           </div>
-          <span className="text-lg font-bold text-white truncate block">
+          <span className="text-lg font-black text-white truncate block">
             {stats.top_artist || 'Chưa xác định'}
           </span>
           <p className="text-[11px] text-[#555] mt-1">Dữ liệu cho AI tự học gu nhạc</p>

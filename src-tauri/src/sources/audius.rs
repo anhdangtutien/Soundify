@@ -3,7 +3,7 @@ use serde_json::Value;
 
 pub async fn search_audius(query: &str) -> Result<Vec<SearchResult>, String> {
     let client = reqwest::Client::builder()
-        .user_agent("Soundify/1.0")
+        .user_agent("Spytify/1.0")
         .timeout(std::time::Duration::from_secs(8))
         .build()
         .map_err(|e| e.to_string())?;
@@ -11,7 +11,7 @@ pub async fn search_audius(query: &str) -> Result<Vec<SearchResult>, String> {
     let encoded = urlencoding_simple(query);
     // Audius Open Music Decentralized Discovery API (Free & 100% Open, 320kbps Streams)
     let url = format!(
-        "https://discoveryprovider.audius.co/v1/tracks/search?query={}&app_name=Soundify",
+        "https://discoveryprovider.audius.co/v1/tracks/search?query={}&app_name=Spytify",
         encoded
     );
 
@@ -43,7 +43,7 @@ pub async fn search_audius(query: &str) -> Result<Vec<SearchResult>, String> {
                 .map(|s| s.to_string());
 
             if let Some(tid) = track_id {
-                let stream_url = format!("https://discoveryprovider.audius.co/v1/tracks/{}/stream?app_name=Soundify", tid);
+                let stream_url = format!("https://discoveryprovider.audius.co/v1/tracks/{}/stream?app_name=Spytify", tid);
                 results.push(SearchResult {
                     title: title.to_string(),
                     artist: artist.to_string(),
