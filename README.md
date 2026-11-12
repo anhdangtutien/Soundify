@@ -93,8 +93,8 @@ To enable automatic cross-device sync:
 
 ```bash
 # Clone the classified repository
-git clone https://github.com/anhdangtutien/Soundify.git
-cd Soundify
+git clone https://github.com/anhdangtutien/Spytify.git
+cd Spytify
 
 # Install UI dependencies
 npm install
@@ -160,8 +160,8 @@ Hệ thống hỗ trợ **Kiến trúc Kép (Hybrid Local + Cloud Sync)**:
 
 ```bash
 # Tải mã nguồn đặc nhiệm
-git clone https://github.com/anhdangtutien/Soundify.git
-cd Soundify
+git clone https://github.com/anhdangtutien/Spytify.git
+cd Spytify
 
 # Cài đặt thư viện giao diện
 npm install
