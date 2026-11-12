@@ -27,8 +27,6 @@ interface ProfileViewProps {
   onPlayTrack: (track: Track) => void;
   language?: LanguageCode;
   onUpdateLanguage?: (lang: LanguageCode) => void;
-  isNextTrackPopupEnabled?: boolean;
-  onToggleNextTrackPopupEnabled?: () => void;
   downloadFolder?: string;
   onChangeDownloadFolder?: () => void;
   onOpenDownloadFolder?: () => void;
@@ -92,8 +90,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onPlayTrack,
   language = 'vi',
   onUpdateLanguage,
-  isNextTrackPopupEnabled = true,
-  onToggleNextTrackPopupEnabled,
   downloadFolder = '',
   onChangeDownloadFolder,
   onOpenDownloadFolder,
@@ -651,38 +647,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         </div>
 
-        {/* Next Track Popup Toggle */}
+        {/* Offline Music Folder Setting */}
         <div className="pt-4 border-t border-[#141418]">
-          <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#0d0d12] border border-[#1e1e28]">
-            <div className="flex items-center gap-3">
-              <div 
-                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
-              >
-                <Music className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-white">{getTranslation(language, 'profile.autoNextPopup')}</p>
-                <p className="text-[10px] text-[#777] font-mono">{getTranslation(language, 'profile.autoNextPopupDesc')}</p>
-              </div>
-            </div>
-            <button
-              onClick={onToggleNextTrackPopupEnabled}
-              className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer p-0.5 flex-shrink-0 ${
-                isNextTrackPopupEnabled ? '' : 'bg-[#222]'
-              }`}
-              style={{ backgroundColor: isNextTrackPopupEnabled ? accentColor : '#222230' }}
-              title={getTranslation(language, isNextTrackPopupEnabled ? 'popup.disableAuto' : 'popup.enableAuto')}
-            >
-              <div 
-                className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                  isNextTrackPopupEnabled ? 'translate-x-6' : 'translate-x-0'
-                }`}
-              />
-            </button>
-          </div>
-
-          {/* Offline Music Folder Setting */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-[#141418]">
             <div className="flex items-center gap-3 min-w-0">
               <div 

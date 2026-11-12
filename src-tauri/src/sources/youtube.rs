@@ -123,7 +123,12 @@ async fn search_invidious(client: &reqwest::Client, query: &str) -> Result<Vec<S
         let video_id = item.get("videoId").and_then(|v| v.as_str()).unwrap_or("");
         let title = item.get("title").and_then(|v| v.as_str()).unwrap_or("Unknown Title");
         let artist = item.get("author").and_then(|v| v.as_str()).unwrap_or("YouTube Artist");
-        let duration = item.get("lengthSeconds").and_then(|v| v.as_u64()).unwrap_or(210);
+        let is_live_item = item.get("liveNow").and_then(|v| v.as_bool()).unwrap_or(false);
+        let duration = if is_live_item {
+            0
+        } else {
+            item.get("lengthSeconds").and_then(|v| v.as_u64()).unwrap_or(210)
+        };
 
         if !video_id.is_empty() {
             results.push(SearchResult {
@@ -154,11 +159,15 @@ fn parse_video_renderer(video: &Value) -> Option<SearchResult> {
         .and_then(|v| v.as_str())
         .unwrap_or("YouTube Artist");
 
-    let duration_str = video.pointer("/lengthText/simpleText")
-        .and_then(|v| v.as_str())
-        .unwrap_or("3:30");
-
-    let duration_secs = parse_duration_string(duration_str);
+    let is_live_video = video.pointer("/badges").map(|b| b.to_string().to_lowercase().contains("live")).unwrap_or(false);
+    let duration_secs = if is_live_video {
+        0
+    } else {
+        video.pointer("/lengthText/simpleText")
+            .and_then(|v| v.as_str())
+            .map(parse_duration_string)
+            .unwrap_or(210)
+    };
 
     let thumbnail = video.pointer("/thumbnail/thumbnails")
         .and_then(|v| v.as_array())

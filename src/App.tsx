@@ -310,6 +310,8 @@ export default function App() {
   const [scTrackUrl, setScTrackUrl] = useState<string | null>(null);
 
   const ytIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const ytUnavailableTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ytHasStartedPlayingRef = useRef(false);
   const scIframeRef = useRef<HTMLIFrameElement | null>(null);
   const onlineAudioRef = useRef<HTMLAudioElement | null>(null);
   const currentTrackRef = useRef<Track | null>(null);
@@ -596,6 +598,7 @@ export default function App() {
 
   // ─── AUTO-PLAY NEXT TRACK & AUTO-RECOMMEND ENGINE ──────────────────────────
   const handleNext = useCallback(async (isManualSkip = false) => {
+    if (ytUnavailableTimerRef.current) clearTimeout(ytUnavailableTimerRef.current);
     if (isSkippingRef.current) return;
     isSkippingRef.current = true;
     playStartTimestampRef.current = null;
@@ -807,29 +810,29 @@ export default function App() {
       if (!track || !isPlayingRef.current) return;
 
       let curTime = 0;
-      let dur = track.duration_secs || 0;
+      const trueDur = Math.max(durationRef.current || 0, track.duration_secs || 0);
 
       if (track.source === 'youtube' || track.source === 'soundcloud') {
         if (playStartTimestampRef.current) {
           const elapsed = accumulatedTimeRef.current + (Date.now() - playStartTimestampRef.current) / 1000;
           curTime = elapsed;
-          if (dur > 0 && elapsed >= dur) {
+          setCurrentTime(elapsed);
+
+          // Safety fallback: only auto-skip if elapsed well exceeds true duration (+8s grace period)
+          if (trueDur > 0 && elapsed >= (trueDur + 8)) {
             playStartTimestampRef.current = null;
             accumulatedTimeRef.current = 0;
             handleNext();
             return;
-          } else {
-            setCurrentTime(elapsed);
           }
         }
       } else {
         curTime = currentTimeRef.current || 0;
-        dur = durationRef.current || track.duration_secs || 0;
       }
 
       // Update real-time countdown when 10s or less remains
-      if (dur > 15 && curTime > 5) {
-        const remaining = dur - curTime;
+      if (trueDur > 15 && curTime > 5) {
+        const remaining = trueDur - curTime;
         if (remaining <= 10 && remaining >= 1) {
           if (isNextTrackPopupEnabledRef.current) {
             const nextOne = (recommendModeRef.current !== 'off' && preloadedNextTrackRef.current) || preloadedNextTrackRef.current || upcomingTrack;
@@ -899,11 +902,28 @@ export default function App() {
         if (!data) return;
 
         // YouTube events
+        if (data.event === 'onError') {
+          if (currentTrackRef.current?.source !== 'youtube') return;
+          console.warn('[YouTube Player] Embed blocked or unavailable, code:', data.info);
+          showNotification('⚠️ Video này không khả dụng (bản quyền YouTube). Tự động chuyển bài sau 5s...');
+          if (ytUnavailableTimerRef.current) clearTimeout(ytUnavailableTimerRef.current);
+          ytUnavailableTimerRef.current = setTimeout(() => {
+            handleNext();
+          }, 5000);
+        }
+
         if (data.event === 'onStateChange') {
           if (currentTrackRef.current?.source !== 'youtube') return;
-          if (data.info === 1) setIsPlaying(true);
-          else if (data.info === 2) setIsPlaying(false);
-          else if (data.info === 0) {
+          if (data.info === 1) {
+            setIsPlaying(true);
+            ytHasStartedPlayingRef.current = true;
+            if (ytUnavailableTimerRef.current) clearTimeout(ytUnavailableTimerRef.current);
+          } else if (data.info === 3) {
+            ytHasStartedPlayingRef.current = true;
+            if (ytUnavailableTimerRef.current) clearTimeout(ytUnavailableTimerRef.current);
+          } else if (data.info === 2) {
+            setIsPlaying(false);
+          } else if (data.info === 0) {
             setIsPlaying(false);
             playStartTimestampRef.current = null;
             accumulatedTimeRef.current = 0;
@@ -914,6 +934,10 @@ export default function App() {
           if (currentTrackRef.current?.source !== 'youtube') return;
           if (typeof data.info.currentTime === 'number') {
             const rawCur = data.info.currentTime;
+            if (rawCur > 0) {
+              ytHasStartedPlayingRef.current = true;
+              if (ytUnavailableTimerRef.current) clearTimeout(ytUnavailableTimerRef.current);
+            }
             // Guard against YouTube Live streams sending epoch timestamps (>86400 seconds)
             if (rawCur > 86400) {
               setDuration(0);
@@ -981,14 +1005,20 @@ export default function App() {
   // Subscribe to YouTube iframe events after video loads
   useEffect(() => {
     if (!ytVideoId) return;
-    const timer = setTimeout(() => {
-      if (ytIframeRef.current?.contentWindow) {
-        ytIframeRef.current.contentWindow.postMessage(
+    const sendListening = () => {
+      try {
+        ytIframeRef.current?.contentWindow?.postMessage(
           JSON.stringify({ event: 'listening', id: 1 }), '*'
         );
-      }
-    }, 1200);
-    return () => clearTimeout(timer);
+      } catch {}
+    };
+    sendListening();
+    const timer1 = setTimeout(sendListening, 500);
+    const timer2 = setTimeout(sendListening, 1500);
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
   }, [ytVideoId]);
 
   // ─── AUDIUS & LOCAL HTML5 audio element (Native decoding for MP3, M4A, WebM, etc.) ───
@@ -1081,13 +1111,24 @@ export default function App() {
     preloadedNextTrackRef.current = null;
     setPreloadedNextTrack(null);
 
-    const isLiveTrack = track.source !== 'local' &&
-      (!track.duration_secs || track.duration_secs <= 0) &&
+    const title = track.title.toLowerCase();
+    const isRecordedLive = title.includes('live lounge') ||
+      title.includes('live session') ||
+      title.includes('live at') ||
+      title.includes('live in') ||
+      title.includes('live acoustic') ||
+      title.includes('live version');
+
+    const isLiveTrack = track.source === 'youtube' &&
+      !isRecordedLive &&
       (
-        track.title.toLowerCase().includes('livestream') ||
-        track.title.toLowerCase().includes('live stream') ||
-        track.title.toLowerCase().includes('trực tiếp') ||
-        track.title.toLowerCase().includes('24/7')
+        title.includes('24/7') ||
+        title.includes('trực tiếp') ||
+        title.includes('livestream') ||
+        title.includes('live stream') ||
+        title.includes('live radio') ||
+        (title.includes('radio') && (!track.duration_secs || track.duration_secs > 7200)) ||
+        (title.includes('live') && (!track.duration_secs || track.duration_secs > 7200))
       );
 
     setDuration(isLiveTrack ? 0 : (track.duration_secs || 0));
@@ -1107,6 +1148,7 @@ export default function App() {
     if (track.path_or_url) listenedHistoryTitlesRef.current.add(track.path_or_url.toLowerCase());
 
     if (track.source === 'local') {
+      if (ytUnavailableTimerRef.current) clearTimeout(ytUnavailableTimerRef.current);
       // Completely stop YouTube & reset video
       sendYtCmd('stopVideo');
       setYtVideoId(null);
@@ -1160,7 +1202,20 @@ export default function App() {
       setIsPlaying(true);
       showNotification(`▶ YouTube Hi-Fi: ${track.title}`);
 
+      ytHasStartedPlayingRef.current = false;
+      if (ytUnavailableTimerRef.current) clearTimeout(ytUnavailableTimerRef.current);
+      ytUnavailableTimerRef.current = setTimeout(() => {
+        if (!ytHasStartedPlayingRef.current && currentTrackRef.current?.source === 'youtube') {
+          console.warn('[YouTube Watchdog] Video unavailable after 5s, auto skipping...');
+          showNotification('⚠️ Video không khả dụng (bản quyền YouTube). Tự động chuyển bài tiếp theo sau 5s...');
+          setTimeout(() => {
+            handleNext();
+          }, 1000);
+        }
+      }, 5000);
+
     } else if (track.source === 'soundcloud') {
+      if (ytUnavailableTimerRef.current) clearTimeout(ytUnavailableTimerRef.current);
       try { await invoke('stop_track'); } catch {}
       // COMPLETELY STOP YOUTUBE & CLEAR VIDEO & HIDE POPUP!
       sendYtCmd('stopVideo');
@@ -1813,7 +1868,14 @@ export default function App() {
           )}
           <iframe
             ref={ytIframeRef}
-            src={`https://www.youtube-nocookie.com/embed/${ytVideoId}?enablejsapi=1&autoplay=1&playsinline=1&modestbranding=1&rel=0`}
+            src={`https://www.youtube.com/embed/${ytVideoId}?enablejsapi=1&autoplay=1&playsinline=1&modestbranding=1&rel=0`}
+            onLoad={() => {
+              try {
+                ytIframeRef.current?.contentWindow?.postMessage(
+                  JSON.stringify({ event: 'listening', id: 1 }), '*'
+                );
+              } catch {}
+            }}
             title="YouTube Player"
             className="w-full h-full border-0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -2010,8 +2072,6 @@ export default function App() {
                 onLogout={handleLogout}
                 onOpenAuth={() => setIsAuthModalOpen(true)}
                 onPlayTrack={handlePlayTrack}
-                isNextTrackPopupEnabled={isNextTrackPopupEnabled}
-                onToggleNextTrackPopupEnabled={handleToggleNextTrackPopupEnabled}
                 downloadFolder={downloadFolder}
                 onChangeDownloadFolder={handleChangeDownloadFolder}
                 onOpenDownloadFolder={handleOpenDownloadFolder}
@@ -2219,6 +2279,8 @@ export default function App() {
         themeMode={themeMode}
         recommendMode={recommendMode}
         onCycleRecommendMode={handleCycleRecommendMode}
+        isNextTrackPopupEnabled={isNextTrackPopupEnabled}
+        onToggleNextTrackPopupEnabled={handleToggleNextTrackPopupEnabled}
       />
     </div>
   );

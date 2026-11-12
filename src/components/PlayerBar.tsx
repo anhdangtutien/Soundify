@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat,
   Volume2, VolumeX, Heart, Music, Sparkles, FolderPlus, Radio,
-  Download, Check, Loader2, Moon, Clock, Minus, Plus
+  Download, Check, Loader2, Moon, Clock, Minus, Plus, Eye, EyeOff
 } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { Track } from '../types';
@@ -42,6 +42,8 @@ interface PlayerBarProps {
   sleepTimerRemainingSecs?: number | null;
   onSetSleepTimer?: (minutes: number | null) => void;
   language?: LanguageCode;
+  isNextTrackPopupEnabled?: boolean;
+  onToggleNextTrackPopupEnabled?: () => void;
 }
 
 export const PlayerBar: React.FC<PlayerBarProps> = ({
@@ -59,6 +61,8 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   sleepTimerRemainingSecs = null,
   onSetSleepTimer,
   language = 'vi',
+  isNextTrackPopupEnabled = true,
+  onToggleNextTrackPopupEnabled,
 }) => {
   const [prevVolume, setPrevVolume] = useState(volume || 0.8);
   const [isDragging, setIsDragging] = useState(false);
@@ -100,18 +104,28 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
     }
   };
 
-  // Detect true live broadcast (never for local files or tracks with a known duration)
+  // Detect true live broadcast (never for local files or recorded sessions)
   const isLive = Boolean(
     currentTrack &&
-    currentTrack.source !== 'local' &&
-    ((currentTrack.duration_secs || 0) <= 0) &&
-    (duration <= 0) &&
+    currentTrack.source === 'youtube' &&
     (
       currentTime > 86400 ||
-      currentTrack.title.toLowerCase().includes('livestream') ||
-      currentTrack.title.toLowerCase().includes('live stream') ||
-      currentTrack.title.toLowerCase().includes('trực tiếp') ||
-      currentTrack.title.toLowerCase().includes('24/7')
+      (
+        duration <= 0 &&
+        (!currentTrack.duration_secs || currentTrack.duration_secs <= 0) &&
+        !currentTrack.title.toLowerCase().includes('live lounge') &&
+        !currentTrack.title.toLowerCase().includes('live session') &&
+        !currentTrack.title.toLowerCase().includes('live at') &&
+        !currentTrack.title.toLowerCase().includes('live in') &&
+        !currentTrack.title.toLowerCase().includes('live acoustic') &&
+        (
+          currentTrack.title.toLowerCase().includes('24/7') ||
+          currentTrack.title.toLowerCase().includes('trực tiếp') ||
+          currentTrack.title.toLowerCase().includes('livestream') ||
+          currentTrack.title.toLowerCase().includes('live stream') ||
+          currentTrack.title.toLowerCase().includes('live radio')
+        )
+      )
     )
   );
 
@@ -543,6 +557,35 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
 
       {/* Right: Volume + Utils */}
       <div className="flex items-center justify-end gap-3.5 w-1/4 min-w-[220px]">
+        {/* Next Track Preview / Auto Suggestion Toggle */}
+        {onToggleNextTrackPopupEnabled && (
+          <button
+            onClick={onToggleNextTrackPopupEnabled}
+            title={
+              isNextTrackPopupEnabled
+                ? getTranslation(language, 'popup.disableAuto')
+                : getTranslation(language, 'popup.enableAuto')
+            }
+            style={isNextTrackPopupEnabled ? {
+              color: accentColor,
+              backgroundColor: `${accentColor}18`,
+              borderColor: `${accentColor}50`,
+              boxShadow: `0 0 10px ${accentColor}30`,
+            } : undefined}
+            className={`p-1.5 rounded-md transition-all cursor-pointer border flex items-center justify-center ${
+              isNextTrackPopupEnabled
+                ? ''
+                : 'text-[#666] hover:text-white border-transparent'
+            }`}
+          >
+            {isNextTrackPopupEnabled ? (
+              <Eye className="w-4 h-4" />
+            ) : (
+              <EyeOff className="w-4 h-4 opacity-50" />
+            )}
+          </button>
+        )}
+
         {/* Sleep Timer Toggle & Menu */}
         {onSetSleepTimer && (
           <div className="relative">

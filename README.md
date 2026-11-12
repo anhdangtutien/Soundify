@@ -20,16 +20,19 @@
 
 | Phiên bản / Release | Định dạng / Format | Kích thước / Size | Liên kết tải trực tiếp / Direct Link |
 | :--- | :--- | :--- | :--- |
-| **v0.1.3 (Bản mới nhất)** | **Windows Setup (.exe)** <br> *(Cài đặt tự động, tự tạo Desktop icon)* | `~3.8 MB` | [📥 **Tải Spytify_0.1.3_x64-setup.exe**](https://github.com/anhdangtutien/Spytify/raw/main/installers/Spytify_0.1.3_x64-setup.exe) |
+| **v0.1.1 (Bản mới nhất)** | **Windows Setup (.exe)** <br> *(Cài đặt tự động, tự tạo Desktop icon)* | `~3.8 MB` | [📥 **Tải Spytify_0.1.1_x64-setup.exe**](https://github.com/anhdangtutien/Spytify/raw/main/installers/Spytify_0.1.1_x64-setup.exe) |
 
 ---
 
-### 🌟 CẬP NHẬT MỚI TRONG BẢN v0.1.3 // WHAT'S NEW IN v0.1.3
+### 🌟 CẬP NHẬT MỚI TRONG BẢN v0.1.1 // WHAT'S NEW IN v0.1.1
 
+* 👁️ **Nút con mắt bật/tắt xem trước bài tiếp theo ngay trên PlayerBar**: Đưa nút mắt (`Eye` / `EyeOff`) xuống thanh PlayerBar cạnh các nút tiện ích để bật/tắt thẻ gợi ý bài kế tiếp chỉ với 1 click, loại bỏ toggle dư thừa trong trang Cài đặt.
+* ⏩ **Tự động chuyển bài sau 5s khi video YouTube unavailable**: Tự động phát hiện các bài hát bị YouTube chặn bản quyền nhúng (như Die With A Smile, Anti-Hero,...) và đếm ngược chuyển mượt sang bài tiếp theo sau 5 giây.
+* 🎯 **Mở khóa tua nhạc & dừng/phát mượt mà**: Sửa triệt để lỗi không tua được và không dừng được bài hát trên luồng YouTube.
+* 🛡️ **Phân biệt chuẩn xác Live Stream**: Nhạc trên máy và các bài thu âm (Live Lounge, Acoustic) không bao giờ bị hiển thị nhầm là Live Stream.
 * 🕵️ **Biểu tượng đặc vụ mới & Slogan chuẩn**: Cập nhật toàn bộ icon Desktop, Taskbar và Installer sang logo thám tử Spytify chính thức. Đồng bộ slogan toàn hệ thống sang **"Spy Music"**.
 * 📥 **Tải nhạc offline hoàn hảo**: Tự động nhận diện JavaScript runtime, loại bỏ phụ thuộc ffmpeg, tự động lập chỉ mục ID3 Tag vào "Nhạc trên máy".
 * ⏱️ **UI Hẹn giờ tắt nhạc Stepper**: Nút tăng/giảm số phút `[-]` / `[+]` hiện đại, loại bỏ ô nhập mũi tên xấu của trình duyệt, đếm ngược thời gian thực.
-* 🛡️ **Loại bỏ lỗi hiển thị LIVE**: Sửa thuật toán nhận diện, đảm bảo nhạc trên máy và các bài thu âm (như Live Lounge) không bao giờ bị hiển thị nhầm là Live Stream.
 * ⚡ **Engine âm thanh kiên cố (Resilient Audio Core)**: Tự động phục hồi worker thread âm thanh khi có sự cố.
 
 </div>
