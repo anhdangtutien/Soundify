@@ -18,9 +18,20 @@
 
 ### 🚀 TẢI VỀ CÀI ĐẶT NGAY // DIRECT DOWNLOAD (WINDOWS 10 & 11)
 
-| Định dạng / Format | Kích thước / Size | Liên kết tải trực tiếp / Direct Link |
-| :--- | :--- | :--- |
-| **Windows Setup (.exe)** <br> *(Khuyên dùng - Cài đặt tự động, tự tạo Desktop icon)* | `~3.8 MB` | [📥 **Tải Spytify_0.1.1_x64-setup.exe**](https://github.com/anhdangtutien/Spytify/raw/main/installers/Spytify_0.1.1_x64-setup.exe) |
+| Phiên bản / Release | Định dạng / Format | Kích thước / Size | Liên kết tải trực tiếp / Direct Link |
+| :--- | :--- | :--- | :--- |
+| **v0.1.2 (Mới nhất - Khuyên dùng)** | **Windows Setup (.exe)** <br> *(Cài đặt tự động, tự tạo Desktop icon)* | `3.79 MB` | [📥 **Tải Spytify_0.1.2_x64-setup.exe**](https://github.com/anhdangtutien/Spytify/raw/main/installers/Spytify_0.1.2_x64-setup.exe) |
+| v0.1.1 (Bản cũ) | Windows Setup (.exe) | `3.65 MB` | [📥 Tải Spytify_0.1.1_x64-setup.exe](https://github.com/anhdangtutien/Spytify/raw/main/installers/Spytify_0.1.1_x64-setup.exe) |
+
+---
+
+### 🌟 CẬP NHẬT MỚI TRONG BẢN v0.1.2 // WHAT'S NEW IN v0.1.2
+
+* 📥 **Tải nhạc về máy & Nghe Offline (Offline Vault)**: Hỗ trợ tải trực tiếp bài hát yêu thích về thư mục máy cá nhân, lưu siêu dữ liệu (ID3 Tags, Cover Art) và đồng bộ ngay vào danh mục "Nhạc trên máy".
+* 🌙 **Hẹn giờ tắt nhạc thông minh (Sleep Timer)**: Dễ dàng hẹn giờ dừng phát nhạc với các mốc sẵn có (15, 30, 45, 60 phút, hết bài này) hoặc **tự do nhập số phút tùy chỉnh** (từ 1 đến 720 phút). Đồng hồ đếm ngược hiển thị trực tiếp trên thanh điều khiển.
+* 🛡️ **Engine âm thanh kiên cố (Resilient Audio Core)**: Tích hợp phát native hardware-accelerated cho các định dạng `.m4a`, `.mp3`, `.flac`. Cơ chế tự phục hồi worker thread ngăn chặn triệt để lỗi ngắt kênh âm thanh.
+* 🎧 **Đề xuất bài hát theo thể loại (Genre-Based Recommendations)**: AI gợi ý danh sách bài hát cùng thể loại đang nghe, tối ưu hóa việc phân tích gu âm nhạc cá nhân.
+* ⏪ **Nút quay lại thông minh (True History Stack)**: Nút lùi bài (Previous) lùi chính xác theo danh sách bài hát bạn thực sự vừa nghe trước đó.
 
 </div>
 
