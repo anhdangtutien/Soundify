@@ -13,7 +13,35 @@ use models::{
     HistoryItem, PlaybackStatus, RecommendationResult, SearchResult, Track, TrainingReport, User,
     UserStats,
 };
-use tauri::State;
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Emitter, Manager, State, WindowEvent,
+};
+
+#[cfg(target_os = "windows")]
+pub fn trim_process_memory() {
+    unsafe {
+        #[link(name = "kernel32")]
+        extern "system" {
+            fn GetCurrentProcess() -> isize;
+            fn SetProcessWorkingSetSize(process: isize, min: usize, max: usize) -> i32;
+            fn K32EmptyWorkingSet(process: isize) -> i32;
+        }
+        let proc = GetCurrentProcess();
+        K32EmptyWorkingSet(proc);
+        SetProcessWorkingSetSize(proc, usize::MAX, usize::MAX);
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn trim_process_memory() {}
+
+#[tauri::command]
+fn trim_memory() -> Result<(), String> {
+    trim_process_memory();
+    Ok(())
+}
 
 #[tauri::command]
 fn scan_music_folder(folder_path: String) -> Result<Vec<Track>, String> {
@@ -109,31 +137,57 @@ async fn search_online(query: String, source: String) -> Result<Vec<SearchResult
     }
 }
 
+fn filter_actual_songs(results: Vec<SearchResult>) -> Vec<SearchResult> {
+    let banned_keywords = [
+        "bảng xếp hạng", "bxh", "ranking", "xếp hạng", "top 10 ", "top 10:", "top 10 -",
+        "top 20", "top 50", "top 100", "top 100:", "top 50:", "countdown", "leaderboard",
+        "compilation", "tổng hợp", "những bài hát", "full album", "mixtape", "nonstop",
+        "liên khúc", "review", "reaction", "mashup", "hay nhất mọi thời đại", "tuyển tập",
+        "ca khúc hay nhất", "bài hát hay nhất", "best songs of", "top songs of", "top hits of",
+        "billboard hot 100 top", "billboard 2024", "billboard 2025", "10 hour", "1 hour",
+        "2 hour", "3 hour", "podcast", "livestream", "24/7", "trực tiếp", "karaoke", "beat chuẩn"
+    ];
+
+    results
+        .into_iter()
+        .filter(|r| {
+            let t = r.title.to_lowercase();
+            if banned_keywords.iter().any(|&k| t.contains(k)) {
+                return false;
+            }
+            if r.duration_secs < 60 || r.duration_secs > 480 {
+                return false;
+            }
+            true
+        })
+        .collect()
+}
+
 #[tauri::command]
 async fn get_trending_hits(category: String) -> Result<Vec<SearchResult>, String> {
-    match category.to_lowercase().as_str() {
+    let raw = match category.to_lowercase().as_str() {
         "usuk" | "global" => {
-            sources::youtube::search_youtube("billboard hot 100 hits us uk trending").await
+            sources::youtube::search_youtube("global top hits official music video audio").await
         }
         "kpop_jpop" | "kpop" | "jpop" => {
-            sources::youtube::search_youtube("top kpop jpop viral hits trending").await
+            sources::youtube::search_youtube("kpop jpop viral hits official mv audio").await
         }
         "vpop" | "vietnam" => {
-            sources::youtube::search_youtube("top hit vpop thinh hanh nhat hien nay").await
+            sources::youtube::search_youtube("vpop thinh hanh official music video").await
         }
-        "audius" => sources::audius::get_trending_audius(20).await,
+        "audius" => return sources::audius::get_trending_audius(20).await,
         "lofi" => {
-            sources::youtube::search_youtube("lofi chill beats to relax study to").await
+            sources::youtube::search_youtube("lofi chill beats study relax official audio").await
         }
         "edm" => {
-            sources::youtube::search_youtube("top edm festival banger hits").await
+            sources::youtube::search_youtube("festival edm electronic dance banger official audio").await
         }
         _ => {
             // Priority: US/UK -> K-Pop/J-Pop -> V-Pop
             let (usuk_res, asian_res, vpop_res) = tokio::join!(
-                sources::youtube::search_youtube("billboard hot 100 hits us uk trending"),
-                sources::youtube::search_youtube("top trending kpop jpop hits"),
-                sources::youtube::search_youtube("nhac tre thinh hanh top trending vietnam")
+                sources::youtube::search_youtube("global top hits official music video audio"),
+                sources::youtube::search_youtube("kpop jpop viral hits official mv audio"),
+                sources::youtube::search_youtube("vpop thinh hanh official music video")
             );
             let mut list = Vec::new();
             if let Ok(usuk) = usuk_res {
@@ -147,6 +201,11 @@ async fn get_trending_hits(category: String) -> Result<Vec<SearchResult>, String
             }
             Ok(list)
         }
+    };
+
+    match raw {
+        Ok(list) => Ok(filter_actual_songs(list)),
+        Err(e) => Err(e),
     }
 }
 
@@ -451,6 +510,85 @@ pub fn run() {
         .manage(db_manager)
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            // Setup System Tray
+            let show_i = MenuItem::with_id(app, "show", "Hiện Spytify", true, None::<&str>)?;
+            let toggle_play_i = MenuItem::with_id(app, "toggle_play", "Tạm dừng / Phát tiếp", true, None::<&str>)?;
+            let next_i = MenuItem::with_id(app, "next", "Bài tiếp theo", true, None::<&str>)?;
+            let quit_i = MenuItem::with_id(app, "quit", "Thoát ứng dụng", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show_i, &toggle_play_i, &next_i, &quit_i])?;
+
+            let mut builder = TrayIconBuilder::new()
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .tooltip("Spytify - Invincible Hi-Fi Music Player")
+                .on_menu_event(|app, event| {
+                    match event.id.as_ref() {
+                        "show" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.unminimize();
+                                let _ = window.set_focus();
+                                let _ = window.emit("app-window-state", "normal");
+                            }
+                        }
+                        "toggle_play" => {
+                            let _ = app.emit("tray-toggle-play", ());
+                        }
+                        "next" => {
+                            let _ = app.emit("tray-next-track", ());
+                        }
+                        "quit" => {
+                            app.exit(0);
+                        }
+                        _ => {}
+                    }
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.unminimize();
+                            let _ = window.set_focus();
+                            let _ = window.emit("app-window-state", "normal");
+                        }
+                    }
+                });
+
+            if let Some(icon) = app.default_window_icon() {
+                builder = builder.icon(icon.clone());
+            }
+
+            builder.build(app)?;
+
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            match event {
+                WindowEvent::CloseRequested { api, .. } => {
+                    // Hide window to tray on close to allow background audio playback
+                    api.prevent_close();
+                    let _ = window.hide();
+                    let _ = window.emit("app-window-state", "hidden");
+                    trim_process_memory();
+                }
+                WindowEvent::Resized(_) => {
+                    if let Ok(true) = window.is_minimized() {
+                        let _ = window.emit("app-window-state", "minimized");
+                        trim_process_memory();
+                    } else {
+                        let _ = window.emit("app-window-state", "normal");
+                    }
+                }
+                _ => {}
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             scan_music_folder,
             play_track,
@@ -479,7 +617,8 @@ pub fn run() {
             db_get_stats,
             ai_train_model,
             ai_recommend_tracks,
-            ai_smart_dj_next
+            ai_smart_dj_next,
+            trim_memory
         ])
         .run(tauri::generate_context!())
         .expect("error while running soundify application");

@@ -108,7 +108,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-color, #ff2a55)] opacity-75"></span>
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--accent-color, #ff2a55)]"></span>
           </span>
-          TRỰC TIẾP
+          LIVE
         </span>
       );
     }
@@ -176,7 +176,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                 className={`p-1.5 rounded-full transition-colors cursor-pointer ${
                   isFavorite ? 'text-[var(--accent-color, #ff2a55)] drop-shadow-[0_0_8px_var(--accent-color, #ff2a55)]' : 'text-[#555] hover:text-white'
                 }`}
-                title={isFavorite ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+                title={isFavorite ? getTranslation(language, 'toast.favoriteRemoved') : getTranslation(language, 'toast.favoriteAdded')}
               >
                 <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
               </button>
@@ -184,7 +184,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
               {onAddToAlbum && (
                 <button
                   onClick={onAddToAlbum}
-                  title="Thêm vào Album"
+                  title={getTranslation(language, 'player.addToAlbum')}
                   className="p-1.5 rounded-full text-[#555] hover:text-[var(--accent-color, #ff2a55)] hover:bg-[#161620] transition-colors cursor-pointer"
                 >
                   <FolderPlus className="w-4 h-4" />
@@ -258,10 +258,10 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
               <div className="flex items-center justify-between border-b border-[#1c1c28] pb-1.5">
                 <span className="text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: accentColor }}>
                   <SkipForward className="w-3 h-3 fill-current" />
-                  Bài tiếp theo
+                  {getTranslation(language, 'popup.nextTrack')}
                 </span>
                 <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#161622] text-[#88889f]">
-                  {recommendMode === 'fresh' ? '🌟 Mới (<10p)' : recommendMode === 'mix' ? '🎵 Mix' : 'Tuần tự'}
+                  {recommendMode === 'fresh' ? getTranslation(language, 'player.modeFresh') : recommendMode === 'mix' ? getTranslation(language, 'player.modeRecommend') : getTranslation(language, 'player.modeDefault')}
                 </span>
               </div>
 
@@ -288,23 +288,23 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                     onClick={onNext}
                     style={{ backgroundColor: accentColor, color: getContrastTextColor(accentColor) }}
                     className="p-1.5 rounded-lg text-white hover:scale-105 transition-transform flex-shrink-0 cursor-pointer"
-                    title="Phát bài này ngay"
+                    title={getTranslation(language, 'popup.playNow')}
                   >
                     <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
                   </button>
                 </div>
               ) : (
                 <div className="space-y-1">
-                  <p className="text-xs font-semibold text-white">Khám phá ngẫu nhiên</p>
+                  <p className="text-xs font-semibold text-white">{getTranslation(language, 'toast.newDiscovery')}</p>
                   <p className="text-[10px] text-[#8e8e9f] leading-snug">
-                    Tự động tìm bài hát MỚI (&lt; 10 phút) cùng thể loại từ YouTube, SoundCloud & Audius.
+                    {getTranslation(language, 'toast.findingNewTracks')}
                   </p>
                   <button
                     onClick={onNext}
                     style={{ backgroundColor: accentColor, color: getContrastTextColor(accentColor) }}
                     className="w-full mt-1 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-transform active:scale-95 cursor-pointer"
                   >
-                    Chuyển bài ngay
+                    {getTranslation(language, 'player.next')}
                   </button>
                 </div>
               )}
@@ -408,7 +408,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: accentColor }}></span>
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ backgroundColor: accentColor }}></span>
               </span>
-              <span>Trực tiếp</span>
+              <span>LIVE</span>
             </div>
           </div>
         ) : isBuffering ? (
@@ -425,7 +425,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                 style={{ background: `linear-gradient(to right, ${accentColor}, #ffffff)` }}
               />
             </div>
-            <span className="w-12 text-[10px] truncate" style={{ color: themeMode === 'light' ? '#64748b' : '#888899' }}>Đang tải...</span>
+            <span className="w-12 text-[10px] truncate" style={{ color: themeMode === 'light' ? '#64748b' : '#888899' }}>{getTranslation(language, 'search.loading')}</span>
           </div>
         ) : (
           <div className="w-full flex items-center gap-3 text-[11px] font-mono">
@@ -486,7 +486,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
         {/* Visualizer Toggle */}
         <button
           onClick={onToggleVisualizer}
-          title="Bật/Tắt sóng âm thanh Spy"
+          title={getTranslation(language, 'player.visualizer')}
           style={showVisualizer ? {
             color: accentColor,
             backgroundColor: `${accentColor}18`,

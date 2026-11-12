@@ -60,6 +60,16 @@ input[type="range"] {
 }
 
 /* ═════════════════════════════════════════════════════════════════════
+   RAM OPTIMIZER (MỤC 3): TẠM DỪNG TOÀN BỘ CSS ANIMATIONS KHI ẨN / THU NHỎ
+   ═════════════════════════════════════════════════════════════════════ */
+.app-minimized *,
+.app-minimized *::before,
+.app-minimized *::after {
+  animation-play-state: paused !important;
+  transition: none !important;
+}
+
+/* ═════════════════════════════════════════════════════════════════════
    LIGHT MODE: SPY PAPER INTELLIGENCE DOSSIER (BẠCH BÁO ĐẶC NHIỆM)
    ═════════════════════════════════════════════════════════════════════ */
 .light-mode body {

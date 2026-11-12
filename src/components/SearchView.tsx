@@ -170,7 +170,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
         <h2 className="text-lg font-bold tracking-tight text-white mb-3">
           {getTranslation(language, 'search.title')}
         </h2>
-        <div className="relative z-30" ref={searchContainerRef}>
+        <div className="relative z-10" ref={searchContainerRef}>
           <form onSubmit={handleSubmit} className="relative flex items-center">
             <Search className="w-4 h-4 text-[#666] absolute left-3.5 pointer-events-none" />
             <input

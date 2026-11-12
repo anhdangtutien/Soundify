@@ -6,6 +6,7 @@ import {
 import { Track, UserAlbum } from '../types';
 import { TrackTable } from './TrackTable';
 import { deduplicateTracks, getContrastTextColor } from '../utils/trackUtils';
+import { LanguageCode, getTranslation } from '../locales/i18n';
 
 interface AlbumsViewProps {
   albums: UserAlbum[];
@@ -20,6 +21,7 @@ interface AlbumsViewProps {
   onToggleFavorite: (trackId: string) => void;
   onTogglePlay: () => void;
   accentColor?: string;
+  language?: LanguageCode;
 }
 
 export const AlbumsView: React.FC<AlbumsViewProps> = ({
@@ -35,6 +37,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
   onToggleFavorite,
   onTogglePlay,
   accentColor = '#ff2a55',
+  language = 'vi',
 }) => {
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -58,7 +61,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
   const formatTotalTime = (tracks: Track[]) => {
     const totalSecs = tracks.reduce((acc, t) => acc + (t.duration_secs || 0), 0);
     const mins = Math.floor(totalSecs / 60);
-    return `${mins} phút`;
+    return getTranslation(language, 'album.minutes', { mins });
   };
 
   return (
@@ -75,41 +78,53 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
             </button>
 
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-[#ff2a55] flex items-center justify-center text-white shadow-[0_0_12px_rgba(255,42,85,0.4)]">
+              <div 
+                className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
+                style={{ 
+                  backgroundColor: accentColor, 
+                  color: getContrastTextColor(accentColor),
+                  boxShadow: `0 0 12px ${accentColor}40`
+                }}
+              >
                 <FolderPlus className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white tracking-tight">Tạo Album Mới</h3>
-                <p className="text-[11px] text-[#777] font-mono">Tự lập danh sách phát theo sở thích cá nhân</p>
+                <h3 className="text-base font-bold text-white tracking-tight">
+                  {getTranslation(language, 'album.modalTitle')}
+                </h3>
+                <p className="text-[11px] text-[#777] font-mono">
+                  {getTranslation(language, 'album.modalSubtitle')}
+                </p>
               </div>
             </div>
 
             <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div>
                 <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#888] mb-1.5 font-mono">
-                  Tên Album <span className="text-[#ff2a55]">*</span>
+                  {getTranslation(language, 'album.nameLabel')} <span style={{ color: accentColor }}>*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Ví dụ: Nhạc Tập Trung Làm Việc, V-Pop Chill..."
-                  className="w-full px-3.5 py-2.5 bg-[#121218] border border-[#22222e] focus:border-[#ff2a55] text-white rounded-xl text-xs outline-none transition-colors"
+                  placeholder={getTranslation(language, 'album.namePlaceholder')}
+                  className="w-full px-3.5 py-2.5 bg-[#121218] border border-[#22222e] text-white rounded-xl text-xs outline-none transition-colors"
+                  style={{ borderColor: newTitle ? accentColor : undefined }}
                   autoFocus
                 />
               </div>
 
               <div>
                 <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#888] mb-1.5 font-mono">
-                  Mô tả (Tùy chọn)
+                  {getTranslation(language, 'album.descLabel')}
                 </label>
                 <textarea
                   value={newDesc}
                   onChange={(e) => setNewDesc(e.target.value)}
-                  placeholder="Mô tả cảm xúc hoặc thể loại của album này..."
+                  placeholder={getTranslation(language, 'album.descPlaceholder')}
                   rows={3}
-                  className="w-full px-3.5 py-2.5 bg-[#121218] border border-[#22222e] focus:border-[#ff2a55] text-white rounded-xl text-xs outline-none transition-colors resize-none"
+                  className="w-full px-3.5 py-2.5 bg-[#121218] border border-[#22222e] text-white rounded-xl text-xs outline-none transition-colors resize-none"
                 />
               </div>
 
@@ -119,14 +134,19 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                   onClick={() => setIsCreateModalOpen(false)}
                   className="px-4 py-2 rounded-xl bg-[#14141c] hover:bg-[#1e1e28] text-xs font-semibold text-[#888] hover:text-white transition-colors cursor-pointer"
                 >
-                  Hủy
+                  {getTranslation(language, 'album.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={!newTitle.trim()}
-                  className="px-5 py-2 rounded-xl bg-[#ff2a55] hover:bg-white hover:text-black text-xs font-bold text-white transition-all shadow-[0_0_12px_rgba(255,42,85,0.35)] cursor-pointer disabled:opacity-50"
+                  style={{
+                    backgroundColor: accentColor,
+                    color: getContrastTextColor(accentColor),
+                    boxShadow: `0 0 12px ${accentColor}40`,
+                  }}
+                  className="px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 hover:opacity-90"
                 >
-                  Tạo Album
+                  {getTranslation(language, 'album.submit')}
                 </button>
               </div>
             </form>
@@ -142,7 +162,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
             className="flex items-center gap-2 text-xs font-semibold text-[#888] hover:text-white transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Quay lại tất cả Album</span>
+            <span>{getTranslation(language, 'album.backToAll')}</span>
           </button>
 
           {/* Album Banner */}
@@ -168,18 +188,18 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                   borderColor: `${accentColor}30`,
                 }}
               >
-                Album Người Dùng
+                {getTranslation(language, 'album.userBadge')}
               </span>
               <h1 className="text-2xl font-black text-white tracking-tight">{selectedAlbum.title}</h1>
               {selectedAlbum.description && (
                 <p className="text-xs text-[#8e8e9f] max-w-xl">{selectedAlbum.description}</p>
               )}
               <div className="text-xs text-[#666] font-mono flex items-center justify-center sm:justify-start gap-3 pt-1">
-                <span>{cleanAlbumTracks.length} bài hát</span>
+                <span>{getTranslation(language, 'album.trackCount', { count: cleanAlbumTracks.length })}</span>
                 <span>•</span>
                 <span>{formatTotalTime(cleanAlbumTracks)}</span>
                 <span>•</span>
-                <span>Tạo lúc {new Date(selectedAlbum.created_at).toLocaleDateString()}</span>
+                <span>{getTranslation(language, 'album.createdAt')} {new Date(selectedAlbum.created_at).toLocaleDateString()}</span>
               </div>
 
               <div className="pt-3 flex items-center justify-center sm:justify-start gap-3">
@@ -194,17 +214,17 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                   className="px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shadow-md disabled:opacity-40 hover:opacity-90"
                 >
                   <Play className="w-4 h-4 fill-current ml-0.5" />
-                  <span>Phát tất cả</span>
+                  <span>{getTranslation(language, 'album.playAll')}</span>
                 </button>
                 <button
                   onClick={() => {
-                    if (confirm(`Bạn có chắc chắn muốn xóa album "${selectedAlbum.title}"?`)) {
+                    if (confirm(getTranslation(language, 'album.deleteConfirm', { title: selectedAlbum.title }))) {
                       onDeleteAlbum(selectedAlbum.id);
                       setSelectedAlbumId(null);
                     }
                   }}
                   className="p-2.5 rounded-xl bg-[#14141c] hover:bg-red-500/20 text-[#888] hover:text-red-400 border border-[#22222e] transition-colors cursor-pointer"
-                  title="Xóa Album này"
+                  title={getTranslation(language, 'album.deleteTitle')}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -216,15 +236,17 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
           <div>
             <h2 className="text-xs font-bold text-white uppercase tracking-wider font-mono mb-3 flex items-center gap-2">
               <Music className="w-3.5 h-3.5" style={{ color: accentColor }} />
-              Danh sách bài hát trong Album ({cleanAlbumTracks.length})
+              {getTranslation(language, 'album.trackList', { count: cleanAlbumTracks.length })}
             </h2>
 
             {cleanAlbumTracks.length === 0 ? (
               <div className="text-center py-12 bg-[#08080a] border border-[#161620] rounded-2xl p-6">
                 <Disc className="w-10 h-10 text-[#444] mx-auto mb-2" />
-                <p className="text-xs font-bold text-white">Album chưa có bài hát nào</p>
+                <p className="text-xs font-bold text-white">
+                  {getTranslation(language, 'album.noTracks')}
+                </p>
                 <p className="text-[11px] text-[#666] mt-1 max-w-sm mx-auto">
-                  Bạn có thể bấm vào biểu tượng dấu cộng <span className="font-bold" style={{ color: accentColor }}>+</span> trên bất kỳ bài hát nào ở tab Thịnh hành, Tìm kiếm để thêm vào album này!
+                  {getTranslation(language, 'album.noTracksHint')}
                 </p>
               </div>
             ) : (
@@ -274,7 +296,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                           onRemoveTrackFromAlbum(selectedAlbum.id, track.id);
                         }}
                         className="p-1.5 text-[#555] hover:text-red-400 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer"
-                        title="Gỡ khỏi Album"
+                        title={getTranslation(language, 'album.removeTrack')}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -292,9 +314,11 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
             <div>
               <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
                 <Layers className="w-5 h-5" style={{ color: accentColor }} />
-                Album Của Bạn
+                {getTranslation(language, 'album.title')}
               </h1>
-              <p className="text-xs text-[#777] mt-0.5 font-mono">Tự do phân loại &amp; sáng tạo danh sách bài hát yêu thích</p>
+              <p className="text-xs text-[#777] mt-0.5 font-mono">
+                {getTranslation(language, 'album.subtitle')}
+              </p>
             </div>
 
             <button
@@ -307,7 +331,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
               className="px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 hover:opacity-90"
             >
               <Plus className="w-4 h-4" />
-              <span>Tạo Album mới</span>
+              <span>{getTranslation(language, 'album.createNew')}</span>
             </button>
           </div>
 
@@ -319,9 +343,11 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
               >
                 <FolderPlus className="w-6 h-6" />
               </div>
-              <h3 className="text-sm font-bold text-white">Chưa có album nào</h3>
+              <h3 className="text-sm font-bold text-white">
+                {getTranslation(language, 'album.empty')}
+              </h3>
               <p className="text-xs text-[#777] max-w-sm mx-auto">
-                Hãy tạo album đầu tiên để gom các bản nhạc yêu thích vào một danh sách phát riêng!
+                {getTranslation(language, 'album.emptyDesc')}
               </p>
               <div className="pt-2">
                 <button
@@ -333,7 +359,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                   className="px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md inline-flex items-center gap-2 hover:opacity-90"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Tạo ngay bây giờ</span>
+                  <span>{getTranslation(language, 'album.createNow')}</span>
                 </button>
               </div>
             </div>
@@ -376,7 +402,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                       {album.title}
                     </p>
                     <p className="text-[11px] text-[#777] font-mono mt-0.5">
-                      {album.tracks.length} bài hát
+                      {getTranslation(language, 'album.trackCount', { count: album.tracks.length })}
                     </p>
                   </div>
                 );

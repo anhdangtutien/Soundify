@@ -4,6 +4,8 @@ import {
   Cpu, Sparkles, Play, Music, RefreshCw, Loader2, CheckCircle2, Sliders, Zap
 } from 'lucide-react';
 import { Track, User, RecommendationResult, TrainingReport } from '../types';
+import { LanguageCode, getTranslation } from '../locales/i18n';
+import { getContrastTextColor } from '../utils/trackUtils';
 
 interface AiMixViewProps {
   currentUser: User | null;
@@ -12,6 +14,8 @@ interface AiMixViewProps {
   onOpenAuth: () => void;
   smartDjEnabled: boolean;
   onToggleSmartDj: () => void;
+  accentColor?: string;
+  language?: LanguageCode;
 }
 
 export const AiMixView: React.FC<AiMixViewProps> = ({
@@ -21,6 +25,8 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
   onOpenAuth,
   smartDjEnabled,
   onToggleSmartDj,
+  accentColor = '#ff2a55',
+  language = 'vi',
 }) => {
   const [training, setTraining] = useState(false);
   const [trainingProgress, setTrainingProgress] = useState(0);
@@ -79,18 +85,29 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
   return (
     <div className="flex-1 p-8 overflow-y-auto max-w-5xl mx-auto select-none">
       {/* Header Banner — Spy AI Studio */}
-      <div className="mb-6 p-5 rounded-2xl bg-[#0a0a0d] border border-[#161620] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="mb-6 p-5 rounded-2xl bg-[#0a0a0d] border border-[#161620] flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[10px] font-semibold text-[#ff2a55] uppercase px-2 py-0.5 rounded bg-[#181014] border border-[#ff2a55]/30 font-mono flex items-center gap-1">
-              <Cpu className="w-3 h-3 text-[#ff2a55]" />
-              AI Music Engine
+            <span 
+              className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded border font-mono flex items-center gap-1"
+              style={{
+                color: accentColor,
+                backgroundColor: `${accentColor}15`,
+                borderColor: `${accentColor}30`,
+              }}
+            >
+              <Cpu className="w-3 h-3" style={{ color: accentColor }} />
+              {getTranslation(language, 'aimix.badge')}
             </span>
-            <span className="text-[10px] text-[#777] font-mono">On-device • Covert Analytics</span>
+            <span className="text-[10px] text-[#777] font-mono">
+              {getTranslation(language, 'aimix.badgeSub')}
+            </span>
           </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Gợi ý thông minh &amp; Smart DJ</h2>
-          <p className="text-xs text-[#8e8e9f] mt-1 max-w-lg">
-            Hệ thống AI tự học gu âm nhạc từ tần suất nghe, bài hát yêu thích và thời lượng để cá nhân hóa danh sách đề xuất. Dữ liệu xử lý 100% trên máy nội bộ.
+          <h2 className="text-xl font-bold text-white tracking-tight">
+            {getTranslation(language, 'aimix.title')}
+          </h2>
+          <p className="text-xs text-[#8e8e9f] mt-1 max-w-lg leading-relaxed">
+            {getTranslation(language, 'aimix.subtitle')}
           </p>
         </div>
 
@@ -98,17 +115,22 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
           <button
             onClick={handleTrainAi}
             disabled={training}
-            className="px-4 py-2 bg-[#ff2a55] hover:bg-white hover:text-black text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 shadow-[0_0_12px_rgba(255,42,85,0.35)] cursor-pointer disabled:opacity-50"
+            style={{
+              backgroundColor: accentColor,
+              color: getContrastTextColor(accentColor),
+              boxShadow: `0 0 12px ${accentColor}40`,
+            }}
+            className="px-4 py-2 hover:opacity-90 active:scale-95 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
           >
             {training ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Đang phân tích ({trainingProgress}%)...</span>
+                <span>{getTranslation(language, 'aimix.analyzing', { progress: trainingProgress })}</span>
               </>
             ) : (
               <>
                 <Zap className="w-3.5 h-3.5 fill-current" />
-                <span>Huấn luyện lại AI</span>
+                <span>{getTranslation(language, 'aimix.trainBtn')}</span>
               </>
             )}
           </button>
@@ -116,21 +138,24 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
       </div>
 
       {/* Smart DJ Toggle Card */}
-      <div className="mb-6 p-4 rounded-xl bg-[#0d0d12] border border-[#1a1a24] flex items-center justify-between">
+      <div className="mb-6 p-4 rounded-xl bg-[#0d0d12] border border-[#1a1a24] flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-[#14141c] flex items-center justify-center text-white border border-[#222]">
-            <Sliders className="w-4 h-4 text-[#ff2a55]" />
+            <Sliders className="w-4 h-4" style={{ color: accentColor }} />
           </div>
           <div>
-            <h3 className="text-xs font-bold text-white">Chế độ Smart DJ tự động</h3>
-            <p className="text-[11px] text-[#777]">Tự động phát bài hát phù hợp nhất khi kết thúc danh sách chờ hiện tại</p>
+            <h3 className="text-xs font-bold text-white">
+              {getTranslation(language, 'aimix.smartDjTitle')}
+            </h3>
+            <p className="text-[11px] text-[#777]">
+              {getTranslation(language, 'aimix.smartDjDesc')}
+            </p>
           </div>
         </div>
         <button
           onClick={onToggleSmartDj}
-          className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
-            smartDjEnabled ? 'bg-[#ff2a55]' : 'bg-[#22222a]'
-          }`}
+          className="w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors"
+          style={{ backgroundColor: smartDjEnabled ? accentColor : '#22222a' }}
         >
           <div
             className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
@@ -144,25 +169,31 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
       {report && (
         <div className="mb-6 p-4 rounded-xl bg-[#0d0d12] border border-[#22222c] space-y-2">
           <div className="flex items-center gap-2 text-xs font-bold text-white">
-            <CheckCircle2 className="w-4 h-4 text-[#ff2a55]" />
-            <span>Đã hoàn tất phân tích gu âm nhạc ({report.status})</span>
+            <CheckCircle2 className="w-4 h-4" style={{ color: accentColor }} />
+            <span>{getTranslation(language, 'aimix.reportComplete', { status: report.status })}</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
             <div className="p-2.5 rounded-lg bg-[#101016] border border-[#1c1c24]">
-              <span className="text-[10px] text-[#777] font-mono">Dữ liệu phân tích</span>
-              <p className="text-sm font-bold text-white mt-0.5">{report.tracks_analyzed} bài hát</p>
+              <span className="text-[10px] text-[#777] font-mono">{getTranslation(language, 'aimix.analyzedData')}</span>
+              <p className="text-sm font-bold text-white mt-0.5">
+                {getTranslation(language, 'aimix.tracksCount', { count: report.tracks_analyzed })}
+              </p>
             </div>
             <div className="p-2.5 rounded-lg bg-[#101016] border border-[#1c1c24]">
-              <span className="text-[10px] text-[#777] font-mono">Độ chính xác</span>
-              <p className="text-sm font-bold text-[#ff2a55] mt-0.5">{(report.accuracy * 100).toFixed(1)}%</p>
+              <span className="text-[10px] text-[#777] font-mono">{getTranslation(language, 'aimix.accuracy')}</span>
+              <p className="text-sm font-bold mt-0.5" style={{ color: accentColor }}>{(report.accuracy * 100).toFixed(1)}%</p>
             </div>
             <div className="p-2.5 rounded-lg bg-[#101016] border border-[#1c1c24]">
-              <span className="text-[10px] text-[#777] font-mono">Vòng lặp (Epochs)</span>
-              <p className="text-sm font-bold text-white mt-0.5">{report.epochs} vòng</p>
+              <span className="text-[10px] text-[#777] font-mono">{getTranslation(language, 'aimix.epochs')}</span>
+              <p className="text-sm font-bold text-white mt-0.5">
+                {getTranslation(language, 'aimix.epochsCount', { count: report.epochs })}
+              </p>
             </div>
             <div className="p-2.5 rounded-lg bg-[#101016] border border-[#1c1c24]">
-              <span className="text-[10px] text-[#777] font-mono">Thể loại hàng đầu</span>
-              <p className="text-sm font-bold text-white mt-0.5 truncate">{report.top_genres?.join(', ') || 'Đa dạng'}</p>
+              <span className="text-[10px] text-[#777] font-mono">{getTranslation(language, 'aimix.topGenres')}</span>
+              <p className="text-sm font-bold text-white mt-0.5 truncate">
+                {report.top_genres?.join(', ') || getTranslation(language, 'aimix.diverse')}
+              </p>
             </div>
           </div>
         </div>
@@ -172,8 +203,8 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
       <div>
         <div className="flex items-center justify-between mb-3 border-b border-[#161620] pb-2">
           <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 text-[#ff2a55]" />
-            Đề xuất dành riêng cho bạn ({recommendations.length})
+            <Sparkles className="w-3.5 h-3.5" style={{ color: accentColor }} />
+            {getTranslation(language, 'aimix.forYou', { count: recommendations.length })}
           </h3>
           <button
             onClick={fetchRecommendations}
@@ -181,14 +212,14 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
             className="text-[11px] text-[#777] hover:text-white flex items-center gap-1 cursor-pointer font-mono"
           >
             <RefreshCw className={`w-3 h-3 ${loadingRecs ? 'animate-spin' : ''}`} />
-            <span>Làm mới</span>
+            <span>{getTranslation(language, 'aimix.refresh')}</span>
           </button>
         </div>
 
         {recommendations.length === 0 ? (
           <div className="text-center py-12 text-[#666]">
-            <p className="text-xs">Chưa có bài hát phù hợp trong thư viện để đề xuất.</p>
-            <p className="text-[11px] text-[#555] mt-1">Hãy nghe thêm nhạc để AI ghi nhận gu âm nhạc của bạn.</p>
+            <p className="text-xs">{getTranslation(language, 'aimix.noRecs')}</p>
+            <p className="text-[11px] text-[#555] mt-1">{getTranslation(language, 'aimix.noRecsHint')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
@@ -196,7 +227,7 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
               <div
                 key={i}
                 onClick={() => onPlayTrack(rec.track)}
-                className="p-3 rounded-xl bg-[#09090c] hover:bg-[#121218] border border-[#161620] hover:border-[#ff2a55]/40 transition-all flex items-center justify-between gap-3 cursor-pointer group shadow-sm"
+                className="p-3 rounded-xl bg-[#09090c] hover:bg-[#121218] border border-[#161620] transition-all flex items-center justify-between gap-3 cursor-pointer group shadow-sm"
               >
                 <div className="flex items-center gap-3 overflow-hidden">
                   <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#161620] flex-shrink-0 relative">
@@ -212,7 +243,9 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
                     </div>
                   </div>
                   <div className="overflow-hidden">
-                    <p className="text-xs font-semibold text-white truncate group-hover:text-[#ff2a55] transition-colors">{rec.track.title}</p>
+                    <p className="text-xs font-semibold text-white truncate transition-colors" title={rec.track.title}>
+                      {rec.track.title}
+                    </p>
                     <p className="text-[11px] text-[#8e8e9f] truncate">{rec.track.artist}</p>
                     {rec.reason && (
                       <p className="text-[10px] text-[#666] truncate mt-0.5">{rec.reason}</p>
@@ -221,7 +254,14 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#161620] text-[#ff2a55] border border-[#ff2a55]/30">
+                  <span 
+                    className="text-[10px] font-mono px-2 py-0.5 rounded border"
+                    style={{
+                      color: accentColor,
+                      backgroundColor: `${accentColor}15`,
+                      borderColor: `${accentColor}30`,
+                    }}
+                  >
                     {Math.round(rec.match_score * 100)}% Match
                   </span>
                 </div>

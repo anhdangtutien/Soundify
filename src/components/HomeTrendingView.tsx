@@ -34,135 +34,415 @@ const CATEGORIES: CategoryFilter[] = [
   { id: 'lofi', label: 'Lo-Fi Chillout', icon: '☕' },
 ];
 
-// Curated Top Hits prioritized: US/UK -> J-Pop/K-Pop -> Vietnam
-const INITIAL_CURATED_HITS: SearchResult[] = [
-  {
-    title: 'Die With A Smile',
-    artist: 'Lady Gaga & Bruno Mars',
-    album: 'Billboard Hot 100 #1',
-    duration_secs: 251,
-    source: 'youtube',
-    url_or_id: 'kPa7bsKwL-8',
-    thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    title: 'APT. (feat. Bruno Mars)',
-    artist: 'ROSÉ & Bruno Mars',
-    album: 'Global Viral Sensation',
-    duration_secs: 173,
-    source: 'youtube',
-    url_or_id: 'ekr2nIex040',
-    thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    title: 'Espresso',
-    artist: 'Sabrina Carpenter',
-    album: 'Short n\' Sweet (Global Top 10)',
-    duration_secs: 175,
-    source: 'youtube',
-    url_or_id: 'eVli-tstM5E',
-    thumbnail: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    title: 'Birds of a Feather',
-    artist: 'Billie Eilish',
-    album: 'Hit Me Hard and Soft',
-    duration_secs: 196,
-    source: 'youtube',
-    url_or_id: 'V9PVRfjEBTI',
-    thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    title: 'Bling-Bang-Bang-Born',
-    artist: 'Creepy Nuts',
-    album: 'J-Pop Global Phenomenon',
-    duration_secs: 172,
-    source: 'youtube',
-    url_or_id: 'mLW35YMz1eo',
-    thumbnail: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    title: 'Idol (アイドル)',
-    artist: 'YOASOBI',
-    album: 'Oshi no Ko / J-Pop All-Kill',
-    duration_secs: 213,
-    source: 'youtube',
-    url_or_id: 'ZRtdQ81jPUQ',
-    thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    title: 'Supernova',
-    artist: 'aespa',
-    album: 'Armageddon - K-Pop Smash',
-    duration_secs: 178,
-    source: 'youtube',
-    url_or_id: 'phuiAIQAx40',
-    thumbnail: 'https://images.unsplash.com/photo-1526478806334-5fd488fcaabc?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    title: 'Magnetic',
-    artist: 'ILLIT',
-    album: 'SUPER REAL ME',
-    duration_secs: 160,
-    source: 'youtube',
-    url_or_id: 'Vk5-c_v4gMU',
-    thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    title: 'Đừng Làm Trái Tim Anh Đau',
-    artist: 'Sơn Tùng M-TP',
-    album: 'V-Pop Quán Quân 2024 - 2025',
-    duration_secs: 326,
-    source: 'youtube',
-    url_or_id: 'abPmZCZZrFA',
-    thumbnail: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    title: 'Từng Quen',
-    artist: 'Wren Evans',
-    album: 'Loi Choi - The New V-Pop Wave',
-    duration_secs: 174,
-    source: 'youtube',
-    url_or_id: 'Vq9sX8j7mI4',
-    thumbnail: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    title: 'Standing Next to You',
-    artist: 'Jung Kook',
-    album: 'GOLDEN (Global Sensation)',
-    duration_secs: 206,
-    source: 'youtube',
-    url_or_id: 'UNo0TGZuv4w',
-    thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    title: 'Night Dancer',
-    artist: 'imase',
-    album: 'Viral J-Pop Anthem',
-    duration_secs: 210,
-    source: 'youtube',
-    url_or_id: 'kFCOg7p_b6k',
-    thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    title: 'Gặp Lại Năm Ta 60',
-    artist: 'Orange',
-    album: 'Cam\'On - Vietnamese Soul',
-    duration_secs: 236,
-    source: 'youtube',
-    url_or_id: 'XWn1kFp1v64',
-    thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    title: 'Cruel Summer',
-    artist: 'Taylor Swift',
-    album: 'Lover (The Eras Tour Live)',
-    duration_secs: 178,
-    source: 'youtube',
-    url_or_id: 'ic8j13piAhQ',
-    thumbnail: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=500&auto=format&fit=crop&q=60',
-  },
-];
+// Curated Top Hits categorized: Real songs only, strictly no chart review / ranking countdown videos
+const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
+  usuk: [
+    {
+      title: 'Die With A Smile',
+      artist: 'Lady Gaga & Bruno Mars',
+      album: 'Billboard Hot 100 #1',
+      duration_secs: 251,
+      source: 'youtube',
+      url_or_id: 'kPa7bsKwL-8',
+      thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'APT. (feat. Bruno Mars)',
+      artist: 'ROSÉ & Bruno Mars',
+      album: 'Global Viral Sensation',
+      duration_secs: 173,
+      source: 'youtube',
+      url_or_id: 'ekr2nIex040',
+      thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Espresso',
+      artist: 'Sabrina Carpenter',
+      album: "Short n' Sweet (Global Top 10)",
+      duration_secs: 175,
+      source: 'youtube',
+      url_or_id: 'eVli-tstM5E',
+      thumbnail: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Birds of a Feather',
+      artist: 'Billie Eilish',
+      album: 'Hit Me Hard and Soft',
+      duration_secs: 196,
+      source: 'youtube',
+      url_or_id: 'V9PVRfjEBTI',
+      thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Taste',
+      artist: 'Sabrina Carpenter',
+      album: "Short n' Sweet",
+      duration_secs: 157,
+      source: 'youtube',
+      url_or_id: 'T62mPyXkwn8',
+      thumbnail: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Cruel Summer',
+      artist: 'Taylor Swift',
+      album: 'Lover (The Eras Tour Live)',
+      duration_secs: 178,
+      source: 'youtube',
+      url_or_id: 'ic8j13piAhQ',
+      thumbnail: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Good Luck, Babe!',
+      artist: 'Chappell Roan',
+      album: 'Pop Sensation 2024',
+      duration_secs: 218,
+      source: 'youtube',
+      url_or_id: '1RKqOmSkGgM',
+      thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Beautiful Things',
+      artist: 'Benson Boone',
+      album: 'Fireworks & Rollerblades',
+      duration_secs: 180,
+      source: 'youtube',
+      url_or_id: 'Oa_RSwwpPaA',
+      thumbnail: 'https://images.unsplash.com/photo-1526478806334-5fd488fcaabc?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Lose Control',
+      artist: 'Teddy Swims',
+      album: "I've Tried Everything But Therapy",
+      duration_secs: 210,
+      source: 'youtube',
+      url_or_id: 'GZ3zL7kT6_c',
+      thumbnail: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Too Sweet',
+      artist: 'Hozier',
+      album: 'Unheard',
+      duration_secs: 251,
+      source: 'youtube',
+      url_or_id: 'aEZ821z9Z8c',
+      thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=60',
+    },
+  ],
+  kpop_jpop: [
+    {
+      title: 'Bling-Bang-Bang-Born',
+      artist: 'Creepy Nuts',
+      album: 'J-Pop Global Phenomenon',
+      duration_secs: 172,
+      source: 'youtube',
+      url_or_id: 'mLW35YMz1eo',
+      thumbnail: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Idol (アイドル)',
+      artist: 'YOASOBI',
+      album: 'Oshi no Ko / J-Pop All-Kill',
+      duration_secs: 213,
+      source: 'youtube',
+      url_or_id: 'ZRtdQ81jPUQ',
+      thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Supernova',
+      artist: 'aespa',
+      album: 'Armageddon - K-Pop Smash',
+      duration_secs: 178,
+      source: 'youtube',
+      url_or_id: 'phuiAIQAx40',
+      thumbnail: 'https://images.unsplash.com/photo-1526478806334-5fd488fcaabc?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Magnetic',
+      artist: 'ILLIT',
+      album: 'SUPER REAL ME',
+      duration_secs: 160,
+      source: 'youtube',
+      url_or_id: 'Vk5-c_v4gMU',
+      thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Standing Next to You',
+      artist: 'Jung Kook',
+      album: 'GOLDEN (Global Sensation)',
+      duration_secs: 206,
+      source: 'youtube',
+      url_or_id: 'UNo0TGZuv4w',
+      thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Night Dancer',
+      artist: 'imase',
+      album: 'Viral J-Pop Anthem',
+      duration_secs: 210,
+      source: 'youtube',
+      url_or_id: 'kFCOg7p_b6k',
+      thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Whiplash',
+      artist: 'aespa',
+      album: 'The 5th Mini Album',
+      duration_secs: 184,
+      source: 'youtube',
+      url_or_id: 'jWQx2f-CErU',
+      thumbnail: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Mantra',
+      artist: 'JENNIE',
+      album: 'Solo Comeback 2024',
+      duration_secs: 136,
+      source: 'youtube',
+      url_or_id: 'bCO7V325zKk',
+      thumbnail: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Specialz',
+      artist: 'King Gnu',
+      album: 'Jujutsu Kaisen OP',
+      duration_secs: 238,
+      source: 'youtube',
+      url_or_id: 'fHzNLgm_kH8',
+      thumbnail: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Ditto',
+      artist: 'NewJeans',
+      album: 'OMG Single Album',
+      duration_secs: 186,
+      source: 'youtube',
+      url_or_id: 'pSUydWEqKwE',
+      thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=60',
+    },
+  ],
+  vpop: [
+    {
+      title: 'Đừng Làm Trái Tim Anh Đau',
+      artist: 'Sơn Tùng M-TP',
+      album: 'V-Pop Quán Quân 2024 - 2025',
+      duration_secs: 326,
+      source: 'youtube',
+      url_or_id: 'abPmZCZZrFA',
+      thumbnail: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Từng Quen',
+      artist: 'Wren Evans',
+      album: 'Loi Choi - The New V-Pop Wave',
+      duration_secs: 174,
+      source: 'youtube',
+      url_or_id: 'Vq9sX8j7mI4',
+      thumbnail: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Nơi Này Có Anh',
+      artist: 'Sơn Tùng M-TP',
+      album: 'Hit Quốc Dân V-Pop',
+      duration_secs: 279,
+      source: 'youtube',
+      url_or_id: 'FN7ALfpGxiI',
+      thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Thủy Triều',
+      artist: 'Quang Hùng MasterD',
+      album: 'Giai Điệu Bắt Tai',
+      duration_secs: 202,
+      source: 'youtube',
+      url_or_id: 'eUf9N9d_x7k',
+      thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Không Thể Say',
+      artist: 'HIEUTHUHAI',
+      album: 'Ai Cũng Phải Bắt Đầu Từ Đâu Đó',
+      duration_secs: 215,
+      source: 'youtube',
+      url_or_id: 'J4s8G3k2UeI',
+      thumbnail: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Gặp Lại Năm Ta 60',
+      artist: 'Orange',
+      album: "Cam'On - Vietnamese Soul",
+      duration_secs: 236,
+      source: 'youtube',
+      url_or_id: 'XWn1kFp1v64',
+      thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Cắt Đôi Nỗi Sầu',
+      artist: 'Tăng Duy Tân',
+      album: 'V-Pop Viral Sensation',
+      duration_secs: 195,
+      source: 'youtube',
+      url_or_id: 'a18k_H2eQeA',
+      thumbnail: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Bật Tình Yêu Lên',
+      artist: 'Tăng Duy Tân & Hòa Minzy',
+      album: 'Song Ca Nổi Bật',
+      duration_secs: 204,
+      source: 'youtube',
+      url_or_id: 'yL7F3R7G7t0',
+      thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Ngày Đầu Tiên',
+      artist: 'Đức Phúc',
+      album: 'Tình Ca Lãng Mạn',
+      duration_secs: 210,
+      source: 'youtube',
+      url_or_id: 'dM_1YkK6pFs',
+      thumbnail: 'https://images.unsplash.com/photo-1526478806334-5fd488fcaabc?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Nấu Ăn Cho Em',
+      artist: 'Đen Vâu (feat. PiaLinh)',
+      album: 'Đen Vâu Hit Collection',
+      duration_secs: 260,
+      source: 'youtube',
+      url_or_id: 'tmbPZgU_hI4',
+      thumbnail: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=500&auto=format&fit=crop&q=60',
+    },
+  ],
+  lofi: [
+    {
+      title: 'Snowman (Lofi Version)',
+      artist: 'Lofi Fruits Music',
+      album: 'Chillhop Beats',
+      duration_secs: 154,
+      source: 'youtube',
+      url_or_id: 'b1kbLwvqugk',
+      thumbnail: 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'coffee breath (Lofi)',
+      artist: 'Kudasai',
+      album: 'Falling Beats',
+      duration_secs: 142,
+      source: 'youtube',
+      url_or_id: 'Z6L43FUVCdI',
+      thumbnail: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Affection',
+      artist: 'Jinsang',
+      album: 'Life Collection',
+      duration_secs: 150,
+      source: 'youtube',
+      url_or_id: 'pDkM2Kx943o',
+      thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Controlla',
+      artist: 'Idealism',
+      album: 'Rainy Days',
+      duration_secs: 168,
+      source: 'youtube',
+      url_or_id: 'gR30cRz-W7Y',
+      thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=60',
+    },
+  ],
+  all: [
+    {
+      title: 'Die With A Smile',
+      artist: 'Lady Gaga & Bruno Mars',
+      album: 'Billboard Hot 100 #1',
+      duration_secs: 251,
+      source: 'youtube',
+      url_or_id: 'kPa7bsKwL-8',
+      thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'APT. (feat. Bruno Mars)',
+      artist: 'ROSÉ & Bruno Mars',
+      album: 'Global Viral Sensation',
+      duration_secs: 173,
+      source: 'youtube',
+      url_or_id: 'ekr2nIex040',
+      thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Đừng Làm Trái Tim Anh Đau',
+      artist: 'Sơn Tùng M-TP',
+      album: 'V-Pop Quán Quân 2024 - 2025',
+      duration_secs: 326,
+      source: 'youtube',
+      url_or_id: 'abPmZCZZrFA',
+      thumbnail: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Espresso',
+      artist: 'Sabrina Carpenter',
+      album: "Short n' Sweet (Global Top 10)",
+      duration_secs: 175,
+      source: 'youtube',
+      url_or_id: 'eVli-tstM5E',
+      thumbnail: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Bling-Bang-Bang-Born',
+      artist: 'Creepy Nuts',
+      album: 'J-Pop Global Phenomenon',
+      duration_secs: 172,
+      source: 'youtube',
+      url_or_id: 'mLW35YMz1eo',
+      thumbnail: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Idol (アイドル)',
+      artist: 'YOASOBI',
+      album: 'Oshi no Ko / J-Pop All-Kill',
+      duration_secs: 213,
+      source: 'youtube',
+      url_or_id: 'ZRtdQ81jPUQ',
+      thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Từng Quen',
+      artist: 'Wren Evans',
+      album: 'Loi Choi - The New V-Pop Wave',
+      duration_secs: 174,
+      source: 'youtube',
+      url_or_id: 'Vq9sX8j7mI4',
+      thumbnail: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Supernova',
+      artist: 'aespa',
+      album: 'Armageddon - K-Pop Smash',
+      duration_secs: 178,
+      source: 'youtube',
+      url_or_id: 'phuiAIQAx40',
+      thumbnail: 'https://images.unsplash.com/photo-1526478806334-5fd488fcaabc?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Magnetic',
+      artist: 'ILLIT',
+      album: 'SUPER REAL ME',
+      duration_secs: 160,
+      source: 'youtube',
+      url_or_id: 'Vk5-c_v4gMU',
+      thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Birds of a Feather',
+      artist: 'Billie Eilish',
+      album: 'Hit Me Hard and Soft',
+      duration_secs: 196,
+      source: 'youtube',
+      url_or_id: 'V9PVRfjEBTI',
+      thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=60',
+    },
+  ],
+};
 
 export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
   onPlaySearchResult,
@@ -173,16 +453,28 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
   accentColor = '#ff2a55',
   language = 'vi',
 }) => {
-  const [trendingTracks, setTrendingTracks] = useState<SearchResult[]>(INITIAL_CURATED_HITS);
+  const [trendingTracks, setTrendingTracks] = useState<SearchResult[]>(CURATED_BY_CATEGORY.usuk);
   const [loading, setLoading] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('usuk');
 
   const fetchTrending = async (category: string) => {
+    const curated = CURATED_BY_CATEGORY[category] || CURATED_BY_CATEGORY.usuk;
+    // Set curated real songs immediately to guarantee authentic music tracks
+    setTrendingTracks(curated);
     setLoading(true);
+
     try {
       const results = await invoke<SearchResult[]>('get_trending_hits', { category });
       if (results && results.length > 0) {
-        setTrendingTracks(results);
+        // Merge fetched tracks with curated tracks (prevent duplicate titles/IDs)
+        const combined = [...results];
+        curated.forEach(item => {
+          const itemTitleNorm = item.title.trim().toLowerCase();
+          if (!combined.some(c => c.url_or_id === item.url_or_id || c.title.trim().toLowerCase() === itemTitleNorm)) {
+            combined.push(item);
+          }
+        });
+        setTrendingTracks(combined);
       }
     } catch (err) {
       console.error('Failed to fetch trending hits:', err);
@@ -234,9 +526,18 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
     }
   };
 
-  const featured = trendingTracks[0] || INITIAL_CURATED_HITS[0];
+  const featured = trendingTracks[0] || CURATED_BY_CATEGORY.usuk[0];
   const top10 = trendingTracks.slice(0, 10);
   const remaining = trendingTracks.slice(10);
+
+  const categories: CategoryFilter[] = [
+    { id: 'usuk', label: 'Billboard US/UK Hot 100', icon: '🌍' },
+    { id: 'kpop_jpop', label: getTranslation(language, 'trending.tagKpopJpop'), icon: '🎌' },
+    { id: 'vpop', label: getTranslation(language, 'trending.tagVpop'), icon: '🇻🇳' },
+    { id: 'audius', label: 'Audius 320K Charts', icon: '⚡' },
+    { id: 'all', label: getTranslation(language, 'trending.tagAll'), icon: '🔥' },
+    { id: 'lofi', label: 'Lo-Fi Chillout', icon: '☕' },
+  ];
 
   return (
     <div className="flex-1 p-6 lg:p-8 overflow-y-auto space-y-7 max-w-7xl mx-auto select-none">
@@ -253,7 +554,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
               }}
             >
               <Crown className="w-3 h-3" style={{ color: accentColor }} />
-              BẢNG XẾP HẠNG TOÀN CẦU #1
+              {getTranslation(language, 'trending.globalRank')}
             </span>
             <span className="text-xs text-[#8e8e9f] font-mono">Top Trending Stream</span>
           </div>
@@ -277,7 +578,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
               className="px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 hover:scale-105 active:scale-95"
             >
               <Play className="w-4 h-4 fill-current ml-0.5" />
-              <span>Phát ngay</span>
+              <span>{getTranslation(language, 'trending.playNow')}</span>
             </button>
             <span className="text-xs font-mono text-[#777]">{formatTime(featured.duration_secs)}</span>
           </div>
@@ -320,7 +621,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
       {/* ─── CATEGORY FILTER PILLS ────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
-          {CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const isActive = activeCategory === cat.id;
             return (
               <button
@@ -345,7 +646,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
           className="p-2 rounded-lg bg-[#0e0e12] hover:bg-[#16161e] text-[#888] hover:text-white border border-[#1e1e26] transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-mono"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} style={{ color: loading ? accentColor : undefined }} />
-          <span className="hidden sm:inline">Cập nhật</span>
+          <span className="hidden sm:inline">{getTranslation(language, 'aimix.refresh')}</span>
         </button>
       </div>
 

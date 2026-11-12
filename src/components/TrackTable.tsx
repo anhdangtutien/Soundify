@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Clock3, Heart, Music, HardDrive, FolderPlus } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { Track } from '../types';
 import { optimizeThumbnailUrl } from '../utils/trackUtils';
+import { LanguageCode, getTranslation } from '../locales/i18n';
 
 interface TrackTableProps {
   tracks: Track[];
@@ -14,7 +15,11 @@ interface TrackTableProps {
   onToggleFavorite: (trackId: string) => void;
   onAddToAlbum?: (track: Track) => void;
   accentColor?: string;
+  language?: LanguageCode;
 }
+
+const ROW_HEIGHT = 54;
+const OVERSCAN = 6;
 
 export const TrackTable: React.FC<TrackTableProps> = ({
   tracks,
@@ -26,7 +31,58 @@ export const TrackTable: React.FC<TrackTableProps> = ({
   onToggleFavorite,
   onAddToAlbum,
   accentColor = '#ff2a55',
+  language = 'vi',
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(800);
+
+  // Virtual Scrolling scroll listener on parent container
+  useEffect(() => {
+    const scrollParent = containerRef.current?.closest('.overflow-y-auto') as HTMLElement;
+    if (!scrollParent) return;
+
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setScrollTop(scrollParent.scrollTop);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    const onResize = () => {
+      setContainerHeight(scrollParent.clientHeight || 800);
+    };
+
+    onResize();
+    scrollParent.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      scrollParent.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
+    };
+  }, []);
+
+  const totalCount = tracks.length;
+  const isVirtual = totalCount > 25;
+
+  let startIndex = 0;
+  let endIndex = totalCount;
+
+  if (isVirtual) {
+    const tableTop = containerRef.current?.offsetTop || 0;
+    const relativeScroll = Math.max(0, scrollTop - tableTop);
+    startIndex = Math.max(0, Math.floor(relativeScroll / ROW_HEIGHT) - OVERSCAN);
+    endIndex = Math.min(totalCount, Math.ceil((relativeScroll + containerHeight) / ROW_HEIGHT) + OVERSCAN);
+  }
+
+  const visibleTracks = isVirtual ? tracks.slice(startIndex, endIndex) : tracks;
+  const topPadding = isVirtual ? startIndex * ROW_HEIGHT : 0;
+  const bottomPadding = isVirtual ? (totalCount - endIndex) * ROW_HEIGHT : 0;
   const formatTime = (secs: number) => {
     if (isNaN(secs) || secs <= 0 || secs > 86400) return '--:--';
     const mins = Math.floor(secs / 60);
@@ -76,30 +132,34 @@ export const TrackTable: React.FC<TrackTableProps> = ({
         <div className="w-14 h-14 rounded-full bg-[#0d0d10] border border-[#1a1a24] flex items-center justify-center text-[#555] mb-3">
           <Music className="w-6 h-6" />
         </div>
-        <h3 className="text-sm font-bold text-white mb-1">Thư viện trống</h3>
+        <h3 className="text-sm font-bold text-white mb-1">
+          {getTranslation(language, 'table.emptyTitle')}
+        </h3>
         <p className="text-xs text-[#777] max-w-sm">
-          Nhấn "Chọn thư mục" ở thanh bên để quét nhạc FLAC/MP3 từ ổ cứng, hoặc tìm kiếm trên YouTube / SoundCloud.
+          {getTranslation(language, 'table.emptyDesc')}
         </p>
       </div>
     );
   }
 
   return (
-    <div className="w-full text-xs select-none">
+    <div ref={containerRef} className="w-full text-xs select-none">
       {/* Header — Spy Minimalist */}
       <div className="grid grid-cols-[40px_1fr_1fr_90px_90px] px-3 py-2 border-b border-[#141418] text-[10px] font-bold text-[#666677] uppercase tracking-wider sticky top-0 bg-black/90 backdrop-blur z-10 font-mono">
         <span className="text-center">#</span>
-        <span>Tiêu đề</span>
-        <span>Album / Nghệ sĩ</span>
-        <span className="text-center">Định dạng</span>
+        <span>{getTranslation(language, 'table.title')}</span>
+        <span>{getTranslation(language, 'table.artistAlbum')}</span>
+        <span className="text-center">{getTranslation(language, 'table.source')}</span>
         <span className="flex items-center justify-end pr-2">
           <Clock3 className="w-3.5 h-3.5" />
         </span>
       </div>
 
-      {/* Rows */}
+      {/* Rows with Top & Bottom Virtual Padding */}
       <div className="divide-y divide-[#101014]">
-        {tracks.map((track, idx) => {
+        {topPadding > 0 && <div style={{ height: `${topPadding}px` }} aria-hidden="true" />}
+        {visibleTracks.map((track, i) => {
+          const idx = isVirtual ? startIndex + i : i;
           const isSelected = currentTrack?.id === track.id;
           const isFav = favorites.has(track.id);
 
@@ -108,10 +168,11 @@ export const TrackTable: React.FC<TrackTableProps> = ({
               key={track.id}
               onDoubleClick={() => onTrackSelect(track)}
               style={{
+                height: `${ROW_HEIGHT}px`,
                 borderLeftColor: isSelected ? accentColor : 'transparent',
                 backgroundColor: isSelected ? `${accentColor}18` : undefined,
               }}
-              className={`grid grid-cols-[40px_1fr_1fr_90px_90px] items-center px-3 py-2 rounded-md transition-colors group cursor-pointer ${
+              className={`grid grid-cols-[40px_1fr_1fr_90px_90px] items-center px-3 rounded-md transition-colors group cursor-pointer ${
                 isSelected
                   ? 'text-white border-l-2'
                   : 'hover:bg-[#0c0c10] text-[#888899] hover:text-white border-l-2 border-transparent'
@@ -197,7 +258,7 @@ export const TrackTable: React.FC<TrackTableProps> = ({
                       e.stopPropagation();
                       onAddToAlbum(track);
                     }}
-                    title="Thêm vào Album"
+                    title={getTranslation(language, 'player.addToAlbum')}
                     className="p-1 transition-colors cursor-pointer opacity-0 group-hover:opacity-100 text-[#666] hover:text-white"
                   >
                     <FolderPlus className="w-3.5 h-3.5" />
@@ -226,6 +287,7 @@ export const TrackTable: React.FC<TrackTableProps> = ({
             </div>
           );
         })}
+        {bottomPadding > 0 && <div style={{ height: `${bottomPadding}px` }} aria-hidden="true" />}
       </div>
     </div>
   );

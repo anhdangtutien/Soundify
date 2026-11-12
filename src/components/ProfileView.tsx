@@ -26,18 +26,20 @@ interface ProfileViewProps {
   onPlayTrack: (track: Track) => void;
   language?: LanguageCode;
   onUpdateLanguage?: (lang: LanguageCode) => void;
+  isNextTrackPopupEnabled?: boolean;
+  onToggleNextTrackPopupEnabled?: () => void;
 }
 
 // 8 Curated Spy / Classified Theme Colors
 export const THEME_PALETTE = [
-  { name: 'Crimson Red', hex: '#FF2A55', desc: 'Báo động đỏ (Mặc định)' },
-  { name: 'Cyber Cyan', hex: '#00E5FF', desc: 'Công nghệ Neon' },
-  { name: 'Solar Gold', hex: '#FFE600', desc: 'Đặc vụ Hoàng kim' },
-  { name: 'Matrix Green', hex: '#10B981', desc: 'Mạng ngầm Terminal' },
-  { name: 'Phantom Violet', hex: '#A855F7', desc: 'Bóng ma Tàng hình' },
-  { name: 'Titanium White', hex: '#FFFFFF', desc: 'Đơn sắc Tối giản' },
-  { name: 'Agent Orange', hex: '#FF6B00', desc: 'Tác chiến Sa mạc' },
-  { name: 'Cobalt Blue', hex: '#3B82F6', desc: 'Tình báo Biển sâu' },
+  { key: 'crimson', name: 'Crimson Red', hex: '#FF2A55', desc: 'Báo động đỏ (Mặc định)' },
+  { key: 'cyan', name: 'Cyber Cyan', hex: '#00E5FF', desc: 'Công nghệ Neon' },
+  { key: 'gold', name: 'Solar Gold', hex: '#FFE600', desc: 'Đặc vụ Hoàng kim' },
+  { key: 'green', name: 'Matrix Green', hex: '#10B981', desc: 'Mạng ngầm Terminal' },
+  { key: 'violet', name: 'Phantom Violet', hex: '#A855F7', desc: 'Bóng ma Tàng hình' },
+  { key: 'white', name: 'Titanium White', hex: '#FFFFFF', desc: 'Đơn sắc Tối giản' },
+  { key: 'orange', name: 'Agent Orange', hex: '#FF6B00', desc: 'Tác chiến Sa mạc' },
+  { key: 'blue', name: 'Cobalt Blue', hex: '#3B82F6', desc: 'Tình báo Biển sâu' },
 ];
 
 // 6 Secret Agent SVG Preset Avatars
@@ -86,6 +88,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onPlayTrack,
   language = 'vi',
   onUpdateLanguage,
+  isNextTrackPopupEnabled = true,
+  onToggleNextTrackPopupEnabled,
 }) => {
   const [stats, setStats] = useState<UserStats>({ total_played: 0, favorite_count: 0, top_artist: null });
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -498,37 +502,39 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 borderColor: `${accentColor}40`
               }}
             >
-              {SUPPORTED_LANGUAGES.find(l => l.code === language)?.flag} {SUPPORTED_LANGUAGES.find(l => l.code === language)?.nativeName}
+              {SUPPORTED_LANGUAGES.find(l => l.code === language)?.tag} • {SUPPORTED_LANGUAGES.find(l => l.code === language)?.nativeName}
             </span>
           </div>
           <p className="text-[11px] text-[#777] mb-3 font-mono">
             {getTranslation(language, 'profile.langDesc')}
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {SUPPORTED_LANGUAGES.map((item) => {
               const isSelected = language === item.code;
               return (
                 <button
                   key={item.code}
                   onClick={() => onUpdateLanguage && onUpdateLanguage(item.code)}
-                  className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                  className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-[#15151e] shadow-[0_0_12px_rgba(255,255,255,0.15)] scale-[1.02]'
                       : 'bg-[#0d0d12] border-[#1e1e28] hover:border-[#333] hover:bg-[#121218]'
                   }`}
                   style={isSelected ? { borderColor: accentColor } : undefined}
                 >
-                  <div className="flex items-center justify-between w-full mb-1">
-                    <span className="text-xl">{item.flag}</span>
+                  <div className="flex items-center justify-between w-full mb-1.5">
+                    <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-[#181824] text-white border border-[#2a2a3a]">
+                      {item.tag}
+                    </span>
                     {isSelected && (
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentColor }}></span>
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: accentColor }}></span>
                     )}
                   </div>
                   <div>
                     <p className={`text-xs font-bold truncate ${isSelected ? 'text-white' : 'text-[#ccc]'}`}>
                       {item.nativeName}
                     </p>
-                    <p className="text-[9px] text-[#666] truncate font-mono">
+                    <p className="text-[10px] text-[#777] truncate font-mono mt-0.5">
                       {item.country}
                     </p>
                   </div>
@@ -557,8 +563,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <Moon className="w-4 h-4 text-indigo-400" />
               </div>
               <div className="overflow-hidden">
-                <p className="text-xs font-bold text-white">🌙 Điệp vụ Ban đêm (Dark Stealth)</p>
-                <p className="text-[10px] text-[#777] font-mono">Nền đen huyền bí, bảo vệ mắt khi nghe nhạc đêm</p>
+                <p className="text-xs font-bold text-white">{getTranslation(language, 'profile.darkStealth')}</p>
+                <p className="text-[10px] text-[#777] font-mono">{getTranslation(language, 'profile.darkStealthDesc')}</p>
               </div>
             </button>
 
@@ -574,8 +580,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <Sun className="w-4 h-4 text-amber-500" />
               </div>
               <div className="overflow-hidden">
-                <p className="text-xs font-bold text-white">☀️ Hồ sơ Mật Ban ngày (Light Dossier)</p>
-                <p className="text-[10px] text-[#777] font-mono">Giao diện giấy hồ sơ tình báo trang nhã, sắc nét</p>
+                <p className="text-xs font-bold text-white">{getTranslation(language, 'profile.lightDossier')}</p>
+                <p className="text-[10px] text-[#777] font-mono">{getTranslation(language, 'profile.lightDossierDesc')}</p>
               </div>
             </button>
           </div>
@@ -610,7 +616,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   </div>
                   <div className="overflow-hidden">
                     <p className="text-xs font-bold text-white truncate">{theme.name}</p>
-                    <p className="text-[10px] text-[#777] truncate font-mono">{theme.desc}</p>
+                    <p className="text-[10px] text-[#777] truncate font-mono">
+                      {getTranslation(language, `palette.${theme.key}`) || theme.desc}
+                    </p>
                   </div>
                 </button>
               );
@@ -624,15 +632,47 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               value={accentColor}
               onChange={(e) => onUpdateAccentColor(e.target.value)}
               className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0 outline-none"
-              title="Chọn màu tùy biến bất kỳ"
+              title={getTranslation(language, 'profile.customHex')}
             />
             <div className="flex-1">
               <p className="text-xs font-semibold text-white">{getTranslation(language, 'profile.customHex')}</p>
-              <p className="text-[10px] text-[#777] font-mono">Bấm vào ô màu để chọn tự do theo sở thích cá nhân</p>
+              <p className="text-[10px] text-[#777] font-mono">{getTranslation(language, 'profile.customHexDesc')}</p>
             </div>
             <span className="text-xs font-mono font-bold px-2.5 py-1 rounded bg-[#161620] border border-[#262634] text-white">
               {accentColor.toUpperCase()}
             </span>
+          </div>
+        </div>
+
+        {/* Next Track Popup Toggle */}
+        <div className="pt-4 border-t border-[#141418]">
+          <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#0d0d12] border border-[#1e1e28]">
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
+              >
+                <Music className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-white">{getTranslation(language, 'profile.autoNextPopup')}</p>
+                <p className="text-[10px] text-[#777] font-mono">{getTranslation(language, 'profile.autoNextPopupDesc')}</p>
+              </div>
+            </div>
+            <button
+              onClick={onToggleNextTrackPopupEnabled}
+              className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer p-0.5 flex-shrink-0 ${
+                isNextTrackPopupEnabled ? '' : 'bg-[#222]'
+              }`}
+              style={{ backgroundColor: isNextTrackPopupEnabled ? accentColor : '#222230' }}
+              title={getTranslation(language, isNextTrackPopupEnabled ? 'popup.disableAuto' : 'popup.enableAuto')}
+            >
+              <div 
+                className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                  isNextTrackPopupEnabled ? 'translate-x-6' : 'translate-x-0'
+                }`}
+              />
+            </button>
           </div>
         </div>
 

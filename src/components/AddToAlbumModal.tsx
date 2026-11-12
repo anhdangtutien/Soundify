@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Plus, FolderPlus, Check, Disc, Music } from 'lucide-react';
 import { Track, UserAlbum } from '../types';
+import { LanguageCode, getTranslation } from '../locales/i18n';
 
 interface AddToAlbumModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface AddToAlbumModalProps {
   albums: UserAlbum[];
   onAddTrackToAlbum: (albumId: string, track: Track) => void;
   onCreateAlbum: (title: string, description: string) => UserAlbum;
+  language?: LanguageCode;
 }
 
 const normalizeStr = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -20,6 +22,7 @@ export const AddToAlbumModal: React.FC<AddToAlbumModalProps> = ({
   albums,
   onAddTrackToAlbum,
   onCreateAlbum,
+  language = 'vi',
 }) => {
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [newAlbumTitle, setNewAlbumTitle] = useState('');
@@ -78,7 +81,7 @@ export const AddToAlbumModal: React.FC<AddToAlbumModalProps> = ({
             <FolderPlus className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white tracking-tight">Thêm vào Album</h3>
+            <h3 className="text-sm font-bold text-white tracking-tight">{getTranslation(language, 'player.addToAlbum')}</h3>
             <p className="text-[11px] text-[#777] truncate max-w-[220px]" title={trackToAdd.title}>
               {trackToAdd.title}
             </p>
@@ -92,7 +95,7 @@ export const AddToAlbumModal: React.FC<AddToAlbumModalProps> = ({
               required
               value={newAlbumTitle}
               onChange={(e) => setNewAlbumTitle(e.target.value)}
-              placeholder="Nhập tên album mới..."
+              placeholder={getTranslation(language, 'album.namePlaceholder') || "Album name..."}
               className="w-full px-3 py-2 bg-[#121218] border border-[#22222e] focus:border-[#ff2a55] text-white rounded-xl text-xs outline-none transition-colors"
               autoFocus
             />
@@ -102,14 +105,14 @@ export const AddToAlbumModal: React.FC<AddToAlbumModalProps> = ({
                 onClick={() => setIsCreatingNew(false)}
                 className="px-3 py-1.5 rounded-lg bg-[#14141c] hover:bg-[#1e1e28] text-xs font-semibold text-[#888] hover:text-white transition-colors cursor-pointer"
               >
-                Hủy
+                {getTranslation(language, 'popup.close')}
               </button>
               <button
                 type="submit"
                 disabled={!newAlbumTitle.trim()}
                 className="px-3.5 py-1.5 rounded-lg bg-[#ff2a55] hover:bg-white hover:text-black text-xs font-bold text-white transition-all cursor-pointer disabled:opacity-50"
               >
-                Tạo &amp; Thêm
+                {getTranslation(language, 'toast.addedToAlbum')}
               </button>
             </div>
           </form>
@@ -120,12 +123,12 @@ export const AddToAlbumModal: React.FC<AddToAlbumModalProps> = ({
               className="w-full p-2.5 rounded-xl border border-dashed border-[#262636] hover:border-[#ff2a55] text-xs font-bold text-white hover:text-[#ff2a55] flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Tạo album mới</span>
+              <span>{getTranslation(language, 'album.createTitle') || getTranslation(language, 'nav.myAlbums')}</span>
             </button>
 
             <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
               {albums.length === 0 ? (
-                <p className="text-[11px] text-[#666] text-center py-4">Bạn chưa có album nào. Hãy tạo mới ở trên!</p>
+                <p className="text-[11px] text-[#666] text-center py-4">{getTranslation(language, 'album.noAlbums') || "No albums yet"}</p>
               ) : (
                 albums.map((a) => {
                   const alreadyIn = isTrackInAlbum(a, trackToAdd);
@@ -143,18 +146,18 @@ export const AddToAlbumModal: React.FC<AddToAlbumModalProps> = ({
                         </div>
                         <div className="overflow-hidden">
                           <p className="text-xs font-semibold text-white truncate">{a.title}</p>
-                          <p className="text-[10px] text-[#777] font-mono">{a.tracks.length} bài hát</p>
+                          <p className="text-[10px] text-[#777] font-mono">{a.tracks.length} {getTranslation(language, 'album.trackCount') || 'tracks'}</p>
                         </div>
                       </div>
 
                       {isJustAdded || alreadyIn ? (
                         <span className="text-[10px] text-[#ff2a55] font-mono flex items-center gap-1 font-bold">
                           <Check className="w-3.5 h-3.5" />
-                          <span>{isJustAdded ? 'Đã thêm!' : 'Đã có'}</span>
+                          <span>{isJustAdded ? getTranslation(language, 'toast.addedToAlbum') : getTranslation(language, 'toast.albumTrackExists')}</span>
                         </span>
                       ) : (
                         <span className="opacity-0 group-hover:opacity-100 text-[10px] text-white font-mono transition-opacity">
-                          + Chọn
+                          + {getTranslation(language, 'player.play')}
                         </span>
                       )}
                     </button>
