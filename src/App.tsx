@@ -186,7 +186,7 @@ export default function App() {
 
     setSleepTimerMinutes(minutes);
     setSleepTimerRemainingSecs(minutes * 60);
-    showNotification(getTranslation(language, 'timer.setNotification', { time: `${minutes} phút` }));
+    showNotification(getTranslation(language, 'timer.setNotification', { time: `${minutes} ${getTranslation(language, 'timer.minutes')}` }));
   };
 
   const handleUpdateAvatar = async (newAvatar: string) => {
@@ -1018,6 +1018,10 @@ export default function App() {
   useEffect(() => {
     const interval = setInterval(async () => {
       if (currentTrackRef.current?.source !== 'local') return;
+      // If native browser HTML5 audio is currently playing, it manages its own timeupdate & isPlaying
+      if (onlineAudioRef.current && onlineAudioRef.current.src && !onlineAudioRef.current.paused) {
+        return;
+      }
       try {
         const status = await invoke<PlaybackStatus>('get_playback_status');
         setIsPlaying(status.is_playing);
@@ -1114,6 +1118,7 @@ export default function App() {
       let playedViaBrowser = false;
       if (onlineAudioRef.current) {
         try {
+          try { await invoke('stop_track'); } catch {}
           const fileUrl = convertFileSrc(track.path_or_url);
           onlineAudioRef.current.src = fileUrl;
           onlineAudioRef.current.volume = volume;
@@ -1133,7 +1138,8 @@ export default function App() {
           setIsPlaying(true);
           showNotification(`▶ ${track.title} - ${track.artist}`);
         } catch (err) {
-          showNotification(`${getTranslation(language, 'toast.playbackError')}: ${err}`);
+          console.error('Rodio play_track error:', err);
+          showNotification(`${getTranslation(language, 'toast.playbackError')}: ${track.title}`);
         }
       }
 

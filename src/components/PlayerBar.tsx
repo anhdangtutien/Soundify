@@ -64,6 +64,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragValue, setDragValue] = useState(0);
   const [showTimerMenu, setShowTimerMenu] = useState(false);
+  const [customMinutesInput, setCustomMinutesInput] = useState('');
 
   const formatTimerRemaining = () => {
     if (sleepTimerMinutes === 0) return getTranslation(language, 'timer.endOfTrack');
@@ -71,6 +72,15 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
     const m = Math.floor(sleepTimerRemainingSecs / 60);
     const s = sleepTimerRemainingSecs % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleApplyCustomTimer = () => {
+    const mins = parseInt(customMinutesInput.trim(), 10);
+    if (!isNaN(mins) && mins > 0 && mins <= 720) {
+      onSetSleepTimer?.(mins);
+      setShowTimerMenu(false);
+      setCustomMinutesInput('');
+    }
   };
 
   // Time formatter with strict clamp against YouTube live unix timestamps (>86400s)
@@ -606,6 +616,47 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                     <span>{getTranslation(language, 'timer.endOfTrack')}</span>
                     {sleepTimerMinutes === 0 && <Check className="w-3.5 h-3.5" style={{ color: accentColor }} />}
                   </button>
+
+                  {/* Active Custom Option if not in presets */}
+                  {sleepTimerMinutes !== null && ![0, 15, 30, 45, 60].includes(sleepTimerMinutes) && (
+                    <div className="w-full px-2.5 py-1.5 rounded-lg text-xs font-bold text-left flex items-center justify-between bg-white/10 text-white">
+                      <span>{getTranslation(language, 'timer.custom')}: {sleepTimerMinutes} {getTranslation(language, 'timer.minutes')}</span>
+                      <Check className="w-3.5 h-3.5" style={{ color: accentColor }} />
+                    </div>
+                  )}
+
+                  {/* Custom minutes input */}
+                  <div className="pt-2 mt-1 border-t border-[#1c1c28]">
+                    <div className="text-[11px] text-[#888] font-medium mb-1.5 px-0.5 flex items-center justify-between">
+                      <span>{getTranslation(language, 'timer.custom')}</span>
+                      <span className="text-[10px] text-[#666]">1 - 720 {getTranslation(language, 'timer.minutes')}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min="1"
+                        max="720"
+                        placeholder="VD: 20..."
+                        value={customMinutesInput}
+                        onChange={(e) => setCustomMinutesInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleApplyCustomTimer();
+                          }
+                        }}
+                        className="w-full bg-[#161622] text-white text-xs px-2.5 py-1.5 rounded-lg border border-[#2a2a3c] focus:outline-none focus:border-white/40 font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyCustomTimer}
+                        disabled={!customMinutesInput || parseInt(customMinutesInput, 10) <= 0}
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/15 hover:bg-white/25 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer flex-shrink-0"
+                      >
+                        {getTranslation(language, 'timer.set')}
+                      </button>
+                    </div>
+                  </div>
 
                   {sleepTimerMinutes !== null && (
                     <div className="pt-1.5 mt-1 border-t border-[#1c1c28]">
