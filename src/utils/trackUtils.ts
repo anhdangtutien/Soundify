@@ -64,3 +64,15 @@ export function getContrastTextColor(hexColor?: string): '#000000' | '#ffffff' {
   }
   return '#ffffff';
 }
+
+/**
+ * Optimizes thumbnail image URLs (e.g. YouTube maxresdefault -> mqdefault)
+ * Drastically reduces memory and GPU texture footprint by up to 80-90%.
+ */
+export function optimizeThumbnailUrl(url: string | undefined): string {
+  if (!url) return '';
+  if (url.includes('i.ytimg.com') || url.includes('img.youtube.com')) {
+    return url.replace('maxresdefault', 'mqdefault').replace('hqdefault', 'mqdefault');
+  }
+  return url;
+}

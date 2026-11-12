@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Search, Loader2, Play, Music, Disc3, Sparkles, ArrowUpRight } from 'lucide-react';
+import { Search, Loader2, Play, Music, Disc3, Sparkles, ArrowUpRight, X } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { SearchResult, Track } from '../types';
-import { getContrastTextColor } from '../utils/trackUtils';
+import { getContrastTextColor, optimizeThumbnailUrl } from '../utils/trackUtils';
+import { LanguageCode, getTranslation } from '../locales/i18n';
 
 interface SearchViewProps {
   onPlaySearchResult: (result: SearchResult) => void;
@@ -11,6 +12,7 @@ interface SearchViewProps {
   localTracks: Track[];
   onTrackSelect: (track: Track) => void;
   accentColor?: string;
+  language?: LanguageCode;
 }
 
 const POPULAR = ['Die With A Smile', 'APT. ROSÉ', 'Sơn Tùng M-TP', 'Creepy Nuts', 'Alan Walker', 'V-Pop 2025', 'Lo-Fi Beats', 'Billie Eilish'];
@@ -20,6 +22,7 @@ type Filter = 'all' | 'youtube' | 'soundcloud' | 'audius' | 'local';
 export const SearchView: React.FC<SearchViewProps> = ({ 
   onPlaySearchResult, onSearchOnline, localTracks, onTrackSelect,
   accentColor = '#ff2a55',
+  language = 'vi',
 }) => {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
@@ -28,11 +31,35 @@ export const SearchView: React.FC<SearchViewProps> = ({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+  const [isTyping, setIsTyping] = useState(false);
 
-  // Debounced auto-complete keyword suggestions
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Close suggestions when clicking anywhere outside the search container
   useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+        setIsTyping(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, []);
+
+  // Debounced auto-complete keyword suggestions only when actively typing
+  useEffect(() => {
+    if (!isTyping) {
+      setShowSuggestions(false);
+      return;
+    }
     const q = query.trim();
-    if (!q) {
+    if (q.length < 2) {
       setSuggestions([]);
       setShowSuggestions(false);
       setSelectedIndex(-1);
@@ -57,15 +84,17 @@ export const SearchView: React.FC<SearchViewProps> = ({
     }, 200);
 
     return () => clearTimeout(timer);
-  }, [query, localTracks]);
+  }, [query, isTyping, localTracks]);
 
   const doSearch = async (q: string, f: Filter) => {
     if (!q.trim()) return;
-    setLoading(true);
+    setIsTyping(false);
     setShowSuggestions(false);
+    setLoading(true);
     try {
       const res = await onSearchOnline(q.trim(), f === 'all' ? 'all' : f);
-      setResults(res);
+      // Keep memory low by capping DOM results to 24 items
+      setResults(res ? res.slice(0, 24) : []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -89,6 +118,12 @@ export const SearchView: React.FC<SearchViewProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      setShowSuggestions(false);
+      inputRef.current?.blur();
+      return;
+    }
+
     if (!showSuggestions || suggestions.length === 0) return;
 
     if (e.key === 'ArrowDown') {
@@ -105,8 +140,6 @@ export const SearchView: React.FC<SearchViewProps> = ({
         setShowSuggestions(false);
         doSearch(chosen, filter);
       }
-    } else if (e.key === 'Escape') {
-      setShowSuggestions(false);
     }
   };
 
@@ -124,33 +157,51 @@ export const SearchView: React.FC<SearchViewProps> = ({
   };
 
   const filters: { id: Filter; label: string; icon?: React.ReactNode }[] = [
-    { id: 'all', label: 'Tất cả' },
-    { id: 'youtube', label: 'YouTube Stream', icon: <YoutubeIcon className="w-3 h-3 text-[#ff4e6b]" /> },
-    { id: 'soundcloud', label: 'SoundCloud', icon: <SoundCloudIcon className="w-3 h-3 text-orange-400" /> },
-    { id: 'audius', label: 'Audius Hi-Fi', icon: <AudiusIcon className="w-3 h-3 text-white" /> },
-    { id: 'local', label: 'Bộ nhớ máy' },
+    { id: 'all', label: getTranslation(language, 'search.filterAll') },
+    { id: 'youtube', label: getTranslation(language, 'search.filterYoutube'), icon: <YoutubeIcon className="w-3 h-3 text-[#ff4e6b]" /> },
+    { id: 'soundcloud', label: getTranslation(language, 'search.filterSoundcloud'), icon: <SoundCloudIcon className="w-3 h-3 text-orange-400" /> },
+    { id: 'audius', label: getTranslation(language, 'search.filterAudius'), icon: <AudiusIcon className="w-3 h-3 text-white" /> },
+    { id: 'local', label: getTranslation(language, 'search.filterLocal') },
   ];
 
   return (
     <div className="flex-1 max-w-4xl pb-16">
       <div className="max-w-2xl mb-6">
         <h2 className="text-lg font-bold tracking-tight text-white mb-3">
-          Tìm kiếm
+          {getTranslation(language, 'search.title')}
         </h2>
-        <div className="relative z-30">
+        <div className="relative z-30" ref={searchContainerRef}>
           <form onSubmit={handleSubmit} className="relative flex items-center">
             <Search className="w-4 h-4 text-[#666] absolute left-3.5 pointer-events-none" />
             <input
+              ref={inputRef}
               type="text"
               value={query}
-              onChange={e => setQuery(e.target.value)}
+              onChange={e => {
+                setQuery(e.target.value);
+                setIsTyping(true);
+              }}
               onKeyDown={handleKeyDown}
-              onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 250)}
-              placeholder="Tìm nghệ sĩ, bài hát hoặc album..."
-              className="w-full pl-10 pr-28 py-2.5 bg-[#0a0a0d] hover:bg-[#121216] focus:bg-[#121216] text-white rounded-lg text-xs outline-none border border-[#1e1e26] transition-all"
+              placeholder={getTranslation(language, 'search.placeholder')}
+              className="w-full pl-10 pr-32 py-2.5 bg-[#0a0a0d] hover:bg-[#121216] focus:bg-[#121216] text-white rounded-lg text-xs outline-none border border-[#1e1e26] transition-all"
               style={{ borderColor: query ? `${accentColor}60` : undefined }}
             />
+            {query && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery('');
+                  setSuggestions([]);
+                  setShowSuggestions(false);
+                  setIsTyping(false);
+                  inputRef.current?.focus();
+                }}
+                className="absolute right-16 p-1 text-[#666] hover:text-white transition-colors cursor-pointer"
+                title={getTranslation(language, 'search.clear')}
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button
               type="submit"
               disabled={loading}
@@ -161,7 +212,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
               }}
               className="absolute right-1.5 px-4 py-1.5 hover:opacity-90 active:scale-95 disabled:opacity-50 text-[11px] font-bold rounded-md cursor-pointer transition-all flex items-center gap-1.5"
             >
-              {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Tìm'}
+              {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : getTranslation(language, 'search.btn')}
             </button>
           </form>
 
@@ -174,12 +225,22 @@ export const SearchView: React.FC<SearchViewProps> = ({
                 boxShadow: `0 16px 36px rgba(0,0,0,0.9), 0 0 16px ${accentColor}25`
               }}
             >
-              <div className="px-3.5 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-[#666] flex items-center justify-between border-b border-[#1c1c28] mb-1">
+              <div className="px-3.5 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-[#666] flex items-center justify-between border-b border-[#1c1c28] mb-1">
                 <span className="flex items-center gap-1.5" style={{ color: accentColor }}>
                   <Sparkles className="w-3 h-3" />
-                  Gợi ý từ khóa
+                  {getTranslation(language, 'search.suggestions')}
                 </span>
-                <span className="text-[9px] text-[#555]">Bấm hoặc dùng phím ↑ ↓</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] text-[#555]">{getTranslation(language, 'search.hintNav')}</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowSuggestions(false)}
+                    className="p-0.5 rounded hover:bg-[#222] text-[#777] hover:text-white transition-colors cursor-pointer"
+                    title={getTranslation(language, 'popup.close')}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
               <div className="max-h-72 overflow-y-auto">
                 {suggestions.map((sug, idx) => (
@@ -229,7 +290,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
         {/* Quick searches */}
         {!query && (
           <div className="mt-4 flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] text-[#666] uppercase font-mono">Gợi ý:</span>
+            <span className="text-[10px] text-[#666] uppercase font-mono">{getTranslation(language, 'search.quick')}</span>
             {POPULAR.map(term => (
               <button
                 key={term}
@@ -246,7 +307,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
       {loading && (
         <div className="flex items-center gap-2 text-xs text-[#888] py-8">
           <Loader2 className="w-4 h-4 animate-spin text-[#ff2a55]" />
-          <span>Đang tìm kiếm trên các nguồn âm nhạc...</span>
+          <span>{getTranslation(language, 'search.loading')}</span>
         </div>
       )}
 
@@ -254,7 +315,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
       {filter !== 'youtube' && filter !== 'soundcloud' && filter !== 'audius' && filteredLocal.length > 0 && (
         <div className="mb-6">
           <h3 className="text-xs font-bold text-white mb-2 uppercase tracking-wider font-mono">
-            Nhạc trên máy ({filteredLocal.length})
+            {getTranslation(language, 'nav.localMusic')} ({filteredLocal.length})
           </h3>
           <div className="space-y-1">
             {filteredLocal.map(t => (
@@ -283,7 +344,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
       {results.length > 0 && (
         <div>
           <h3 className="text-xs font-bold text-white mb-3 uppercase tracking-wider font-mono">
-            Kết quả trực tuyến ({results.length})
+            Online Results ({results.length})
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {results.map((r, i) => (
@@ -294,7 +355,13 @@ export const SearchView: React.FC<SearchViewProps> = ({
               >
                 <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-[#16161e]">
                   {r.thumbnail ? (
-                    <img src={r.thumbnail} alt={r.title} className="w-full h-full object-cover" />
+                    <img
+                      src={optimizeThumbnailUrl(r.thumbnail)}
+                      alt={r.title}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-[#555]">
                       <Music className="w-4 h-4" />

@@ -18,6 +18,12 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ isPlaying }) =
     let phase = 0;
 
     const render = () => {
+      if (document.hidden) {
+        // Halt GPU redraw when app is minimized or hidden in background
+        animationId = requestAnimationFrame(render);
+        return;
+      }
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const barCount = 42;

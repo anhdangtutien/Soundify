@@ -6,12 +6,13 @@ import {
   User as UserIcon, LogOut, Clock, Heart, Headphones, 
   Music, RefreshCw, Disc, Palette, Camera, Upload, Trash2, 
   Check, Sparkles, Shield, Sun, Moon, Download, Database, HardDriveDownload,
-  Cloud, CloudLightning, Key, ChevronDown, ChevronUp
+  Cloud, CloudLightning, Key, ChevronDown, ChevronUp, Globe, Languages
 } from 'lucide-react';
 import { 
   getStoredSupabaseConfig, saveStoredSupabaseConfig, isSupabaseConfigured,
   cloudSyncPush, cloudSyncPull
 } from '../services/supabase';
+import { LanguageCode, SUPPORTED_LANGUAGES, getTranslation } from '../locales/i18n';
 
 interface ProfileViewProps {
   currentUser: User | null;
@@ -23,6 +24,8 @@ interface ProfileViewProps {
   onLogout: () => void;
   onOpenAuth: () => void;
   onPlayTrack: (track: Track) => void;
+  language?: LanguageCode;
+  onUpdateLanguage?: (lang: LanguageCode) => void;
 }
 
 // 8 Curated Spy / Classified Theme Colors
@@ -81,6 +84,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onLogout,
   onOpenAuth,
   onPlayTrack,
+  language = 'vi',
+  onUpdateLanguage,
 }) => {
   const [stats, setStats] = useState<UserStats>({ total_played: 0, favorite_count: 0, top_artist: null });
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -395,18 +400,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {/* Hover overlay to change avatar */}
             <button
               onClick={() => fileInputRef.current?.click()}
-              title="Tải ảnh mới từ máy tính"
+              title={getTranslation(language, 'profile.changeAvatarTitle')}
               className="absolute inset-0 bg-black/70 rounded-2xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity cursor-pointer border border-white/40"
             >
               <Camera className="w-5 h-5 mb-1" />
-              <span className="text-[9px] font-bold uppercase tracking-wider">Đổi ảnh</span>
+              <span className="text-[9px] font-bold uppercase tracking-wider">{getTranslation(language, 'profile.changeAvatarHover')}</span>
             </button>
           </div>
 
           <div>
             <div className="flex items-center gap-2.5">
               <h2 className="text-2xl font-black text-white tracking-tight">
-                {currentUser ? currentUser.display_name : 'Khách Đặc Nhiệm'}
+                {currentUser ? currentUser.display_name : getTranslation(language, 'profile.guest')}
               </h2>
               <span 
                 className="text-[10px] px-2.5 py-0.5 rounded font-mono font-bold uppercase tracking-wider border"
@@ -416,11 +421,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   borderColor: `${accentColor}40` 
                 }}
               >
-                {currentUser ? 'SQLite Sync' : 'Chế độ Khách'}
+                {currentUser ? 'SQLite Sync' : getTranslation(language, 'profile.guestBadge')}
               </span>
             </div>
             <p className="text-xs text-[#8e8e9f] font-mono mt-1">
-              {currentUser ? `@${currentUser.username}` : 'Đăng nhập để đồng bộ dữ liệu nghe nhạc & playlist cá nhân'}
+              {currentUser ? `@${currentUser.username}` : getTranslation(language, 'profile.guestSub')}
             </p>
           </div>
         </div>
@@ -430,7 +435,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <>
               <button
                 onClick={loadUserData}
-                title="Làm mới thống kê"
+                title={getTranslation(language, 'profile.refreshStats')}
                 className="p-2.5 rounded-xl bg-[#0e0e12] hover:bg-[#181820] text-[#777] hover:text-white border border-[#1a1a22] transition-colors cursor-pointer"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -440,7 +445,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 className="px-4 py-2.5 rounded-xl bg-[#0e0e12] hover:bg-red-500/10 text-[#888] hover:text-red-400 border border-[#1a1a22] hover:border-red-500/30 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span>Đăng xuất</span>
+                <span>{getTranslation(language, 'profile.logoutBtn')}</span>
               </button>
             </>
           ) : (
@@ -453,7 +458,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 boxShadow: `0 0 15px ${accentColor}50` 
               }}
             >
-              Đăng nhập / Đăng ký
+              {getTranslation(language, 'profile.loginBtn')}
             </button>
           )}
         </div>
@@ -466,10 +471,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <Palette className="w-5 h-5" style={{ color: accentColor }} />
             <div>
               <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
-                Cá nhân hóa giao diện (Spy Customization)
+                {getTranslation(language, 'profile.customization')}
               </h3>
               <p className="text-[11px] text-[#777] mt-0.5">
-                Tùy chỉnh chế độ sáng/tối, màu sắc chủ đạo và ảnh đại diện đặc nhiệm (Lưu trữ 100% nội bộ SQLite & Local)
+                {getTranslation(language, 'profile.customizationSub')}
               </p>
             </div>
           </div>
@@ -478,11 +483,66 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </span>
         </div>
 
-        {/* 0. Light / Dark Mode Toggle */}
+        {/* 0. Language Settings (Đa ngôn ngữ toàn cầu) */}
         <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
+              <Globe className="w-3.5 h-3.5" style={{ color: accentColor }} />
+              {getTranslation(language, 'profile.langTitle')}
+            </label>
+            <span 
+              className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded border"
+              style={{
+                color: accentColor,
+                backgroundColor: `${accentColor}15`,
+                borderColor: `${accentColor}40`
+              }}
+            >
+              {SUPPORTED_LANGUAGES.find(l => l.code === language)?.flag} {SUPPORTED_LANGUAGES.find(l => l.code === language)?.nativeName}
+            </span>
+          </div>
+          <p className="text-[11px] text-[#777] mb-3 font-mono">
+            {getTranslation(language, 'profile.langDesc')}
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+            {SUPPORTED_LANGUAGES.map((item) => {
+              const isSelected = language === item.code;
+              return (
+                <button
+                  key={item.code}
+                  onClick={() => onUpdateLanguage && onUpdateLanguage(item.code)}
+                  className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#15151e] shadow-[0_0_12px_rgba(255,255,255,0.15)] scale-[1.02]'
+                      : 'bg-[#0d0d12] border-[#1e1e28] hover:border-[#333] hover:bg-[#121218]'
+                  }`}
+                  style={isSelected ? { borderColor: accentColor } : undefined}
+                >
+                  <div className="flex items-center justify-between w-full mb-1">
+                    <span className="text-xl">{item.flag}</span>
+                    {isSelected && (
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentColor }}></span>
+                    )}
+                  </div>
+                  <div>
+                    <p className={`text-xs font-bold truncate ${isSelected ? 'text-white' : 'text-[#ccc]'}`}>
+                      {item.nativeName}
+                    </p>
+                    <p className="text-[9px] text-[#666] truncate font-mono">
+                      {item.country}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 1. Light / Dark Mode Toggle */}
+        <div className="pt-4 border-t border-[#141418]">
           <label className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2 mb-3">
             <Sun className="w-3.5 h-3.5" style={{ color: accentColor }} />
-            Chế độ hiển thị (Display Theme Mode)
+            {getTranslation(language, 'profile.themeMode')}
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
@@ -525,7 +585,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <div className="pt-4 border-t border-[#141418]">
           <label className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2 mb-3">
             <Sparkles className="w-3.5 h-3.5" style={{ color: accentColor }} />
-            Tông màu chủ đạo (Accent Color)
+            {getTranslation(language, 'profile.accentColor')}
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {THEME_PALETTE.map((theme) => {
@@ -567,7 +627,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               title="Chọn màu tùy biến bất kỳ"
             />
             <div className="flex-1">
-              <p className="text-xs font-semibold text-white">Tùy chọn mã màu tùy biến</p>
+              <p className="text-xs font-semibold text-white">{getTranslation(language, 'profile.customHex')}</p>
               <p className="text-[10px] text-[#777] font-mono">Bấm vào ô màu để chọn tự do theo sở thích cá nhân</p>
             </div>
             <span className="text-xs font-mono font-bold px-2.5 py-1 rounded bg-[#161620] border border-[#262634] text-white">
@@ -581,7 +641,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <div className="flex items-center justify-between mb-3">
             <label className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
               <Shield className="w-3.5 h-3.5" style={{ color: accentColor }} />
-              Ảnh đại diện (Avatar Đặc Nhiệm)
+              {getTranslation(language, 'profile.avatar')}
             </label>
             {currentUser?.avatar && (
               <button
@@ -589,7 +649,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 className="text-[11px] text-red-400 hover:text-red-300 flex items-center gap-1 cursor-pointer transition-colors"
               >
                 <Trash2 className="w-3 h-3" />
-                <span>Xóa ảnh & dùng ký tự mặc định</span>
+                <span>{getTranslation(language, 'profile.deleteAvatar')}</span>
               </button>
             )}
           </div>
@@ -601,7 +661,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               className="w-full py-3 px-4 rounded-xl border border-dashed border-[#2b2b3a] hover:border-white/50 bg-[#0c0c10] hover:bg-[#121218] transition-all flex items-center justify-center gap-2.5 text-xs font-semibold text-white cursor-pointer group"
             >
               <Upload className="w-4 h-4 text-[#888] group-hover:text-white transition-colors" />
-              <span>Tải ảnh từ máy tính (Tự động nén 256x256 & lưu SQLite)</span>
+              <span>{getTranslation(language, 'profile.uploadAvatar')}</span>
             </button>
           </div>
 
@@ -737,10 +797,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <div className="mb-3">
             <label className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
               <Database className="w-3.5 h-3.5" style={{ color: accentColor }} />
-              Sao lưu két sắt thủ công (.json)
+              {getTranslation(language, 'profile.backupTitle')}
             </label>
-            <p className="text-[11px] text-[#777] mt-1">
-              Bạn cũng có thể xuất tệp sao lưu JSON để chuyển qua máy khác hoàn toàn ngoại tuyến không cần mạng:
+            <p className="text-[11px] text-[#777] mt-1 font-mono">
+              {getTranslation(language, 'profile.backupDesc')}
             </p>
           </div>
 
@@ -757,7 +817,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
               <div className="text-left overflow-hidden">
                 <p className="text-xs font-bold text-white group-hover:text-white transition-colors">
-                  Xuất tệp sao lưu (.json)
+                  {getTranslation(language, 'profile.exportBackup')}
                 </p>
                 <p className="text-[10px] text-[#777] font-mono">Tải về két sắt Album, Avatar, Yêu thích</p>
               </div>
@@ -775,7 +835,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
               <div className="text-left overflow-hidden">
                 <p className="text-xs font-bold text-white group-hover:text-white transition-colors">
-                  Nạp bản sao lưu vào máy này
+                  {getTranslation(language, 'profile.importBackup')}
                 </p>
                 <p className="text-[10px] text-[#777] font-mono">Khôi phục toàn bộ dữ liệu từ máy cũ</p>
               </div>

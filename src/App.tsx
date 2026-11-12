@@ -14,10 +14,11 @@ import { AlbumsView } from './components/AlbumsView';
 import { AddToAlbumModal } from './components/AddToAlbumModal';
 import { SplashScreen } from './components/SplashScreen';
 import { cloudSyncPull, cloudSyncPush, isSupabaseConfigured } from './services/supabase';
-import { deduplicateTracks } from './utils/trackUtils';
+import { deduplicateTracks, optimizeThumbnailUrl } from './utils/trackUtils';
 import { Track, PlaybackStatus, SearchResult, ViewType, User, UserAlbum } from './types';
-import { FolderPlus, Disc, CheckCircle2, Tv, X, Radio, ArrowUpRight, LogIn, Sun, Moon, Music, Play } from 'lucide-react';
+import { FolderPlus, Disc, CheckCircle2, Tv, X, Radio, ArrowUpRight, LogIn, Sun, Moon, Music, Play, Globe, Languages, ChevronDown, ChevronUp } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon } from './components/Icons';
+import { LanguageCode, SUPPORTED_LANGUAGES, getTranslation } from './locales/i18n';
 
 export default function App() {
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -49,7 +50,7 @@ export default function App() {
     setAccentColor(newColor);
     localStorage.setItem('spytify_accent_color', newColor);
     document.documentElement.style.setProperty('--accent-color', newColor);
-    showNotification(`Đã đổi màu chủ đạo: ${newColor}`);
+    showNotification(`${getTranslation(language, 'toast.colorUpdated')} ${newColor}`);
   };
 
   const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
@@ -69,7 +70,36 @@ export default function App() {
     const next = themeMode === 'dark' ? 'light' : 'dark';
     setThemeMode(next);
     localStorage.setItem('spytify_theme_mode', next);
-    showNotification(`Đã chuyển sang ${next === 'light' ? 'Chế độ Sáng (Light Dossier)' : 'Chế độ Tối (Stealth Dark)'}`);
+    showNotification(next === 'light' ? getTranslation(language, 'toast.themeLight') : getTranslation(language, 'toast.themeDark'));
+  };
+
+  const [language, setLanguage] = useState<LanguageCode>(() => {
+    return (localStorage.getItem('spytify_language') as LanguageCode) || 'vi';
+  });
+
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  const langDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+      if (langDropdownRef.current && !langDropdownRef.current.contains(e.target as Node)) {
+        setShowLanguageDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
+  }, []);
+
+  const handleUpdateLanguage = (newLang: LanguageCode) => {
+    setLanguage(newLang);
+    localStorage.setItem('spytify_language', newLang);
+    setShowLanguageDropdown(false);
+    const langInfo = SUPPORTED_LANGUAGES.find(l => l.code === newLang);
+    showNotification(`${getTranslation(newLang, 'toast.langChanged')} ${langInfo ? `${langInfo.flag} ${langInfo.nativeName}` : newLang}`);
   };
 
   const handleUpdateAvatar = async (newAvatar: string) => {
@@ -221,6 +251,7 @@ export default function App() {
     alternatives?: Track[];
   }
   const [nextTrackPopup, setNextTrackPopup] = useState<NextTrackPopupData | null>(null);
+  const [isNextTrackPopupCollapsed, setIsNextTrackPopupCollapsed] = useState(false);
   const nextTrackPopupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const endOfTrackPopupShownForRef = useRef<string | null>(null);
   const preloadedAlternativesRef = useRef<Track[]>([]);
@@ -232,7 +263,6 @@ export default function App() {
   useEffect(() => { durationRef.current = duration; }, [duration]);
 
   const triggerNextTrackPopup = (track: Track, modeLabel?: string) => {
-    if (nextTrackPopupTimerRef.current) clearTimeout(nextTrackPopupTimerRef.current);
     setNextTrackPopup({
       title: track.title,
       artist: track.artist,
@@ -246,9 +276,6 @@ export default function App() {
       isCountdown: false,
       alternatives: preloadedAlternativesRef.current.slice(0, 3),
     });
-    nextTrackPopupTimerRef.current = setTimeout(() => {
-      setNextTrackPopup(null);
-    }, 7000);
   };
 
   // Keep refs in sync
@@ -313,6 +340,15 @@ export default function App() {
           if (candidates.length > 0) {
             preloadedNextTrackRef.current = candidates[0];
             preloadedAlternativesRef.current = candidates.slice(1, 6);
+            setNextTrackPopup({
+              title: candidates[0].title,
+              artist: candidates[0].artist,
+              thumbnail: candidates[0].cover_art || undefined,
+              source: candidates[0].source,
+              modeLabel: recommendModeRef.current === 'fresh' ? '🌟 Khám phá bài mới (<10p)' : '🎵 Pha trộn Smart Mix',
+              isCountdown: false,
+              alternatives: candidates.slice(1, 4),
+            });
           }
         }
       } catch (err) {
@@ -385,7 +421,7 @@ export default function App() {
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem('soundify_active_user_id');
-    showNotification('Đã đăng xuất tài khoản');
+    showNotification(getTranslation(language, 'toast.loggedOut'));
     setCurrentView('library');
   };
 
@@ -397,11 +433,11 @@ export default function App() {
       else next = 'fresh';
       localStorage.setItem('spytify_recommend_mode', next);
       if (next === 'fresh') {
-        showNotification('🌟 Chế độ Khám phá YouTube MỚI (Tự động tìm bài CHƯA TỪNG NGHE)');
+        showNotification(getTranslation(language, 'toast.modeFresh'));
       } else if (next === 'mix') {
-        showNotification('🎵 Chế độ Pha trộn Smart Mix (Nghe lại bài quen thuộc + bài mới)');
+        showNotification(getTranslation(language, 'toast.modeMix'));
       } else {
-        showNotification('⏹ Đã tắt Chế độ Đề xuất (Phát tuần tự danh sách)');
+        showNotification(getTranslation(language, 'toast.modeOff'));
       }
       return next;
     });
@@ -621,29 +657,26 @@ export default function App() {
         dur = durationRef.current || track.duration_secs || 0;
       }
 
-      // Trigger Pop-up 5-10s before audio ends
+      // Update real-time countdown when 10s or less remains
       if (dur > 15 && curTime > 5) {
         const remaining = dur - curTime;
-        if (remaining <= 10 && remaining >= 1.5) {
-          if (endOfTrackPopupShownForRef.current !== track.id) {
-            endOfTrackPopupShownForRef.current = track.id;
-            const nextOne = preloadedNextTrackRef.current || upcomingTrack;
-            if (nextOne) {
-              setNextTrackPopup({
-                title: nextOne.title,
-                artist: nextOne.artist,
-                thumbnail: nextOne.cover_art || undefined,
-                source: nextOne.source,
-                modeLabel: recommendModeRef.current === 'fresh' 
-                  ? '🌟 Khám phá bài mới (<10p)' 
-                  : recommendModeRef.current === 'mix' 
-                  ? '🎵 Pha trộn Smart Mix' 
-                  : '📋 Tiếp theo trong danh sách',
-                isCountdown: true,
-                remainingSecs: Math.round(remaining),
-                alternatives: preloadedAlternativesRef.current.slice(0, 3),
-              });
-            }
+        if (remaining <= 10 && remaining >= 1) {
+          const nextOne = preloadedNextTrackRef.current || upcomingTrack;
+          if (nextOne) {
+            setNextTrackPopup(prev => ({
+              title: nextOne.title,
+              artist: nextOne.artist,
+              thumbnail: nextOne.cover_art || undefined,
+              source: nextOne.source,
+              modeLabel: recommendModeRef.current === 'fresh' 
+                ? '🌟 Khám phá bài mới (<10p)' 
+                : recommendModeRef.current === 'mix' 
+                ? '🎵 Pha trộn Smart Mix' 
+                : '📋 Tiếp theo trong danh sách',
+              isCountdown: true,
+              remainingSecs: Math.round(remaining),
+              alternatives: prev?.alternatives || preloadedAlternativesRef.current.slice(0, 3),
+            }));
           }
         }
       }
@@ -1085,7 +1118,7 @@ export default function App() {
           isFav ? next.add(target.id) : next.delete(target.id);
           return next;
         });
-        showNotification(isFav ? 'Đã thêm vào yêu thích (SQLite)' : 'Đã bỏ yêu thích');
+        showNotification(isFav ? getTranslation(language, 'toast.favoriteAdded') : getTranslation(language, 'toast.favoriteRemoved'));
       } catch (err) {
         console.error(err);
       }
@@ -1096,15 +1129,14 @@ export default function App() {
         try { localStorage.setItem('soundify_favorites', JSON.stringify([...next])); } catch {}
         return next;
       });
-      showNotification('Đã cập nhật yêu thích (Local)');
+      showNotification(getTranslation(language, 'toast.favoriteAdded'));
     }
   };
 
   const handleSelectFolder = async () => {
     try {
-      const selected = await open({ directory: true, multiple: false, title: 'Chọn thư mục nhạc' });
+      const selected = await open({ directory: true, multiple: false, title: getTranslation(language, 'header.selectFolder') });
       if (selected && typeof selected === 'string') {
-        showNotification('Đang quét bằng Rust Engine...');
         const t0 = performance.now();
         const scanned = await invoke<Track[]>('scan_music_folder', { folderPath: selected });
         const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
@@ -1112,7 +1144,7 @@ export default function App() {
           return deduplicateTracks([...prev, ...scanned]);
         });
         setCurrentView('local');
-        showNotification(`⚡ Quét xong ${scanned.length} bài (${elapsed}s)`);
+        showNotification(getTranslation(language, 'toast.folderScanned', { count: scanned.length, time: elapsed }));
       }
     } catch (err) { showNotification(`Lỗi: ${err}`); }
   };
@@ -1140,122 +1172,189 @@ export default function App() {
       {/* Spy Cinematic Startup Screen */}
       {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
 
-      {/* ─── NEXT TRACK POPUP (5-10s BEFORE END & SAME-GENRE ALTERNATIVES) ── */}
+      {/* ─── NEXT TRACK POPUP (SMOOTH PLAYBACK FLOATING WIDGET) ── */}
       {nextTrackPopup && (
         <div 
-          className="fixed bottom-24 right-6 z-50 w-84 max-w-[calc(100vw-3rem)] p-4 rounded-2xl bg-[#0c0c14]/95 backdrop-blur-xl border shadow-2xl flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300"
+          className={`fixed right-6 z-50 p-3.5 rounded-2xl bg-[#0c0c14]/95 backdrop-blur-xl border shadow-2xl flex flex-col gap-2.5 transition-all duration-300 ${
+            showYoutubeVideo ? 'bottom-[300px]' : 'bottom-24'
+          } ${
+            isNextTrackPopupCollapsed ? 'w-80' : 'w-88 max-w-[calc(100vw-3rem)]'
+          }`}
           style={{
             borderColor: `${accentColor}60`,
             boxShadow: `0 12px 35px rgba(0,0,0,0.8), 0 0 16px ${accentColor}30`
           }}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-[#1c1c28] pb-2">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: accentColor }}>
-                <span className="animate-pulse">⏭</span> {nextTrackPopup.isCountdown ? 'SẮP PHÁT TIẾP THEO' : 'BÀI TIẾP THEO'}
-              </span>
-              {nextTrackPopup.isCountdown && typeof nextTrackPopup.remainingSecs === 'number' && (
-                <span 
-                  className="text-[9px] font-mono px-1.5 py-0.5 rounded font-bold"
-                  style={{ backgroundColor: `${accentColor}25`, color: accentColor }}
-                >
-                  ~{nextTrackPopup.remainingSecs}s
+          {isNextTrackPopupCollapsed ? (
+            <div className="flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2 overflow-hidden flex-1">
+                <span className="text-[10px] font-mono font-bold uppercase flex-shrink-0" style={{ color: accentColor }}>
+                  ⏭ {getTranslation(language, 'popup.nextTrack')}:
                 </span>
-              )}
+                <span className="text-xs font-semibold text-white truncate" title={nextTrackPopup.title}>
+                  {nextTrackPopup.title}
+                </span>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={() => {
+                    if (preloadedNextTrackRef.current) {
+                      playTrackInternal(preloadedNextTrackRef.current);
+                    } else {
+                      handleNext(true);
+                    }
+                  }}
+                  className="p-1 text-[#888] hover:text-white cursor-pointer"
+                  title="Phát ngay"
+                >
+                  <Play className="w-3 h-3 fill-current" style={{ color: accentColor }} />
+                </button>
+                <button
+                  onClick={() => setIsNextTrackPopupCollapsed(false)}
+                  className="p-1 text-[#888] hover:text-white cursor-pointer"
+                  title="Mở rộng gợi ý"
+                >
+                  <ChevronUp className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setNextTrackPopup(null)}
+                  className="p-1 text-[#666] hover:text-white cursor-pointer text-xs leading-none"
+                  title={getTranslation(language, 'popup.close')}
+                >
+                  ✕
+                </button>
+              </div>
             </div>
-            <button 
-              onClick={() => setNextTrackPopup(null)}
-              className="text-[#666] hover:text-white transition-colors cursor-pointer text-xs p-1 leading-none"
-              title="Đóng popup"
-            >
-              ✕
-            </button>
-          </div>
+          ) : (
+            <>
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-[#1c1c28] pb-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: accentColor }}>
+                    <span className="animate-pulse">⏭</span> {getTranslation(language, 'popup.nextTrack')}
+                  </span>
+                  {nextTrackPopup.isCountdown && typeof nextTrackPopup.remainingSecs === 'number' && (
+                    <span 
+                      className="text-[9px] font-mono px-1.5 py-0.5 rounded font-bold"
+                      style={{ backgroundColor: `${accentColor}25`, color: accentColor }}
+                    >
+                      {getTranslation(language, 'popup.startsIn')} ~{nextTrackPopup.remainingSecs}s
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <button 
+                    onClick={() => setIsNextTrackPopupCollapsed(true)}
+                    className="text-[#888] hover:text-white transition-colors cursor-pointer p-1"
+                    title="Thu nhỏ"
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                  <button 
+                    onClick={() => setNextTrackPopup(null)}
+                    className="text-[#666] hover:text-white transition-colors cursor-pointer text-xs p-1 leading-none"
+                    title={getTranslation(language, 'popup.close')}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
 
-          {/* Main Next Track Card */}
-          <div className="flex items-center gap-3 p-2 rounded-xl bg-[#14141c] border border-[#222230]">
-            <div className="w-11 h-11 rounded-lg overflow-hidden bg-[#181824] flex-shrink-0 border border-[#2a2a38]">
-              {nextTrackPopup.thumbnail ? (
-                <img src={nextTrackPopup.thumbnail} alt={nextTrackPopup.title} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-[#555]">
-                  <Music className="w-5 h-5" />
+              {/* Main Next Track Card */}
+              <div className="flex items-center gap-2.5 p-2 rounded-xl bg-[#14141c] border border-[#222230]">
+                <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#181824] flex-shrink-0 border border-[#2a2a38]">
+                  {nextTrackPopup.thumbnail ? (
+                    <img 
+                      src={optimizeThumbnailUrl(nextTrackPopup.thumbnail)} 
+                      alt={nextTrackPopup.title} 
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover" 
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-[#555]">
+                      <Music className="w-4 h-4" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <p className="text-xs font-bold text-white truncate" title={nextTrackPopup.title}>
+                    {nextTrackPopup.title}
+                  </p>
+                  <p className="text-[11px] text-[#8e8e9f] truncate">
+                    {nextTrackPopup.artist}
+                  </p>
+                  <span className="text-[9px] font-mono text-[#777] uppercase">
+                    {nextTrackPopup.source} • {nextTrackPopup.modeLabel}
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    if (preloadedNextTrackRef.current) {
+                      playTrackInternal(preloadedNextTrackRef.current);
+                    } else {
+                      handleNext(true);
+                    }
+                  }}
+                  style={{
+                    backgroundColor: accentColor,
+                    color: '#ffffff',
+                  }}
+                  className="p-2 rounded-lg hover:scale-105 active:scale-95 transition-transform flex-shrink-0 cursor-pointer shadow-sm"
+                  title="Phát bài này ngay"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                </button>
+              </div>
+
+              {/* Alternatives / Similar Genre Recommendations */}
+              {nextTrackPopup.alternatives && nextTrackPopup.alternatives.length > 0 && (
+                <div className="space-y-1 pt-0.5">
+                  <div className="flex items-center justify-between text-[10px] font-mono font-bold text-[#888899]">
+                    <span>{getTranslation(language, 'popup.sameGenre')}</span>
+                    <span className="text-[9px] text-[#555]">{getTranslation(language, 'popup.clickToChoose')}</span>
+                  </div>
+                  <div className="space-y-1 max-h-32 overflow-y-auto pr-0.5">
+                    {nextTrackPopup.alternatives.map((alt) => (
+                      <div
+                        key={alt.id}
+                        onClick={() => {
+                          playTrackInternal(alt);
+                        }}
+                        className="p-1.5 rounded-lg bg-[#0e0e16] hover:bg-[#181824] border border-[#1a1a26] hover:border-[#2e2e42] transition-colors flex items-center gap-2 cursor-pointer group"
+                      >
+                        <div className="w-7 h-7 rounded overflow-hidden bg-[#161620] flex-shrink-0 relative">
+                          {alt.cover_art ? (
+                            <img 
+                              src={optimizeThumbnailUrl(alt.cover_art)} 
+                              alt={alt.title} 
+                              loading="lazy"
+                              decoding="async"
+                              className="w-full h-full object-cover" 
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[#555]">
+                              <Music className="w-3 h-3" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Play className="w-2.5 h-2.5 fill-current text-white" />
+                          </div>
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                          <p className="text-[11px] font-semibold text-white truncate group-hover:text-white" title={alt.title}>
+                            {alt.title}
+                          </p>
+                          <p className="text-[9px] text-[#777] truncate font-mono">
+                            {alt.artist} • <span className="uppercase">{alt.source}</span>
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <p className="text-xs font-bold text-white truncate" title={nextTrackPopup.title}>
-                {nextTrackPopup.title}
-              </p>
-              <p className="text-[11px] text-[#8e8e9f] truncate">
-                {nextTrackPopup.artist}
-              </p>
-              <span className="text-[9px] font-mono text-[#777] uppercase">
-                {nextTrackPopup.source} • {nextTrackPopup.modeLabel}
-              </span>
-            </div>
-            <button
-              onClick={() => {
-                if (preloadedNextTrackRef.current) {
-                  playTrackInternal(preloadedNextTrackRef.current);
-                } else {
-                  handleNext(true);
-                }
-                setNextTrackPopup(null);
-              }}
-              style={{
-                backgroundColor: accentColor,
-                color: '#ffffff',
-              }}
-              className="p-2 rounded-lg hover:scale-105 active:scale-95 transition-transform flex-shrink-0 cursor-pointer shadow-sm"
-              title="Phát bài này ngay"
-            >
-              <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-            </button>
-          </div>
-
-          {/* Alternatives / Similar Genre Recommendations */}
-          {nextTrackPopup.alternatives && nextTrackPopup.alternatives.length > 0 && (
-            <div className="space-y-1.5 pt-1">
-              <div className="flex items-center justify-between text-[10px] font-mono font-bold text-[#888899]">
-                <span>🎶 GỢI Ý CÙNG THỂ LOẠI KHÁC</span>
-                <span className="text-[9px] text-[#555]">Bấm để chọn bài</span>
-              </div>
-              <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5">
-                {nextTrackPopup.alternatives.map((alt) => (
-                  <div
-                    key={alt.id}
-                    onClick={() => {
-                      playTrackInternal(alt);
-                      setNextTrackPopup(null);
-                    }}
-                    className="p-1.5 rounded-lg bg-[#0e0e16] hover:bg-[#181824] border border-[#1a1a26] hover:border-[#2e2e42] transition-colors flex items-center gap-2 cursor-pointer group"
-                  >
-                    <div className="w-7 h-7 rounded overflow-hidden bg-[#161620] flex-shrink-0 relative">
-                      {alt.cover_art ? (
-                        <img src={alt.cover_art} alt={alt.title} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[#555]">
-                          <Music className="w-3 h-3" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Play className="w-2.5 h-2.5 fill-current text-white" />
-                      </div>
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                      <p className="text-[11px] font-semibold text-white truncate group-hover:text-white" title={alt.title}>
-                        {alt.title}
-                      </p>
-                      <p className="text-[9px] text-[#777] truncate font-mono">
-                        {alt.artist} • <span className="uppercase">{alt.source}</span>
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            </>
           )}
         </div>
       )}
@@ -1298,34 +1397,33 @@ export default function App() {
         onSuccess={handleLoginSuccess}
       />
 
-      {/* YouTube iframe â€” single instance toggled by CSS */}
+      {/* YouTube iframe — stable bottom-right positioning without jumping */}
       {ytVideoId && (
-        <>
+        <div
+          className={`fixed bottom-24 right-6 w-80 h-48 rounded-xl bg-black shadow-2xl border border-[#222] z-40 transition-all duration-300 overflow-hidden ${
+            showYoutubeVideo
+              ? 'opacity-100 scale-100 pointer-events-auto shadow-[0_16px_36px_rgba(0,0,0,0.9)]'
+              : 'opacity-0 scale-95 pointer-events-none'
+          }`}
+        >
           {showYoutubeVideo && (
             <button
               onClick={() => setShowYoutubeVideo(false)}
-              className="fixed bottom-[210px] right-7 z-50 p-1.5 rounded-full bg-black/80 hover:bg-black text-white border border-[#333] cursor-pointer"
+              className="absolute top-2 right-2 z-50 p-1.5 rounded-full bg-black/80 hover:bg-black text-white border border-[#333] cursor-pointer shadow-md transition-colors"
+              title="Thu nhỏ MV"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           )}
-          <div
-            className={`fixed z-40 transition-all duration-300 ${
-              showYoutubeVideo
-                ? 'bottom-24 right-6 w-80 h-48 rounded-xl bg-black shadow-2xl border border-[#222] opacity-100 overflow-hidden'
-                : '-top-px -left-px w-px h-px opacity-0 pointer-events-none overflow-hidden'
-            }`}
-          >
-            <iframe
-              ref={ytIframeRef}
-              src={`https://www.youtube-nocookie.com/embed/${ytVideoId}?enablejsapi=1&autoplay=1&playsinline=1&modestbranding=1&rel=0`}
-              title="YouTube Player"
-              className="w-full h-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </div>
-        </>
+          <iframe
+            ref={ytIframeRef}
+            src={`https://www.youtube-nocookie.com/embed/${ytVideoId}?enablejsapi=1&autoplay=1&playsinline=1&modestbranding=1&rel=0`}
+            title="YouTube Player"
+            className="w-full h-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
       )}
 
       {/* SoundCloud Widget â€” hidden player */}
@@ -1355,6 +1453,7 @@ export default function App() {
           onOpenAuth={() => setIsAuthModalOpen(true)}
           accentColor={accentColor}
           themeMode={themeMode}
+          language={language}
         />
 
         <main className="flex-1 flex flex-col overflow-hidden bg-[#000000]">
@@ -1365,6 +1464,58 @@ export default function App() {
               <span className="tracking-tight font-bold">Spytify</span>
             </div>
             <div className="flex items-center gap-2.5">
+              {/* Quick Language Switcher Dropdown */}
+              <div className="relative" ref={langDropdownRef}>
+                <button
+                  onClick={() => setShowLanguageDropdown(p => !p)}
+                  className="px-2.5 py-1 bg-[#121212] hover:bg-[#1c1c1c] text-white text-xs font-medium rounded-md border border-[#222] transition-colors flex items-center gap-1.5 cursor-pointer"
+                  title={getTranslation(language, 'header.language')}
+                >
+                  <Globe className="w-3.5 h-3.5" style={{ color: accentColor }} />
+                  <span className="font-mono text-[11px] uppercase">
+                    {SUPPORTED_LANGUAGES.find(l => l.code === language)?.flag} {language.split('-')[0].toUpperCase()}
+                  </span>
+                </button>
+
+                {showLanguageDropdown && (
+                  <div
+                    className="absolute right-0 top-full mt-2 w-56 max-h-80 overflow-y-auto py-1.5 rounded-xl bg-[#0e0e14] border shadow-2xl z-50 text-xs font-sans"
+                    style={{
+                      borderColor: `${accentColor}50`,
+                      boxShadow: `0 16px 36px rgba(0,0,0,0.9), 0 0 16px ${accentColor}25`
+                    }}
+                  >
+                    <div className="px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-[#666] border-b border-[#1c1c28] mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5" style={{ color: accentColor }}>
+                        <Languages className="w-3 h-3" />
+                        {getTranslation(language, 'header.language')}
+                      </span>
+                      <span className="text-[9px] text-[#555]">{SUPPORTED_LANGUAGES.length}</span>
+                    </div>
+                    {SUPPORTED_LANGUAGES.map((l) => {
+                      const isSel = l.code === language;
+                      return (
+                        <button
+                          key={l.code}
+                          onClick={() => handleUpdateLanguage(l.code)}
+                          className={`w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-[#181824] transition-colors cursor-pointer ${
+                            isSel ? 'bg-[#181824] font-semibold text-white' : 'text-[#bbb]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <span className="text-base">{l.flag}</span>
+                            <span className="truncate">{l.nativeName}</span>
+                          </div>
+                          {isSel && (
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentColor }}></span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {currentTrack?.source === 'youtube' && !!ytVideoId && (
                 <button
                   onClick={() => setShowYoutubeVideo(p => !p)}
@@ -1415,6 +1566,7 @@ export default function App() {
             ) : currentView === 'library' ? (
               <HomeTrendingView
                 accentColor={accentColor}
+                language={language}
                 onPlaySearchResult={handlePlaySearchResult}
                 currentTrack={currentTrack}
                 isPlaying={isPlaying}
@@ -1438,6 +1590,8 @@ export default function App() {
             ) : currentView === 'profile' ? (
               <ProfileView
                 currentUser={currentUser}
+                language={language}
+                onUpdateLanguage={handleUpdateLanguage}
                 accentColor={accentColor}
                 themeMode={themeMode}
                 onUpdateAccentColor={handleUpdateAccentColor}
@@ -1449,6 +1603,7 @@ export default function App() {
               />
             ) : currentView === 'search' ? (
               <SearchView
+                language={language}
                 onPlaySearchResult={handlePlaySearchResult}
                 onSearchOnline={handleSearchOnline}
                 localTracks={tracks}
@@ -1599,6 +1754,7 @@ export default function App() {
 
       {/* Ultra Hi-Fi Player Bar */}
       <PlayerBar
+        language={language}
         currentTrack={currentTrack}
         upcomingTrack={upcomingTrack}
         isPlaying={isPlaying}

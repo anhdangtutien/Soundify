@@ -2,6 +2,7 @@ import React from 'react';
 import { Play, Pause, Clock3, Heart, Music, HardDrive, FolderPlus } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { Track } from '../types';
+import { optimizeThumbnailUrl } from '../utils/trackUtils';
 
 interface TrackTableProps {
   tracks: Track[];
@@ -150,8 +151,10 @@ export const TrackTable: React.FC<TrackTableProps> = ({
                 <div className="w-9 h-9 rounded bg-[#111] border border-[#1e1e24] flex-shrink-0 overflow-hidden relative">
                   {track.cover_art ? (
                     <img
-                      src={track.cover_art}
+                      src={optimizeThumbnailUrl(track.cover_art)}
                       alt={track.title}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
                     />
                   ) : (

@@ -5,7 +5,8 @@ import {
 } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { Track } from '../types';
-import { getContrastTextColor } from '../utils/trackUtils';
+import { getContrastTextColor, optimizeThumbnailUrl } from '../utils/trackUtils';
+import { LanguageCode, getTranslation } from '../locales/i18n';
 
 interface PlayerBarProps {
   currentTrack: Track | null;
@@ -34,6 +35,7 @@ interface PlayerBarProps {
   onCycleRecommendMode?: () => void;
   autoRecommend?: boolean;
   onToggleAutoRecommend?: () => void;
+  language?: LanguageCode;
 }
 
 export const PlayerBar: React.FC<PlayerBarProps> = ({
@@ -47,6 +49,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   onCycleRecommendMode,
   autoRecommend = true,
   onToggleAutoRecommend,
+  language = 'vi',
 }) => {
   const [prevVolume, setPrevVolume] = useState(volume || 0.8);
   const [isDragging, setIsDragging] = useState(false);
@@ -146,7 +149,13 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           <>
             <div className="w-12 h-12 rounded-lg overflow-hidden bg-[#101014] flex-shrink-0 border border-[#202028] relative group shadow-sm">
               {currentTrack.cover_art ? (
-                <img src={currentTrack.cover_art} alt={currentTrack.title} className="w-full h-full object-cover" />
+                <img
+                  src={optimizeThumbnailUrl(currentTrack.cover_art)}
+                  alt={currentTrack.title}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-[#101014] text-[#666]">
                   <Music className="w-5 h-5 text-[var(--accent-color, #ff2a55)]/70" />
@@ -188,7 +197,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
             <div className="w-12 h-12 rounded-lg bg-[#0e0e12] border border-[#181820] flex items-center justify-center">
               <Music className="w-5 h-5 text-[#333]" />
             </div>
-            <span className="text-[11px]">Chưa phát bài hát</span>
+            <span className="text-[11px]">{getTranslation(language, 'player.noTrack')}</span>
           </div>
         )}
       </div>
@@ -198,7 +207,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
         <div className="flex items-center gap-6">
           <button
             onClick={onToggleShuffle}
-            title={isShuffle ? 'Bật phát ngẫu nhiên' : 'Tắt phát ngẫu nhiên'}
+            title={getTranslation(language, 'player.shuffle')}
             style={isShuffle ? { color: accentColor, filter: `drop-shadow(0 0 8px ${accentColor}80)` } : undefined}
             className={`transition-colors cursor-pointer ${
               isShuffle ? '' : 'text-[#666] hover:text-white'
@@ -206,13 +215,17 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           >
             <Shuffle className="w-3.5 h-3.5" />
           </button>
-          <button onClick={onPrev} className="text-[#888] hover:text-white transition-colors cursor-pointer">
+          <button 
+            onClick={onPrev} 
+            title={getTranslation(language, 'player.prev')}
+            className="text-[#888] hover:text-white transition-colors cursor-pointer"
+          >
             <SkipBack className="w-4 h-4 fill-current" />
           </button>
           <button
             onClick={onTogglePlay}
             disabled={!currentTrack}
-            title={isPlaying ? 'Tạm dừng (Space)' : 'Phát nhạc (Space)'}
+            title={isPlaying ? getTranslation(language, 'player.pause') : getTranslation(language, 'player.play')}
             style={{
               backgroundColor: currentTrack ? accentColor : (themeMode === 'light' ? '#e2e8f0' : '#1c1c24'),
               color: currentTrack ? getContrastTextColor(accentColor) : (themeMode === 'light' ? '#64748b' : '#64748b'),
@@ -229,7 +242,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
             <button 
               onClick={onNext} 
               className="text-[#888] hover:text-white transition-colors cursor-pointer p-1"
-              title="Bài tiếp theo"
+              title={getTranslation(language, 'player.next')}
             >
               <SkipForward className="w-4 h-4 fill-current" />
             </button>
@@ -300,7 +313,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
 
           <button
             onClick={onToggleRepeat}
-            title={repeatMode === 'all' ? 'Tự động chuyển bài (Lặp lại danh sách)' : repeatMode === 'one' ? 'Lặp lại 1 bài' : 'Dừng khi hết bài'}
+            title={repeatMode === 'all' ? getTranslation(language, 'player.repeatAll') : repeatMode === 'one' ? getTranslation(language, 'player.repeatOne') : getTranslation(language, 'player.repeatOff')}
             style={repeatMode !== 'off' ? { color: accentColor } : undefined}
             className={`transition-colors cursor-pointer relative flex items-center justify-center ${
               repeatMode !== 'off' ? '' : 'text-[#666] hover:text-white'
@@ -323,10 +336,10 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
               onClick={onCycleRecommendMode || onToggleAutoRecommend}
               title={
                 recommendMode === 'fresh'
-                  ? '🌟 Đề xuất: Khám phá bài MỚI (< 10p) ngẫu nhiên từ YouTube, SoundCloud & Audius. Bấm để chuyển sang Pha trộn (Mix)'
+                  ? '🌟 ' + getTranslation(language, 'player.modeFresh')
                   : recommendMode === 'mix'
-                  ? '🎵 Đề xuất: Pha trộn Smart Mix (< 10p, trộn bài quen thuộc & bài mới). Bấm để Tắt'
-                  : '⏹ Đề xuất: Đang TẮT (Chỉ phát tuần tự danh sách). Bấm để Bật Khám phá mới'
+                  ? '🎵 ' + getTranslation(language, 'player.modeRecommend')
+                  : '⏹ ' + getTranslation(language, 'player.repeatOff')
               }
               className={`px-2 py-1 rounded-lg transition-all cursor-pointer relative flex items-center gap-1.5 border font-mono text-[10px] font-bold ${
                 recommendMode === 'fresh'
@@ -344,7 +357,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
               {recommendMode === 'fresh' ? (
                 <>
                   <Radio className="w-3.5 h-3.5" />
-                  <span className="leading-none">MỚI</span>
+                  <span className="leading-none">{getTranslation(language, 'player.modeFresh').split(' ')[0]}</span>
                   <span className="absolute -top-1 -right-1 flex h-2 w-2">
                     <span 
                       className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"

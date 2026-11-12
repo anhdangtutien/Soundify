@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import { SearchResult, Track } from '../types';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
-import { getContrastTextColor } from '../utils/trackUtils';
+import { getContrastTextColor, optimizeThumbnailUrl } from '../utils/trackUtils';
+import { LanguageCode, getTranslation } from '../locales/i18n';
 
 interface HomeTrendingViewProps {
   onPlaySearchResult: (result: SearchResult) => void;
@@ -15,6 +16,7 @@ interface HomeTrendingViewProps {
   favorites: Set<string>;
   onToggleFavorite: (trackId: string) => void;
   accentColor?: string;
+  language?: LanguageCode;
 }
 
 interface CategoryFilter {
@@ -169,6 +171,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
   favorites,
   onToggleFavorite,
   accentColor = '#ff2a55',
+  language = 'vi',
 }) => {
   const [trendingTracks, setTrendingTracks] = useState<SearchResult[]>(INITIAL_CURATED_HITS);
   const [loading, setLoading] = useState(false);
@@ -351,9 +354,9 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
         <div className="flex items-center justify-between border-b border-[#161620] pb-2">
           <h2 className="text-sm font-bold text-white flex items-center gap-2">
             <TrendingUp className="w-4 h-4" style={{ color: accentColor }} />
-            Bảng xếp hạng hôm nay
+            {getTranslation(language, 'trending.title')}
           </h2>
-          <span className="text-xs text-[#777] font-mono">Top 10 bài hát</span>
+          <span className="text-xs text-[#777] font-mono">{getTranslation(language, 'trending.top10')}</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
@@ -405,7 +408,13 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
                   {/* Thumbnail with hover play */}
                   <div className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-[#14141c] border border-[#222]">
                     {item.thumbnail ? (
-                      <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover" />
+                      <img
+                        src={optimizeThumbnailUrl(item.thumbnail)}
+                        alt={item.title}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#555]">
                         <Music className="w-4 h-4" />
@@ -446,7 +455,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
       <div className="space-y-4 pt-2">
         <h2 className="text-sm font-bold text-white flex items-center gap-2">
           <Sparkles className="w-4 h-4" style={{ color: accentColor }} />
-          Bộ sưu tập thịnh hành
+          {getTranslation(language, 'trending.collections')}
         </h2>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
