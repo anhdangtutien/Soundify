@@ -9,7 +9,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-const SUPPORTED_EXTENSIONS: &[&str] = &["mp3", "flac", "wav", "ogg", "m4a", "aac", "opus", "wma"];
+const SUPPORTED_EXTENSIONS: &[&str] = &["mp3", "flac", "wav", "ogg", "m4a", "aac", "opus", "wma", "webm"];
 
 pub fn scan_folder<P: AsRef<Path>>(folder_path: P) -> Vec<Track> {
     let path = folder_path.as_ref();
@@ -40,7 +40,7 @@ pub fn scan_folder<P: AsRef<Path>>(folder_path: P) -> Vec<Track> {
         .collect()
 }
 
-fn extract_track_info(file_path: &Path) -> Option<Track> {
+pub fn extract_track_info(file_path: &Path) -> Option<Track> {
     let file_size = fs::metadata(file_path).map(|m| m.len()).ok();
     let filename = file_path
         .file_stem()

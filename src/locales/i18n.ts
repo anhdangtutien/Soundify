@@ -191,6 +191,18 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'aimix.noGenreTracks': 'Chưa tìm thấy bài hát phù hợp cho thể loại này.',
     'aimix.genreTracksCount': '{count} bài hát thịnh hành',
 
+    // Download & Offline Music
+    'download.downloadBtn': 'Tải bài hát về máy (Offline)',
+    'download.downloading': 'Đang tải bài hát về máy...',
+    'download.downloaded': 'Đã lưu trên máy (Offline)',
+    'download.downloadSuccess': 'Đã lưu về folder máy: {title}',
+    'download.downloadError': 'Lỗi khi tải bài hát: {error}',
+    'download.alreadyLocal': 'Bài hát này đã có sẵn trên máy của bạn!',
+    'download.folderSetting': 'Thư mục lưu nhạc Offline',
+    'download.folderSettingDesc': 'Nơi lưu trữ các bài hát đã tải về để bạn nghe bất cứ khi nào không có mạng',
+    'download.changeFolder': 'Đổi thư mục',
+    'download.openFolder': 'Mở thư mục',
+
     // Visualizer, Tables, Views
     'visualizer.playing': 'Đang phát',
     'visualizer.idle': 'Chờ phát',
@@ -432,6 +444,18 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'aimix.loadingGenre': 'Finding tracks for this genre...',
     'aimix.noGenreTracks': 'No matching tracks found for this genre.',
     'aimix.genreTracksCount': '{count} trending tracks',
+
+    // Download & Offline Music
+    'download.downloadBtn': 'Save to Disk (Offline)',
+    'download.downloading': 'Saving track to disk...',
+    'download.downloaded': 'Saved to Disk (Offline)',
+    'download.downloadSuccess': 'Saved to folder: {title}',
+    'download.downloadError': 'Download error: {error}',
+    'download.alreadyLocal': 'This track is already stored on your computer!',
+    'download.folderSetting': 'Offline Music Download Folder',
+    'download.folderSettingDesc': 'Where downloaded tracks are stored so you can listen anytime without internet',
+    'download.changeFolder': 'Change Folder',
+    'download.openFolder': 'Open Folder',
 
     // Visualizer, Tables, Views
     'visualizer.playing': 'Playing',
@@ -675,6 +699,18 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'aimix.noGenreTracks': 'このジャンルに一致する曲は見つかりませんでした。',
     'aimix.genreTracksCount': '{count} 曲のトレンド楽曲',
 
+    // Download & Offline Music
+    'download.downloadBtn': '端末に保存 (オフライン)',
+    'download.downloading': '楽曲を端末に保存中...',
+    'download.downloaded': '端末に保存済み (オフライン)',
+    'download.downloadSuccess': 'フォルダに保存しました: {title}',
+    'download.downloadError': 'ダウンロードエラー: {error}',
+    'download.alreadyLocal': 'この曲はすでに端末内に保存されています！',
+    'download.folderSetting': 'オフライン音楽保存先フォルダ',
+    'download.folderSettingDesc': 'オフラインで再生するためにダウンロードした楽曲が保存される場所',
+    'download.changeFolder': 'フォルダ変更',
+    'download.openFolder': 'フォルダを開く',
+
     // Visualizer, Tables, Views
     'visualizer.playing': '再生中',
     'visualizer.idle': '待機中',
@@ -916,6 +952,18 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'aimix.loadingGenre': '正在搜索该流派的歌曲...',
     'aimix.noGenreTracks': '未找到符合该流派的歌曲。',
     'aimix.genreTracksCount': '{count} 首热门歌曲',
+
+    // Download & Offline Music
+    'download.downloadBtn': '保存到本地 (离线播放)',
+    'download.downloading': '正在下载保存到本地...',
+    'download.downloaded': '已保存到本地 (离线)',
+    'download.downloadSuccess': '已保存到本地文件夹: {title}',
+    'download.downloadError': '下载错误: {error}',
+    'download.alreadyLocal': '该歌曲已经在您的本地电脑上！',
+    'download.folderSetting': '离线音乐下载文件夹',
+    'download.folderSettingDesc': '存储已下载歌曲的位置，供您在无网络时随时离线播放',
+    'download.changeFolder': '更改文件夹',
+    'download.openFolder': '打开文件夹',
 
     // Visualizer, Tables, Views
     'visualizer.playing': '正在播放',

@@ -2,6 +2,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
+import { openPath } from '@tauri-apps/plugin-opener';
 import { Sidebar } from './components/Sidebar';
 import { PlayerBar } from './components/PlayerBar';
 import { TrackTable } from './components/TrackTable';
@@ -38,6 +39,25 @@ export default function App() {
   const [repeatMode, setRepeatMode] = useState<'all' | 'one' | 'off'>('all'); // default: auto-play next
   const [isShuffle, setIsShuffle] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+
+  // Download & Offline Music Storage State
+  const [downloadFolder, setDownloadFolder] = useState<string>(() => {
+    return localStorage.getItem('spytify_download_folder') || '';
+  });
+  const [downloadingTrackIds, setDownloadingTrackIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!downloadFolder) {
+      invoke<string>('get_default_download_directory')
+        .then(dir => {
+          if (dir) {
+            setDownloadFolder(dir);
+            localStorage.setItem('spytify_download_folder', dir);
+          }
+        })
+        .catch(console.error);
+    }
+  }, []);
 
   const [accentColor, setAccentColor] = useState<string>(() => {
     return localStorage.getItem('spytify_accent_color') || '#ff2a55';
@@ -1342,6 +1362,73 @@ export default function App() {
     } catch (err) { showNotification(`Lỗi: ${err}`); }
   };
 
+  const handleDownloadTrack = async (track: Track) => {
+    if (track.source === 'local') {
+      showNotification(getTranslation(language, 'download.alreadyLocal'));
+      return;
+    }
+
+    if (downloadingTrackIds.has(track.id)) return;
+
+    setDownloadingTrackIds(prev => new Set(prev).add(track.id));
+    showNotification(`⏳ ${getTranslation(language, 'download.downloading')}: ${track.title}`);
+
+    try {
+      const savedTrack = await invoke<Track>('download_track', {
+        track,
+        targetDir: downloadFolder || null,
+      });
+
+      // Add newly saved track to library state so it is instantly available under "Nhạc trên máy"
+      setTracks(prev => {
+        const filtered = prev.filter(t => t.id !== track.id && t.id !== savedTrack.id);
+        return [savedTrack, ...filtered];
+      });
+
+      // If this was the playing track, smoothly point currentTrack to local file
+      if (currentTrackRef.current?.id === track.id) {
+        currentTrackRef.current = savedTrack;
+        setCurrentTrack(savedTrack);
+      }
+
+      showNotification(`✅ ${getTranslation(language, 'download.downloadSuccess', { title: savedTrack.title })}`);
+    } catch (err) {
+      showNotification(`❌ ${getTranslation(language, 'download.downloadError', { error: String(err) })}`);
+    } finally {
+      setDownloadingTrackIds(prev => {
+        const next = new Set(prev);
+        next.delete(track.id);
+        return next;
+      });
+    }
+  };
+
+  const handleChangeDownloadFolder = async () => {
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: getTranslation(language, 'download.folderSetting'),
+      });
+      if (selected && typeof selected === 'string') {
+        setDownloadFolder(selected);
+        localStorage.setItem('spytify_download_folder', selected);
+        showNotification(`📁 Đã đổi thư mục lưu nhạc: ${selected}`);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleOpenDownloadFolder = async () => {
+    try {
+      const target = downloadFolder || (await invoke<string>('get_default_download_directory'));
+      await openPath(target);
+    } catch (e) {
+      showNotification(`Không mở được thư mục: ${e}`);
+    }
+  };
+
   const handleSearchOnline = async (query: string, source: string): Promise<SearchResult[]> => {
     try { return await invoke<SearchResult[]>('search_online', { query, source }); }
     catch { return []; }
@@ -1760,7 +1847,7 @@ export default function App() {
 
           {/* Body Content */}
           <div className="flex-1 overflow-y-auto px-7 py-5">
-            {showVisualizer && currentView !== 'profile' && currentView !== 'ai_mix' && <AudioVisualizer isPlaying={isPlaying} language={language} />}
+            {showVisualizer && currentView !== 'profile' && currentView !== 'ai_mix' && <AudioVisualizer isPlaying={isPlaying} language={language} accentColor={accentColor} source={currentTrack?.source} />}
 
             {currentView === 'albums' ? (
               <AlbumsView
@@ -1824,6 +1911,9 @@ export default function App() {
                 onPlayTrack={handlePlayTrack}
                 isNextTrackPopupEnabled={isNextTrackPopupEnabled}
                 onToggleNextTrackPopupEnabled={handleToggleNextTrackPopupEnabled}
+                downloadFolder={downloadFolder}
+                onChangeDownloadFolder={handleChangeDownloadFolder}
+                onOpenDownloadFolder={handleOpenDownloadFolder}
               />
             ) : currentView === 'search' ? (
               <SearchView
@@ -1877,6 +1967,8 @@ export default function App() {
                   onTogglePlay={handleTogglePlay}
                   accentColor={accentColor}
                   language={language}
+                  onDownloadTrack={handleDownloadTrack}
+                  downloadingTrackIds={downloadingTrackIds}
                   onToggleFavorite={(id) => {
                     const t = displayedTracks.find(x => x.id === id);
                     if (t) handleToggleFavorite(t);
@@ -1926,6 +2018,8 @@ export default function App() {
                   onTogglePlay={handleTogglePlay}
                   accentColor={accentColor}
                   language={language}
+                  onDownloadTrack={handleDownloadTrack}
+                  downloadingTrackIds={downloadingTrackIds}
                   onToggleFavorite={(id) => {
                     const t = displayedTracks.find(x => x.id === id);
                     if (t) handleToggleFavorite(t);
@@ -1968,6 +2062,8 @@ export default function App() {
                   onTogglePlay={handleTogglePlay}
                   accentColor={accentColor}
                   language={language}
+                  onDownloadTrack={handleDownloadTrack}
+                  downloadingTrackIds={downloadingTrackIds}
                   onToggleFavorite={(id) => {
                     const t = displayedTracks.find(x => x.id === id);
                     if (t) handleToggleFavorite(t);
@@ -2012,6 +2108,8 @@ export default function App() {
             setIsAddToAlbumModalOpen(true);
           }
         }}
+        onDownload={handleDownloadTrack}
+        isDownloading={currentTrack ? downloadingTrackIds.has(currentTrack.id) : false}
         onToggleVisualizer={() => setShowVisualizer(p => !p)}
         showVisualizer={showVisualizer}
         themeMode={themeMode}

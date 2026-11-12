@@ -1,6 +1,7 @@
 pub mod ai;
 pub mod audio;
 pub mod db;
+pub mod downloader;
 pub mod models;
 pub mod oauth;
 pub mod scanner;
@@ -500,6 +501,16 @@ fn ai_smart_dj_next(
     Ok(MusicAiEngine::smart_dj_next(&current_track, &candidates))
 }
 
+#[tauri::command]
+fn get_default_download_directory() -> Result<String, String> {
+    Ok(downloader::Downloader::get_default_download_dir().to_string_lossy().to_string())
+}
+
+#[tauri::command]
+async fn download_track(track: Track, target_dir: Option<String>) -> Result<Track, String> {
+    downloader::Downloader::download(&track, target_dir).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let audio_manager = AudioPlayerManager::new();
@@ -622,6 +633,8 @@ pub fn run() {
             ai_train_model,
             ai_recommend_tracks,
             ai_smart_dj_next,
+            get_default_download_directory,
+            download_track,
             trim_memory
         ])
         .run(tauri::generate_context!())

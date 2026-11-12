@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Clock3, Heart, Music, HardDrive, FolderPlus } from 'lucide-react';
+import { Play, Pause, Clock3, Heart, Music, HardDrive, FolderPlus, Download, Loader2 } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { Track } from '../types';
 import { optimizeThumbnailUrl } from '../utils/trackUtils';
@@ -14,6 +14,8 @@ interface TrackTableProps {
   onTogglePlay: () => void;
   onToggleFavorite: (trackId: string) => void;
   onAddToAlbum?: (track: Track) => void;
+  onDownloadTrack?: (track: Track) => void;
+  downloadingTrackIds?: Set<string>;
   accentColor?: string;
   language?: LanguageCode;
 }
@@ -30,6 +32,8 @@ export const TrackTable: React.FC<TrackTableProps> = ({
   onTogglePlay,
   onToggleFavorite,
   onAddToAlbum,
+  onDownloadTrack,
+  downloadingTrackIds,
   accentColor = '#ff2a55',
   language = 'vi',
 }) => {
@@ -252,6 +256,32 @@ export const TrackTable: React.FC<TrackTableProps> = ({
 
               {/* Col 5: Duration & Like & Add to Album */}
               <div className="flex items-center justify-end gap-2 text-[11px] pr-1 font-mono text-[#666]">
+                {track.source !== 'local' && onDownloadTrack && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDownloadTrack(track);
+                    }}
+                    disabled={downloadingTrackIds?.has(track.id)}
+                    title={
+                      downloadingTrackIds?.has(track.id)
+                        ? getTranslation(language, 'download.downloading')
+                        : getTranslation(language, 'download.downloadBtn')
+                    }
+                    className={`p-1 transition-colors cursor-pointer ${
+                      downloadingTrackIds?.has(track.id)
+                        ? 'text-[var(--accent-color, #ff2a55)] animate-pulse'
+                        : 'opacity-0 group-hover:opacity-100 text-[#666] hover:text-white'
+                    }`}
+                  >
+                    {downloadingTrackIds?.has(track.id) ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                )}
+
                 {onAddToAlbum && (
                   <button
                     onClick={(e) => {

@@ -6,7 +6,8 @@ import {
   User as UserIcon, LogOut, Clock, Heart, Headphones, 
   Music, RefreshCw, Disc, Palette, Camera, Upload, Trash2, 
   Check, Sparkles, Shield, Sun, Moon, Download, Database, HardDriveDownload,
-  Cloud, CloudLightning, Key, ChevronDown, ChevronUp, Globe, Languages
+  Cloud, CloudLightning, Key, ChevronDown, ChevronUp, Globe, Languages,
+  Folder, FolderOpen, FolderDown
 } from 'lucide-react';
 import { 
   getStoredSupabaseConfig, saveStoredSupabaseConfig, isSupabaseConfigured,
@@ -28,6 +29,9 @@ interface ProfileViewProps {
   onUpdateLanguage?: (lang: LanguageCode) => void;
   isNextTrackPopupEnabled?: boolean;
   onToggleNextTrackPopupEnabled?: () => void;
+  downloadFolder?: string;
+  onChangeDownloadFolder?: () => void;
+  onOpenDownloadFolder?: () => void;
 }
 
 // 8 Curated Spy / Classified Theme Colors
@@ -90,6 +94,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onUpdateLanguage,
   isNextTrackPopupEnabled = true,
   onToggleNextTrackPopupEnabled,
+  downloadFolder = '',
+  onChangeDownloadFolder,
+  onOpenDownloadFolder,
 }) => {
   const [stats, setStats] = useState<UserStats>({ total_played: 0, favorite_count: 0, top_artist: null });
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -673,6 +680,50 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 }`}
               />
             </button>
+          </div>
+
+          {/* Offline Music Folder Setting */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-[#141418]">
+            <div className="flex items-center gap-3 min-w-0">
+              <div 
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
+              >
+                <FolderDown className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-white">{getTranslation(language, 'download.folderSetting')}</p>
+                <p className="text-[10px] text-[#8e8e9f] font-mono truncate" title={downloadFolder}>
+                  {downloadFolder || 'C:\\Users\\...\\Music\\Spytify'}
+                </p>
+                <p className="text-[10px] text-[#555] mt-0.5">{getTranslation(language, 'download.folderSettingDesc')}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0 self-start sm:self-auto">
+              {onChangeDownloadFolder && (
+                <button
+                  onClick={onChangeDownloadFolder}
+                  className="px-2.5 py-1.5 rounded-lg bg-[#14141c] hover:bg-[#1e1e28] text-white text-[11px] font-medium border border-[#22222e] transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <Folder className="w-3.5 h-3.5 text-[#888]" />
+                  <span>{getTranslation(language, 'download.changeFolder')}</span>
+                </button>
+              )}
+              {onOpenDownloadFolder && (
+                <button
+                  onClick={onOpenDownloadFolder}
+                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1.5"
+                  style={{
+                    backgroundColor: `${accentColor}18`,
+                    color: accentColor,
+                    border: `1px solid ${accentColor}35`,
+                  }}
+                >
+                  <FolderOpen className="w-3.5 h-3.5" />
+                  <span>{getTranslation(language, 'download.openFolder')}</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

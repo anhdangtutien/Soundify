@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { 
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat,
-  Volume2, VolumeX, Heart, Music, Sparkles, FolderPlus, Radio
+  Volume2, VolumeX, Heart, Music, Sparkles, FolderPlus, Radio,
+  Download, Check, Loader2
 } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { Track } from '../types';
@@ -27,6 +28,8 @@ interface PlayerBarProps {
   onVolumeChange: (volume: number) => void;
   onToggleFavorite: () => void;
   onAddToAlbum?: () => void;
+  onDownload?: (track: Track) => void;
+  isDownloading?: boolean;
   onToggleVisualizer: () => void;
   showVisualizer: boolean;
   accentColor?: string;
@@ -42,7 +45,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   currentTrack, upcomingTrack, isPlaying, currentTime, duration, volume, isFavorite,
   repeatMode, isShuffle, onToggleRepeat, onToggleShuffle,
   onTogglePlay, onPrev, onNext, onSeek, onVolumeChange,
-  onToggleFavorite, onAddToAlbum, onToggleVisualizer, showVisualizer,
+  onToggleFavorite, onAddToAlbum, onDownload, isDownloading = false, onToggleVisualizer, showVisualizer,
   accentColor = '#ff2a55',
   themeMode = 'dark',
   recommendMode = 'fresh',
@@ -188,6 +191,35 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                   className="p-1.5 rounded-full text-[#555] hover:text-[var(--accent-color, #ff2a55)] hover:bg-[#161620] transition-colors cursor-pointer"
                 >
                   <FolderPlus className="w-4 h-4" />
+                </button>
+              )}
+
+              {onDownload && (
+                <button
+                  onClick={() => onDownload(currentTrack)}
+                  disabled={isDownloading}
+                  title={
+                    currentTrack.source === 'local'
+                      ? getTranslation(language, 'download.downloaded')
+                      : isDownloading
+                      ? getTranslation(language, 'download.downloading')
+                      : getTranslation(language, 'download.downloadBtn')
+                  }
+                  className={`p-1.5 rounded-full transition-all cursor-pointer ${
+                    currentTrack.source === 'local'
+                      ? 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20'
+                      : isDownloading
+                      ? 'text-[var(--accent-color, #ff2a55)] animate-pulse'
+                      : 'text-[#555] hover:text-[var(--accent-color, #ff2a55)] hover:bg-[#161620]'
+                  }`}
+                >
+                  {isDownloading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : currentTrack.source === 'local' ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
                 </button>
               )}
             </div>
