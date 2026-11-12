@@ -77,6 +77,47 @@ async fn search_online(query: String, source: String) -> Result<Vec<SearchResult
 }
 
 #[tauri::command]
+async fn get_trending_hits(category: String) -> Result<Vec<SearchResult>, String> {
+    match category.to_lowercase().as_str() {
+        "usuk" | "global" => {
+            sources::youtube::search_youtube("billboard hot 100 hits us uk trending").await
+        }
+        "kpop_jpop" | "kpop" | "jpop" => {
+            sources::youtube::search_youtube("top kpop jpop viral hits trending").await
+        }
+        "vpop" | "vietnam" => {
+            sources::youtube::search_youtube("top hit vpop thinh hanh nhat hien nay").await
+        }
+        "audius" => sources::audius::get_trending_audius(20).await,
+        "lofi" => {
+            sources::youtube::search_youtube("lofi chill beats to relax study to").await
+        }
+        "edm" => {
+            sources::youtube::search_youtube("top edm festival banger hits").await
+        }
+        _ => {
+            // Priority: US/UK -> K-Pop/J-Pop -> V-Pop
+            let (usuk_res, asian_res, vpop_res) = tokio::join!(
+                sources::youtube::search_youtube("billboard hot 100 hits us uk trending"),
+                sources::youtube::search_youtube("top trending kpop jpop hits"),
+                sources::youtube::search_youtube("nhac tre thinh hanh top trending vietnam")
+            );
+            let mut list = Vec::new();
+            if let Ok(usuk) = usuk_res {
+                list.extend(usuk);
+            }
+            if let Ok(asian) = asian_res {
+                list.extend(asian);
+            }
+            if let Ok(vpop) = vpop_res {
+                list.extend(vpop);
+            }
+            Ok(list)
+        }
+    }
+}
+
+#[tauri::command]
 async fn get_related_tracks(title: String, artist: String) -> Result<Vec<SearchResult>, String> {
     let query = format!("{} hits playlist", artist);
     let mut results = sources::youtube::search_youtube(&query).await.unwrap_or_default();
@@ -235,6 +276,7 @@ pub fn run() {
             get_playback_status,
             search_online,
             get_related_tracks,
+            get_trending_hits,
             auth_register,
             auth_login,
             auth_google_login,

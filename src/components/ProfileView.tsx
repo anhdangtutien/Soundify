@@ -78,12 +78,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-2xl font-black text-white tracking-tight">{currentUser.display_name}</h2>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-[#1a1910] border border-[#ffe600]/40 text-[#ffe600] font-mono font-bold shadow-[0_0_6px_rgba(255,230,0,0.15)]">
-                HI-FI HERO MEMBER
+              <h2 className="text-xl font-bold text-white tracking-tight">{currentUser.display_name}</h2>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-[#181814] border border-[#ffe600]/30 text-[#ffe600] font-mono">
+                Tài khoản
               </span>
             </div>
-            <p className="text-xs text-[#00e5ff] font-mono mt-0.5">@{currentUser.username} • SQLite Profile Active</p>
+            <p className="text-xs text-[#888] font-mono mt-0.5">@{currentUser.username}</p>
           </div>
         </div>
 

@@ -61,11 +61,8 @@ export const SearchView: React.FC<SearchViewProps> = ({ onPlaySearchResult, onSe
   return (
     <div className="flex-1 p-6 overflow-y-auto">
       <div className="max-w-2xl mb-6">
-        <h2 className="text-xl font-black tracking-tight text-white mb-3 flex items-center gap-2">
-          <span>TÌM KIẾM ÂM NHẠC</span>
-          <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-[#1a1910] text-[#ffe600] border border-[#ffe600]/30">
-            SPYTIFY HERO
-          </span>
+        <h2 className="text-lg font-bold tracking-tight text-white mb-3">
+          Tìm kiếm
         </h2>
         <form onSubmit={handleSubmit} className="relative flex items-center">
           <Search className="w-4 h-4 text-[#666] absolute left-3.5 pointer-events-none" />

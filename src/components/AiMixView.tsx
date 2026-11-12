@@ -79,19 +79,19 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
 
   return (
     <div className="flex-1 p-8 overflow-y-auto max-w-5xl mx-auto">
-      {/* Header Banner — Invincible AI Studio */}
-      <div className="mb-6 p-6 rounded-2xl bg-[#08080a] border border-[#1a1a22] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Header Banner — Minimalist AI Studio */}
+      <div className="mb-6 p-5 rounded-2xl bg-[#0a0a0c] border border-[#16161a] flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[10px] font-black tracking-widest text-[#ffe600] uppercase px-2 py-0.5 rounded bg-[#1a1910] border border-[#ffe600]/40 font-mono flex items-center gap-1 shadow-[0_0_8px_rgba(255,230,0,0.15)]">
+            <span className="text-[10px] font-semibold text-[#ffe600] uppercase px-2 py-0.5 rounded bg-[#181814] border border-[#ffe600]/30 font-mono flex items-center gap-1">
               <Cpu className="w-3 h-3 text-[#ffe600]" />
-              SPYTIFY NEURAL HERO DJ
+              AI Music Engine
             </span>
-            <span className="text-[10px] text-[#00e5ff] font-mono">100% Offline • Rust Matrix Engine</span>
+            <span className="text-[10px] text-[#666] font-mono">On-device • Offline</span>
           </div>
-          <h2 className="text-2xl font-black text-white tracking-tight">AI Discovery Mix &amp; Smart DJ</h2>
-          <p className="text-xs text-[#888] mt-1 max-w-lg">
-            Hệ thống AI tự học gu âm nhạc từ tần suất nghe, bài hát yêu thích và thời lượng để cá nhân hóa danh sách đề xuất. Không gửi dữ liệu ra ngoài máy.
+          <h2 className="text-xl font-bold text-white tracking-tight">Gợi ý thông minh &amp; Smart DJ</h2>
+          <p className="text-xs text-[#777] mt-1 max-w-lg">
+            Hệ thống AI tự học gu âm nhạc từ tần suất nghe, bài hát yêu thích và thời lượng để cá nhân hóa danh sách đề xuất. Dữ liệu xử lý 100% trên máy.
           </p>
         </div>
 
@@ -99,17 +99,17 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
           <button
             onClick={handleTrainAi}
             disabled={training}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#ffe600] to-[#00e5ff] hover:opacity-90 text-black font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-[0_0_12px_rgba(255,230,0,0.35)] disabled:opacity-50"
+            className="px-4 py-2 rounded-lg bg-[#ffe600] hover:bg-[#00e5ff] text-black font-semibold text-xs tracking-wide flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
           >
             {training ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-black" />
-                <span>Đang train ({trainingProgress}%)...</span>
+                <span>Đang học ({trainingProgress}%)...</span>
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4 text-black" />
-                <span>Huấn luyện AI ngay</span>
+                <span>Huấn luyện AI</span>
               </>
             )}
           </button>

@@ -9,6 +9,7 @@ import { AudioVisualizer } from './components/AudioVisualizer';
 import { AuthModal } from './components/AuthModal';
 import { ProfileView } from './components/ProfileView';
 import { AiMixView } from './components/AiMixView';
+import { HomeTrendingView } from './components/HomeTrendingView';
 import { Track, PlaybackStatus, SearchResult, ViewType, User } from './types';
 import { FolderPlus, Disc, CheckCircle2, Tv, X, Radio, ArrowUpRight, LogIn } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon } from './components/Icons';
@@ -505,6 +506,12 @@ export default function App() {
   };
 
   const handleSeek = async (secs: number) => {
+    if (!currentTrack) return;
+    // Don't seek on live streams or invalid durations to avoid crashes
+    if (duration <= 0) return;
+    const lowerTitle = currentTrack.title.toLowerCase();
+    if (lowerTitle.includes('live') || lowerTitle.includes('trực tiếp') || lowerTitle.includes('24/7')) return;
+
     setCurrentTime(secs);
     accumulatedTimeRef.current = secs;
     if (isPlayingRef.current) {
@@ -688,37 +695,32 @@ export default function App() {
         />
 
         <main className="flex-1 flex flex-col overflow-hidden bg-[#000000]">
-          {/* Header Bar */}
-          <header className="h-14 px-7 flex items-center justify-between border-b border-[#141416] bg-black/90 backdrop-blur z-20">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-black tracking-widest text-white uppercase flex items-center gap-2">
-                <Disc className="w-4 h-4 text-[#ffe600] drop-shadow-[0_0_6px_#ffe600]" />
-                Spytify Invincible Audio
-              </span>
-              <span className="text-[10px] text-[#00e5ff] bg-[#0c1214] px-2 py-0.5 rounded border border-[#00e5ff]/30 font-mono font-semibold">
-                SQLite 3 • Invincible Core
-              </span>
+          {/* Header Bar — Minimalist */}
+          <header className="h-12 px-6 flex items-center justify-between border-b border-[#141416] bg-black/95 backdrop-blur z-20">
+            <div className="flex items-center gap-2 text-xs font-medium text-white">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#ffe600]"></span>
+              <span className="tracking-tight">Spytify</span>
             </div>
             <div className="flex items-center gap-2.5">
               {currentTrack?.source === 'youtube' && !!ytVideoId && (
                 <button
                   onClick={() => setShowYoutubeVideo(p => !p)}
-                  className={`px-3 py-1 rounded text-xs font-medium flex items-center gap-1.5 border transition-all cursor-pointer ${
+                  className={`px-3 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 border transition-all cursor-pointer ${
                     showYoutubeVideo
                       ? 'bg-white text-black border-white'
                       : 'bg-[#0f0f0f] hover:bg-[#1a1a1a] text-[#888] hover:text-white border-[#222]'
                   }`}
                 >
                   <Tv className="w-3.5 h-3.5" />
-                  {showYoutubeVideo ? 'Thu nhỏ video' : 'Mở MV YouTube'}
+                  {showYoutubeVideo ? 'Thu nhỏ' : 'MV'}
                 </button>
               )}
               <button
                 onClick={handleSelectFolder}
-                className="px-3.5 py-1 bg-[#121212] hover:bg-[#1c1c1c] text-white text-xs font-medium rounded border border-[#222] transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-3 py-1 bg-[#121212] hover:bg-[#1c1c1c] text-white text-xs font-medium rounded-md border border-[#222] transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <FolderPlus className="w-3.5 h-3.5 text-[#00e5ff]" />
-                Quét nhạc
+                Chọn thư mục
               </button>
             </div>
           </header>
@@ -727,7 +729,20 @@ export default function App() {
           <div className="flex-1 overflow-y-auto px-7 py-5">
             {showVisualizer && currentView !== 'profile' && currentView !== 'ai_mix' && <AudioVisualizer isPlaying={isPlaying} />}
 
-            {currentView === 'ai_mix' ? (
+            {currentView === 'library' ? (
+              <HomeTrendingView
+                onPlaySearchResult={handlePlaySearchResult}
+                currentTrack={currentTrack}
+                isPlaying={isPlaying}
+                favorites={favorites}
+                onToggleFavorite={(id) => {
+                  const t = displayedTracks.find(x => x.id === id) || {
+                    id, title: 'Bài hát', artist: 'Nghệ sĩ', album: 'Spytify', duration_secs: 180, path_or_url: '', source: 'youtube'
+                  };
+                  handleToggleFavorite(t);
+                }}
+              />
+            ) : currentView === 'ai_mix' ? (
               <AiMixView
                 currentUser={currentUser}
                 allTracks={tracks}

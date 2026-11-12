@@ -65,24 +65,19 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ isPlaying }) =
   }, [isPlaying]);
 
   return (
-    <div className="w-full bg-[#0a0a0c] border border-[#1a1a20] rounded-xl px-4 py-2.5 flex items-center justify-between mb-5 shadow-sm">
+    <div className="w-full bg-[#0a0a0c] border border-[#16161a] rounded-xl px-4 py-2 flex items-center justify-between mb-4">
       <div className="flex items-center gap-2.5">
-        <Activity className={`w-3.5 h-3.5 ${isPlaying ? 'text-[#ffe600] animate-pulse drop-shadow-[0_0_6px_#ffe600]' : 'text-[#444]'}`} />
-        <span className="text-[11px] font-semibold tracking-wider uppercase text-white/90 flex items-center gap-2">
-          {isPlaying ? 'Spytify Ultra HD' : 'Invincible Audio Standby'}
-          <span className="text-[9px] px-1.5 py-0.5 text-[#ffe600] bg-[#1a1910] border border-[#ffe600]/30 rounded font-mono font-bold shadow-[0_0_6px_rgba(255,230,0,0.15)]">
-            24-Bit / 192kHz
-          </span>
-          <span className="text-[9px] px-1.5 py-0.5 text-[#00e5ff] bg-[#0d161a] border border-[#00e5ff]/30 rounded font-mono font-semibold">
-            HERO EQ
-          </span>
+        <Activity className={`w-3.5 h-3.5 ${isPlaying ? 'text-[#ffe600] animate-pulse' : 'text-[#444]'}`} />
+        <span className="text-[11px] text-[#888] flex items-center gap-2">
+          <span className="text-white font-medium">{isPlaying ? 'Đang phát' : 'Chờ phát'}</span>
+          <span className="text-[10px] text-[#00e5ff] font-mono">Lossless Audio</span>
         </span>
       </div>
       <canvas
         ref={canvasRef}
-        width={300}
-        height={24}
-        className="rounded opacity-95"
+        width={240}
+        height={20}
+        className="rounded opacity-90"
       />
     </div>
   );

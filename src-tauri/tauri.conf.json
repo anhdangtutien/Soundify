@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Spytify - Ultra Hi-Fi Invincible Audio",
+        "title": "Spytify",
         "width": 1280,
         "height": 820,
         "minWidth": 960,

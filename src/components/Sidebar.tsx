@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  Compass, Search, Library, FolderPlus, HardDrive, Disc3, Heart, Radio, Disc, Sparkles, User as UserIcon, LogIn
+  Compass, Search, Library, FolderPlus, HardDrive, Disc3, Heart, Radio, Disc, Sparkles, User as UserIcon, LogIn, Flame
 } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { ViewType, User } from '../types';
@@ -54,70 +54,67 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside className="w-60 bg-black flex flex-col h-full border-r border-[#161618] select-none text-xs font-medium">
-      {/* Brand: Spytify - Invincible Theme */}
+    <aside className="w-56 bg-black flex flex-col h-full border-r border-[#141416] select-none text-xs">
+      {/* Brand: Spytify — Minimalist */}
       <div className="p-5 pb-4 flex items-center justify-between border-b border-[#141416]">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#ffe600] to-[#00e5ff] flex items-center justify-center shadow-[0_0_12px_rgba(255,230,0,0.35)]">
-            <Disc className="w-5 h-5 text-black" />
+          <div className="w-7 h-7 rounded-lg bg-[#ffe600] flex items-center justify-center shadow-sm">
+            <Disc className="w-4 h-4 text-black" />
           </div>
           <div>
-            <h1 className="text-base font-black tracking-tight text-white flex items-center gap-1.5">
-              SPYTIFY
-              <span className="text-[9px] uppercase font-black tracking-widest px-1.5 py-0.5 rounded bg-[#181814] text-[#ffe600] border border-[#ffe600]/40 shadow-[0_0_6px_rgba(255,230,0,0.2)]">
-                HERO
-              </span>
+            <h1 className="text-sm font-semibold tracking-tight text-white">
+              Spytify
             </h1>
-            <p className="text-[10px] text-[#00e5ff] tracking-wider uppercase font-mono font-semibold">Ultra Hi-Fi Invincible</p>
+            <p className="text-[10px] text-[#666]">music</p>
           </div>
         </div>
       </div>
 
       {/* Main Nav */}
-      <div className="p-3 space-y-1">
-        {navItem('library', 'Khám phá', <Compass className="w-4 h-4" />, undefined, true)}
+      <div className="p-3 space-y-0.5">
+        {navItem('library', 'Thịnh hành', <Flame className="w-4 h-4 text-[#ffe600]" />, undefined, true)}
         {navItem('search', 'Tìm kiếm', <Search className="w-4 h-4" />, undefined, false)}
-        {navItem('ai_mix', 'AI Discovery Mix', <Sparkles className="w-4 h-4 text-[#ffe600]" />,
-          <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#ffe600]/15 text-[#ffe600] border border-[#ffe600]/30 font-mono font-bold">AI DJ</span>,
+        {navItem('ai_mix', 'AI Mix', <Sparkles className="w-4 h-4 text-[#ffe600]" />,
+          <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#ffe600]/10 text-[#ffe600] font-mono">AI</span>,
           true
         )}
-        {navItem('profile', 'Hồ sơ cá nhân', <UserIcon className="w-4 h-4" />,
-          currentUser ? <span className="w-2 h-2 rounded-full bg-[#00e5ff] shadow-[0_0_6px_#00e5ff]"></span> : undefined,
+        {navItem('profile', 'Tài khoản', <UserIcon className="w-4 h-4" />,
+          currentUser ? <span className="w-1.5 h-1.5 rounded-full bg-[#00e5ff]"></span> : undefined,
           false
         )}
       </div>
 
       {/* Library Section */}
-      <div className="mt-2 px-5 flex items-center justify-between text-[#555] text-[10px] font-bold uppercase tracking-wider">
-        <span className="flex items-center gap-1.5"><Library className="w-3.5 h-3.5 text-[#ffe600]" />Nguồn nhạc</span>
+      <div className="mt-4 px-4 flex items-center justify-between text-[#555] text-[10px] font-medium tracking-wide">
+        <span>Thư viện</span>
         <button
           onClick={onSelectFolder}
-          title="Quét thư mục nhạc trên máy"
-          className="p-1 hover:text-[#ffe600] hover:bg-[#181814] rounded transition-all text-[#777] cursor-pointer"
+          title="Chọn thư mục nhạc"
+          className="p-1 hover:text-[#ffe600] rounded transition-colors text-[#666] cursor-pointer"
         >
           <FolderPlus className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      <div className="mt-1 px-3 flex-1 overflow-y-auto space-y-1">
-        {navItem('local', 'Nhạc Local (FLAC / MP3)', <HardDrive className="w-4 h-4" />,
-          <span className="text-[10px] text-[#ffe600] bg-[#1a1910] border border-[#ffe600]/20 px-2 py-0.5 rounded font-mono">{localTrackCount}</span>,
+      <div className="mt-1 px-3 flex-1 overflow-y-auto space-y-0.5">
+        {navItem('local', 'Nhạc trên máy', <HardDrive className="w-4 h-4" />,
+          <span className="text-[10px] text-[#666] font-mono">{localTrackCount}</span>,
           true
         )}
-        {navItem('youtube', 'YouTube Audio Stream', <YoutubeIcon className="w-4 h-4" />,
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500/80"></span>,
+        {navItem('youtube', 'YouTube', <YoutubeIcon className="w-4 h-4" />,
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500/60"></span>,
           false
         )}
-        {navItem('soundcloud', 'SoundCloud Cloud', <SoundCloudIcon className="w-4 h-4" />,
-          <span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>,
+        {navItem('soundcloud', 'SoundCloud', <SoundCloudIcon className="w-4 h-4" />,
+          <span className="w-1.5 h-1.5 rounded-full bg-orange-400/60"></span>,
           true
         )}
-        {navItem('audius', 'Audius Open Hi-Fi', <AudiusIcon className="w-4 h-4 text-[#cc00ff]" />,
-          <span className="w-1.5 h-1.5 rounded-full bg-[#cc00ff]"></span>,
+        {navItem('audius', 'Audius (320k)', <AudiusIcon className="w-4 h-4 text-[#00e5ff]" />,
+          <span className="w-1.5 h-1.5 rounded-full bg-[#00e5ff]/60"></span>,
           false
         )}
-        {navItem('favorites', 'Yêu thích (Database)', <Heart className="w-4 h-4 text-[#ffe600]" />,
-          <span className="text-[10px] text-[#00e5ff] bg-[#0d161a] border border-[#00e5ff]/20 px-2 py-0.5 rounded font-mono">{favoritesCount}</span>,
+        {navItem('favorites', 'Yêu thích', <Heart className="w-4 h-4 text-[#ffe600]" />,
+          <span className="text-[10px] text-[#666] font-mono">{favoritesCount}</span>,
           true
         )}
       </div>

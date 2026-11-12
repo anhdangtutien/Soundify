@@ -27,8 +27,38 @@ pub async fn search_audius(query: &str) -> Result<Vec<SearchResult>, String> {
     }
 
     let val = res.json::<Value>().await.map_err(|e| e.to_string())?;
-    let mut results = Vec::new();
+    Ok(parse_audius_items(&val))
+}
 
+pub async fn get_trending_audius(limit: usize) -> Result<Vec<SearchResult>, String> {
+    let client = reqwest::Client::builder()
+        .user_agent("Spytify/1.0")
+        .timeout(std::time::Duration::from_secs(8))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let url = format!(
+        "https://discoveryprovider.audius.co/v1/tracks/trending?app_name=Spytify&limit={}",
+        limit
+    );
+
+    let res = client
+        .get(&url)
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !res.status().is_success() {
+        return Err(format!("Audius Trending API status: {}", res.status()));
+    }
+
+    let val = res.json::<Value>().await.map_err(|e| e.to_string())?;
+    Ok(parse_audius_items(&val))
+}
+
+fn parse_audius_items(val: &Value) -> Vec<SearchResult> {
+    let mut results = Vec::new();
     if let Some(items) = val.get("data").and_then(|v| v.as_array()) {
         for item in items {
             let track_id = item.get("id").and_then(|v| v.as_str());
@@ -36,7 +66,6 @@ pub async fn search_audius(query: &str) -> Result<Vec<SearchResult>, String> {
             let artist = item.pointer("/user/name").and_then(|v| v.as_str()).unwrap_or("Audius Artist");
             let duration_secs = item.get("duration").and_then(|v| v.as_u64()).unwrap_or(180);
             
-            // Artwork 480x480 or 150x150
             let artwork = item.pointer("/artwork/480x480")
                 .and_then(|v| v.as_str())
                 .or_else(|| item.pointer("/artwork/150x150").and_then(|v| v.as_str()))
@@ -56,8 +85,7 @@ pub async fn search_audius(query: &str) -> Result<Vec<SearchResult>, String> {
             }
         }
     }
-
-    Ok(results)
+    results
 }
 
 fn urlencoding_simple(s: &str) -> String {

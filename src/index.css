@@ -2,12 +2,14 @@
 
 @layer base {
   body {
-    @apply bg-black text-[#a0a0a0] antialiased select-none font-sans overflow-hidden;
+    @apply bg-black text-[#a0a0a0] antialiased select-none overflow-hidden;
     margin: 0;
     padding: 0;
     height: 100vh;
     width: 100vw;
     background-color: #000000;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    letter-spacing: -0.01em;
   }
 }
 

@@ -54,11 +54,37 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
     }
   };
 
+  // Detect Live Stream mode (YouTube Live, 24/7 radio, duration 0 or live keyword)
+  const isLive = Boolean(
+    currentTrack && (
+      (duration <= 0 && isPlaying && currentTime > 4) ||
+      (currentTrack.duration_secs === 0 && duration <= 0) ||
+      currentTrack.title.toLowerCase().includes('live') ||
+      currentTrack.title.toLowerCase().includes('trực tiếp') ||
+      currentTrack.title.toLowerCase().includes('24/7') ||
+      currentTrack.title.toLowerCase().includes('radio stream') ||
+      currentTrack.artist.toLowerCase().includes('radio')
+    )
+  );
+
   const displayTime = isDragging ? dragValue : currentTime;
+  const isBuffering = !isLive && duration <= 0 && isPlaying;
   const safeDuration = duration > 0 ? duration : 100;
-  const progressPercent = Math.min(100, Math.max(0, (displayTime / safeDuration) * 100));
+  const progressPercent = duration > 0 ? Math.min(100, Math.max(0, (displayTime / safeDuration) * 100)) : 0;
 
   const getSourceBadge = (source: string) => {
+    if (isLive) {
+      return (
+        <span className="text-[9px] font-bold tracking-wider px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/30 flex items-center gap-1.5 font-mono">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
+          </span>
+          TRỰC TIẾP
+        </span>
+      );
+    }
+
     switch (source) {
       case 'youtube':
         return (
@@ -141,7 +167,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
             disabled={!currentTrack}
             className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
               currentTrack
-                ? 'bg-[#ffe600] text-black hover:bg-[#00e5ff] hover:scale-105 active:scale-95 shadow-[0_0_12px_rgba(255,230,0,0.4)]'
+                ? 'bg-[#ffe600] text-black hover:bg-[#00e5ff] hover:scale-105 active:scale-95 shadow-sm'
                 : 'bg-[#222] text-[#555] cursor-not-allowed'
             }`}
           >
@@ -164,50 +190,74 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           </button>
         </div>
 
-        {/* Invincible Hero Seekbar — Yellow to Cyan Gradient */}
-        <div className="w-full flex items-center gap-3 text-[11px] text-[#666] font-mono">
-          <span className="w-9 text-right text-[#ffe600]">{formatTime(displayTime)}</span>
-          <div className="relative flex-1 flex items-center group h-4 cursor-pointer">
-            {/* Background track */}
-            <div className="absolute w-full h-[3px] bg-[#1c1c1e] rounded-full group-hover:h-[5px] transition-all overflow-hidden">
-              {/* Progress fill (Invincible Yellow to Cyan Gradient) */}
+        {/* Seekbar Area — Adapts to Live Stream, Buffering, or Regular Track */}
+        {isLive ? (
+          <div className="w-full flex items-center gap-3 text-xs font-mono">
+            <span className="w-10 text-right text-[#ffe600] font-semibold">{formatTime(currentTime)}</span>
+            <div className="relative flex-1 h-[4px] bg-[#16161c] rounded-full overflow-hidden flex items-center">
+              <div className="h-full w-full bg-gradient-to-r from-red-500 via-[#ffe600] to-[#00e5ff] rounded-full animate-pulse opacity-90" />
+            </div>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-red-500/10 border border-red-500/30 text-red-400 font-bold text-[9px] uppercase tracking-wider flex-shrink-0">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
+              </span>
+              <span>Trực tiếp</span>
+            </div>
+          </div>
+        ) : isBuffering ? (
+          <div className="w-full flex items-center gap-3 text-[11px] text-[#666] font-mono">
+            <span className="w-9 text-right text-[#ffe600]">{formatTime(currentTime)}</span>
+            <div className="relative flex-1 h-[3px] bg-[#1c1c1e] rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-[#ffe600] to-[#00e5ff] rounded-full animate-pulse w-full opacity-60" />
+            </div>
+            <span className="w-12 text-[#888] text-[10px] truncate">Đang tải...</span>
+          </div>
+        ) : (
+          <div className="w-full flex items-center gap-3 text-[11px] text-[#666] font-mono">
+            <span className="w-9 text-right text-[#ffe600]">{formatTime(displayTime)}</span>
+            <div className="relative flex-1 flex items-center group h-4 cursor-pointer">
+              {/* Background track */}
+              <div className="absolute w-full h-[3px] bg-[#1c1c1e] rounded-full group-hover:h-[4px] transition-all overflow-hidden">
+                {/* Progress fill */}
+                <div
+                  className="h-full bg-gradient-to-r from-[#ffe600] to-[#00e5ff] transition-all rounded-full"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+
+              {/* Thumb handle on hover */}
               <div
-                className="h-full bg-gradient-to-r from-[#ffe600] to-[#00e5ff] transition-all rounded-full shadow-[0_0_8px_rgba(255,230,0,0.5)]"
-                style={{ width: `${progressPercent}%` }}
+                className="absolute w-2.5 h-2.5 bg-[#ffe600] rounded-full border border-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none -translate-x-1/2"
+                style={{ left: `${progressPercent}%` }}
+              />
+
+              {/* Range input */}
+              <input
+                type="range"
+                min={0}
+                max={safeDuration}
+                step={0.25}
+                value={displayTime}
+                onMouseDown={(e) => {
+                  setIsDragging(true);
+                  setDragValue(Number((e.target as HTMLInputElement).value));
+                }}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setDragValue(v);
+                }}
+                onMouseUp={(e) => {
+                  const v = Number((e.target as HTMLInputElement).value);
+                  setIsDragging(false);
+                  onSeek(v);
+                }}
+                className="absolute w-full opacity-0 h-full cursor-pointer z-10"
               />
             </div>
-
-            {/* Glowing thumb handle on hover */}
-            <div
-              className="absolute w-3 h-3 bg-[#ffe600] rounded-full shadow-[0_0_10px_#ffe600] border border-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none -translate-x-1/2"
-              style={{ left: `${progressPercent}%` }}
-            />
-
-            {/* Range input */}
-            <input
-              type="range"
-              min={0}
-              max={safeDuration}
-              step={0.25}
-              value={displayTime}
-              onMouseDown={(e) => {
-                setIsDragging(true);
-                setDragValue(Number((e.target as HTMLInputElement).value));
-              }}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                setDragValue(v);
-              }}
-              onMouseUp={(e) => {
-                const v = Number((e.target as HTMLInputElement).value);
-                setIsDragging(false);
-                onSeek(v);
-              }}
-              className="absolute w-full opacity-0 h-full cursor-pointer z-10"
-            />
+            <span className="w-9 text-[#00e5ff]">{formatTime(duration)}</span>
           </div>
-          <span className="w-9 text-[#00e5ff]">{formatTime(duration)}</span>
-        </div>
+        )}
       </div>
 
       {/* Right: Volume + Utils */}
