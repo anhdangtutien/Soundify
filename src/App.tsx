@@ -1014,6 +1014,7 @@ export default function App() {
               />
             ) : currentView === 'library' ? (
               <HomeTrendingView
+                accentColor={accentColor}
                 onPlaySearchResult={handlePlaySearchResult}
                 currentTrack={currentTrack}
                 isPlaying={isPlaying}

@@ -13,6 +13,7 @@ interface HomeTrendingViewProps {
   isPlaying: boolean;
   favorites: Set<string>;
   onToggleFavorite: (trackId: string) => void;
+  accentColor?: string;
 }
 
 interface CategoryFilter {
@@ -166,6 +167,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
   isPlaying,
   favorites,
   onToggleFavorite,
+  accentColor = '#ff2a55',
 }) => {
   const [trendingTracks, setTrendingTracks] = useState<SearchResult[]>(INITIAL_CURATED_HITS);
   const [loading, setLoading] = useState(false);
@@ -253,7 +255,12 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
           <div className="pt-2 flex items-center gap-3">
             <button
               onClick={() => onPlaySearchResult(featured)}
-              className="px-5 py-2.5 rounded-xl bg-white hover:bg-[#ff2a55] text-black hover:text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shadow-[0_0_15px_rgba(255,255,255,0.3)] hover:shadow-[0_0_15px_rgba(255,42,85,0.4)]"
+              style={{
+                backgroundColor: accentColor,
+                color: accentColor === '#FFFFFF' ? '#000000' : '#FFFFFF',
+                boxShadow: `0 0 16px ${accentColor}40`
+              }}
+              className="px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 hover:scale-105 active:scale-95"
             >
               <Play className="w-4 h-4 fill-current ml-0.5" />
               <span>Phát ngay</span>

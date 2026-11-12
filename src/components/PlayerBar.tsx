@@ -27,6 +27,7 @@ interface PlayerBarProps {
   onToggleVisualizer: () => void;
   showVisualizer: boolean;
   accentColor?: string;
+  themeMode?: 'dark' | 'light';
 }
 
 export const PlayerBar: React.FC<PlayerBarProps> = ({
@@ -35,6 +36,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   onTogglePlay, onPrev, onNext, onSeek, onVolumeChange,
   onToggleFavorite, onAddToAlbum, onToggleVisualizer, showVisualizer,
   accentColor = '#ff2a55',
+  themeMode = 'dark',
 }) => {
   const [prevVolume, setPrevVolume] = useState(volume || 0.8);
   const [isDragging, setIsDragging] = useState(false);
@@ -195,11 +197,14 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           <button
             onClick={onTogglePlay}
             disabled={!currentTrack}
-            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-              currentTrack
-                ? 'bg-white text-black hover:bg-[var(--accent-color, #ff2a55)] hover:text-white hover:scale-105 active:scale-95 shadow-[0_0_12px_rgba(255,255,255,0.25)]'
-                : 'bg-[#1c1c24] text-[#555] cursor-not-allowed'
-            }`}
+            title={isPlaying ? 'Tạm dừng (Space)' : 'Phát nhạc (Space)'}
+            style={{
+              backgroundColor: currentTrack ? accentColor : (themeMode === 'light' ? '#e2e8f0' : '#1c1c24'),
+              color: currentTrack ? (accentColor === '#FFFFFF' ? '#000000' : '#FFFFFF') : (themeMode === 'light' ? '#64748b' : '#64748b'),
+              boxShadow: currentTrack ? `0 0 16px ${accentColor}50` : (themeMode === 'light' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'),
+              borderColor: currentTrack ? 'transparent' : (themeMode === 'light' ? '#cbd5e1' : '#2a2a38'),
+            }}
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 disabled:cursor-not-allowed border"
           >
             {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
           </button>
