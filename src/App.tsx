@@ -280,6 +280,8 @@ export default function App() {
   }, [isNextTrackPopupEnabled]);
 
   const isSkippingRef = useRef(false);
+  const playbackHistoryStackRef = useRef<Track[]>([]);
+  const playbackForwardStackRef = useRef<Track[]>([]);
 
   const handleToggleNextTrackPopupEnabled = () => {
     setIsNextTrackPopupEnabled(prev => {
@@ -971,7 +973,16 @@ export default function App() {
   };
 
   // â”€â”€â”€ Core play function â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const playTrackInternal = async (track: Track) => {
+  const playTrackInternal = async (track: Track, isBackOrForward = false) => {
+    // Record true previously playing track into playback history stack before switching
+    if (!isBackOrForward && currentTrackRef.current && currentTrackRef.current.id !== track.id) {
+      playbackHistoryStackRef.current.push(currentTrackRef.current);
+      if (playbackHistoryStackRef.current.length > 50) {
+        playbackHistoryStackRef.current.shift();
+      }
+      playbackForwardStackRef.current = [];
+    }
+
     currentTrackRef.current = track;
     setCurrentTrack(track);
     setCurrentTime(0);
@@ -1136,10 +1147,12 @@ export default function App() {
   handleTogglePlayRef.current = handleTogglePlay;
   const handleNextRef = useRef(handleNext);
   handleNextRef.current = handleNext;
+  const handleUserPrevRef = useRef<() => void>(() => {});
 
   // ─── SYSTEM TRAY & RAM OPTIMIZER (MỤC 3: GIẢI PHÓNG BỘ NHỚ KHI ẨN / THU NHỎ) ───
   useEffect(() => {
     let unlistenPlay: (() => void) | undefined;
+    let unlistenPrev: (() => void) | undefined;
     let unlistenNext: (() => void) | undefined;
     let unlistenState: (() => void) | undefined;
 
@@ -1147,6 +1160,10 @@ export default function App() {
     listen('tray-toggle-play', () => {
       handleTogglePlayRef.current();
     }).then(fn => { unlistenPlay = fn; });
+
+    listen('tray-prev-track', () => {
+      handleUserPrevRef.current();
+    }).then(fn => { unlistenPrev = fn; });
 
     listen('tray-next-track', () => {
       handleNextRef.current(true);
@@ -1175,6 +1192,7 @@ export default function App() {
 
     return () => {
       if (unlistenPlay) unlistenPlay();
+      if (unlistenPrev) unlistenPrev();
       if (unlistenNext) unlistenNext();
       if (unlistenState) unlistenState();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -1219,13 +1237,25 @@ export default function App() {
 
   
   const handleUserNext = () => {
+    // If the user previously navigated backwards, forward through history first
+    if (playbackForwardStackRef.current.length > 0) {
+      const cur = currentTrackRef.current;
+      if (cur) {
+        playbackHistoryStackRef.current.push(cur);
+      }
+      const nextTrack = playbackForwardStackRef.current.pop()!;
+      playTrackInternal(nextTrack, true);
+      showNotification(`⏭ ${nextTrack.title} - ${nextTrack.artist}`);
+      return;
+    }
+
     // When recommendation mode is active (Fresh Discovery or Smart Mix), follow the recommendation engine
     if (recommendModeRef.current !== 'off') {
       handleNext(true);
       return;
     }
 
-    const list = displayedTracksRef.current.length > 0 ? displayedTracksRef.current : (tracksRef.current.length > 0 ? tracksRef.current : tracks);
+    const list = tracksRef.current.length > 0 ? tracksRef.current : (displayedTracksRef.current.length > 0 ? displayedTracksRef.current : tracks);
     if (!list.length || !currentTrackRef.current) return;
     const curId = currentTrackRef.current.id;
     const idx = list.findIndex(t => t.id === curId);
@@ -1238,23 +1268,33 @@ export default function App() {
   };
 
   const handleUserPrev = () => {
-    const list = displayedTracksRef.current.length > 0 ? displayedTracksRef.current : (tracksRef.current.length > 0 ? tracksRef.current : tracks);
+    // If user has a playback history stack, pop the genuine previous song that was being listened to!
+    if (playbackHistoryStackRef.current.length > 0) {
+      const cur = currentTrackRef.current;
+      if (cur) {
+        playbackForwardStackRef.current.push(cur);
+      }
+      const prevTrack = playbackHistoryStackRef.current.pop()!;
+      playTrackInternal(prevTrack, true);
+      showNotification(`⏮ ${prevTrack.title} - ${prevTrack.artist}`);
+      return;
+    }
+
+    // Fallback if no history stack yet: move to previous track in playlist
+    const list = tracksRef.current.length > 0 ? tracksRef.current : (displayedTracksRef.current.length > 0 ? displayedTracksRef.current : tracks);
     if (!list.length || !currentTrackRef.current) return;
     const curId = currentTrackRef.current.id;
     const idx = list.findIndex(t => t.id === curId);
-    if (idx === -1) {
-      playTrackInternal(list[list.length - 1]);
-    } else {
-      const prevIdx = (idx - 1 + list.length) % list.length;
-      playTrackInternal(list[prevIdx]);
+    const prevIdx = idx > 0 ? idx - 1 : (idx === 0 ? list.length - 1 : 0);
+    const prevTrack = list[prevIdx];
+    if (prevTrack) {
+      playTrackInternal(prevTrack, true);
+      showNotification(`⏮ ${prevTrack.title} - ${prevTrack.artist}`);
     }
   };
 
-  const handlePrev = () => {
-    if (!tracks.length || !currentTrack) return;
-    const idx = tracks.findIndex(t => t.id === currentTrack.id);
-    playTrackInternal(tracks[(idx - 1 + tracks.length) % tracks.length]);
-  };
+  const handlePrev = handleUserPrev;
+  handleUserPrevRef.current = handleUserPrev;
 
   const handleToggleFavorite = async (trackToFav?: Track) => {
     const target = trackToFav || currentTrack;

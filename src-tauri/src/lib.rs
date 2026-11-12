@@ -514,9 +514,10 @@ pub fn run() {
             // Setup System Tray
             let show_i = MenuItem::with_id(app, "show", "Hiện Spytify", true, None::<&str>)?;
             let toggle_play_i = MenuItem::with_id(app, "toggle_play", "Tạm dừng / Phát tiếp", true, None::<&str>)?;
+            let prev_i = MenuItem::with_id(app, "prev", "Bài trước đó", true, None::<&str>)?;
             let next_i = MenuItem::with_id(app, "next", "Bài tiếp theo", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Thoát ứng dụng", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_i, &toggle_play_i, &next_i, &quit_i])?;
+            let menu = Menu::with_items(app, &[&show_i, &toggle_play_i, &prev_i, &next_i, &quit_i])?;
 
             let mut builder = TrayIconBuilder::new()
                 .menu(&menu)
@@ -534,6 +535,9 @@ pub fn run() {
                         }
                         "toggle_play" => {
                             let _ = app.emit("tray-toggle-play", ());
+                        }
+                        "prev" => {
+                            let _ = app.emit("tray-prev-track", ());
                         }
                         "next" => {
                             let _ = app.emit("tray-next-track", ());
