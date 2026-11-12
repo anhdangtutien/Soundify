@@ -319,19 +319,19 @@ export default function App() {
   };
 
   // ─── AUTO-PLAY NEXT TRACK & AUTO-RECOMMEND ENGINE ──────────────────────────
-  const handleNext = useCallback(async () => {
+  const handleNext = useCallback(async (isManualSkip = false) => {
     const all = tracksRef.current;
     const cur = currentTrackRef.current;
     if (!all.length) return;
 
-    // 1. Repeat single track mode
-    if (repeatModeRef.current === 'one' && cur) {
+    // 1. Repeat single track mode (only when track ends naturally, not on manual skip)
+    if (!isManualSkip && repeatModeRef.current === 'one' && cur) {
       playTrackInternal(cur);
       return;
     }
 
-    // 2. Repeat off and NOT in recommendation mode
-    if (repeatModeRef.current === 'off' && recommendModeRef.current === 'off') {
+    // 2. Repeat off and NOT in recommendation mode (only when track ends naturally)
+    if (!isManualSkip && repeatModeRef.current === 'off' && recommendModeRef.current === 'off') {
       setIsPlaying(false);
       return;
     }
@@ -868,6 +868,12 @@ export default function App() {
 
   
   const handleUserNext = () => {
+    // When recommendation mode is active (Fresh Discovery or Smart Mix), follow the recommendation engine
+    if (recommendModeRef.current !== 'off') {
+      handleNext(true);
+      return;
+    }
+
     const list = displayedTracksRef.current.length > 0 ? displayedTracksRef.current : (tracksRef.current.length > 0 ? tracksRef.current : tracks);
     if (!list.length || !currentTrackRef.current) return;
     const curId = currentTrackRef.current.id;
