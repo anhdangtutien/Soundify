@@ -1081,12 +1081,14 @@ export default function App() {
     preloadedNextTrackRef.current = null;
     setPreloadedNextTrack(null);
 
-    const isLiveTrack = !track.duration_secs ||
-      track.duration_secs <= 0 ||
-      track.title.toLowerCase().includes('live') ||
-      track.title.toLowerCase().includes('trực tiếp') ||
-      track.title.toLowerCase().includes('24/7') ||
-      track.title.toLowerCase().includes('radio');
+    const isLiveTrack = track.source !== 'local' &&
+      (!track.duration_secs || track.duration_secs <= 0) &&
+      (
+        track.title.toLowerCase().includes('livestream') ||
+        track.title.toLowerCase().includes('live stream') ||
+        track.title.toLowerCase().includes('trực tiếp') ||
+        track.title.toLowerCase().includes('24/7')
+      );
 
     setDuration(isLiveTrack ? 0 : (track.duration_secs || 0));
     setIsPlaying(false);
@@ -1320,11 +1322,9 @@ export default function App() {
 
   const handleSeek = async (secs: number) => {
     if (!currentTrack) return;
-    // Don't seek on live streams or invalid durations to avoid crashes
+    // Don't seek on live streams without duration to avoid crashes
     const effDur = duration > 0 ? duration : (currentTrack.duration_secs || 0);
-    if (effDur <= 0) return;
-    const lowerTitle = currentTrack.title.toLowerCase();
-    if (lowerTitle.includes('live') || lowerTitle.includes('trực tiếp') || lowerTitle.includes('24/7')) return;
+    if (effDur <= 0 && currentTrack.source !== 'local') return;
 
     setCurrentTime(secs);
     accumulatedTimeRef.current = secs;

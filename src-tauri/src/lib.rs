@@ -533,7 +533,7 @@ pub fn run() {
             let mut builder = TrayIconBuilder::new()
                 .menu(&menu)
                 .show_menu_on_left_click(false)
-                .tooltip("Spytify - Invincible Hi-Fi Music Player")
+                .tooltip("Spytify - Spy Music")
                 .on_menu_event(|app, event| {
                     match event.id.as_ref() {
                         "show" => {

@@ -37,6 +37,32 @@ impl Downloader {
         }
     }
 
+    pub fn find_node_bin() -> Option<PathBuf> {
+        // 1. Check D:\NodeJS\node.exe
+        let d_node = PathBuf::from("D:\\NodeJS\\node.exe");
+        if d_node.exists() {
+            return Some(d_node);
+        }
+        // 2. Check Program Files
+        let pf_node = PathBuf::from("C:\\Program Files\\nodejs\\node.exe");
+        if pf_node.exists() {
+            return Some(pf_node);
+        }
+        // 3. Check system PATH
+        if let Ok(output) = Command::new("where").arg("node").output() {
+            if output.status.success() {
+                let s = String::from_utf8_lossy(&output.stdout);
+                if let Some(line) = s.lines().next() {
+                    let p = PathBuf::from(line.trim());
+                    if p.exists() {
+                        return Some(p);
+                    }
+                }
+            }
+        }
+        None
+    }
+
     pub fn find_ytdlp_bin() -> Option<PathBuf> {
         // 1. Check APPDATA/snutify/bin/yt-dlp.exe
         if let Ok(appdata) = std::env::var("APPDATA") {
@@ -65,6 +91,42 @@ impl Downloader {
         None
     }
 
+    pub async fn ensure_ytdlp_available() -> Result<PathBuf, String> {
+        if let Some(existing) = Self::find_ytdlp_bin() {
+            return Ok(existing);
+        }
+
+        // Auto-download standalone yt-dlp.exe from GitHub into APPDATA/snutify/bin/yt-dlp.exe
+        let appdata = std::env::var("APPDATA")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| std::env::temp_dir());
+        let bin_dir = appdata.join("snutify").join("bin");
+        let _ = fs::create_dir_all(&bin_dir);
+        let dest = bin_dir.join("yt-dlp.exe");
+
+        let download_url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
+        let client = reqwest::Client::builder()
+            .user_agent("Mozilla/5.0 Spytify Downloader")
+            .build()
+            .map_err(|e| e.to_string())?;
+
+        let res = client
+            .get(download_url)
+            .send()
+            .await
+            .map_err(|e| format!("Không thể kết nối tải bộ giải mã YouTube: {}", e))?;
+        if !res.status().is_success() {
+            return Err(format!("Lỗi tải công cụ YouTube: HTTP {}", res.status()));
+        }
+
+        let mut file = File::create(&dest).map_err(|e| format!("Không tạo được file yt-dlp: {}", e))?;
+        let bytes = res.bytes().await.map_err(|e| format!("Lỗi tải dữ liệu: {}", e))?;
+        file.write_all(&bytes).map_err(|e| format!("Lỗi lưu file: {}", e))?;
+        file.flush().map_err(|e| format!("Lỗi hoàn tất: {}", e))?;
+
+        Ok(dest)
+    }
+
     pub async fn download(track: &Track, custom_target_dir: Option<String>) -> Result<Track, String> {
         let target_dir = match custom_target_dir {
             Some(dir) if !dir.trim().is_empty() => {
@@ -87,9 +149,7 @@ impl Downloader {
                 Self::make_local_track(&dest_file, track)
             }
             TrackSource::YouTube => {
-                let ytdlp = Self::find_ytdlp_bin().ok_or_else(|| {
-                    "Chưa tìm thấy công cụ tải YouTube (yt-dlp). Vui lòng kiểm tra kết nối mạng.".to_string()
-                })?;
+                let ytdlp = Self::ensure_ytdlp_available().await?;
 
                 let video_id = if track.path_or_url.contains("v=") {
                     track.path_or_url.split("v=").nth(1).unwrap_or(&track.path_or_url).split('&').next().unwrap_or(&track.path_or_url)
@@ -103,15 +163,22 @@ impl Downloader {
                 let out_template = target_dir.join(format!("{}.%(ext)s", base_filename));
                 let out_template_str = out_template.to_string_lossy().to_string();
 
+                let mut args = vec![
+                    "-f".to_string(), "ba[ext=m4a]/ba[ext=mp3]/ba".to_string(),
+                    "--no-playlist".to_string(),
+                    "--max-filesize".to_string(), "60M".to_string(),
+                    "-o".to_string(), out_template_str.clone(),
+                ];
+
+                if let Some(node_path) = Self::find_node_bin() {
+                    args.push("--js-runtimes".to_string());
+                    args.push(format!("node:{}", node_path.to_string_lossy()));
+                }
+
+                args.push(yt_url);
+
                 let mut cmd = Command::new(&ytdlp);
-                cmd.args(&[
-                    "-f", "ba[ext=m4a]/ba[ext=mp3]/ba",
-                    "--add-metadata",
-                    "--no-playlist",
-                    "--max-filesize", "60M",
-                    "-o", &out_template_str,
-                    &yt_url,
-                ]);
+                cmd.args(&args);
 
                 #[cfg(target_os = "windows")]
                 {
@@ -120,10 +187,6 @@ impl Downloader {
                 }
 
                 let output = cmd.output().map_err(|e| format!("Lỗi khởi chạy tải: {}", e))?;
-                if !output.status.success() {
-                    let err_msg = String::from_utf8_lossy(&output.stderr);
-                    return Err(format!("Lỗi tải YouTube: {}", err_msg));
-                }
 
                 // Locate the downloaded file (could be .m4a, .webm, or .mp3)
                 let candidates = [
@@ -133,11 +196,20 @@ impl Downloader {
                     target_dir.join(format!("{}.opus", base_filename)),
                 ];
 
-                let dest_file = candidates.into_iter().find(|p| p.exists()).ok_or_else(|| {
-                    "Không tìm thấy file sau khi tải về thành công.".to_string()
-                })?;
+                if let Some(dest_file) = candidates.into_iter().find(|p| p.exists()) {
+                    return Self::make_local_track(&dest_file, track);
+                }
 
-                Self::make_local_track(&dest_file, track)
+                if !output.status.success() {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    let error_line = stderr
+                        .lines()
+                        .find(|l| l.contains("ERROR:"))
+                        .unwrap_or_else(|| stderr.lines().find(|l| !l.trim().is_empty()).unwrap_or("Lỗi tải không xác định"));
+                    return Err(format!("Lỗi tải YouTube: {}", error_line));
+                }
+
+                Err("Không tìm thấy file sau khi tải về hoàn tất.".to_string())
             }
             TrackSource::SoundCloud => {
                 if let Some(ytdlp) = Self::find_ytdlp_bin() {
@@ -147,7 +219,6 @@ impl Downloader {
                     let mut cmd = Command::new(&ytdlp);
                     cmd.args(&[
                         "-f", "ba[ext=m4a]/ba[ext=mp3]/ba",
-                        "--add-metadata",
                         "--no-playlist",
                         "-o", &out_template_str,
                         &track.path_or_url,
@@ -160,16 +231,19 @@ impl Downloader {
                     }
 
                     let output = cmd.output().map_err(|e| format!("Lỗi tải SoundCloud: {}", e))?;
-                    if output.status.success() {
-                        let candidates = [
-                            target_dir.join(format!("{}.m4a", base_filename)),
-                            target_dir.join(format!("{}.mp3", base_filename)),
-                            target_dir.join(format!("{}.webm", base_filename)),
-                            target_dir.join(format!("{}.opus", base_filename)),
-                        ];
-                        if let Some(dest_file) = candidates.into_iter().find(|p| p.exists()) {
-                            return Self::make_local_track(&dest_file, track);
-                        }
+                    let candidates = [
+                        target_dir.join(format!("{}.m4a", base_filename)),
+                        target_dir.join(format!("{}.mp3", base_filename)),
+                        target_dir.join(format!("{}.webm", base_filename)),
+                        target_dir.join(format!("{}.opus", base_filename)),
+                    ];
+                    if let Some(dest_file) = candidates.into_iter().find(|p| p.exists()) {
+                        return Self::make_local_track(&dest_file, track);
+                    }
+                    if !output.status.success() {
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        let err_line = stderr.lines().find(|l| l.contains("ERROR:")).unwrap_or("Lỗi tải SoundCloud");
+                        return Err(err_line.to_string());
                     }
                 }
 

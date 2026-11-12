@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat,
   Volume2, VolumeX, Heart, Music, Sparkles, FolderPlus, Radio,
-  Download, Check, Loader2, Moon, Clock
+  Download, Check, Loader2, Moon, Clock, Minus, Plus
 } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { Track } from '../types';
@@ -100,15 +100,18 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
     }
   };
 
-  // Detect Live Stream mode (YouTube Live, 24/7 radio, duration 0 or live/radio keywords)
+  // Detect true live broadcast (never for local files or tracks with a known duration)
   const isLive = Boolean(
-    currentTrack && (
+    currentTrack &&
+    currentTrack.source !== 'local' &&
+    ((currentTrack.duration_secs || 0) <= 0) &&
+    (duration <= 0) &&
+    (
       currentTime > 86400 ||
-      (currentTrack.duration_secs === 0 && duration <= 0) ||
-      currentTrack.title.toLowerCase().includes('live') ||
+      currentTrack.title.toLowerCase().includes('livestream') ||
+      currentTrack.title.toLowerCase().includes('live stream') ||
       currentTrack.title.toLowerCase().includes('trực tiếp') ||
-      currentTrack.title.toLowerCase().includes('24/7') ||
-      (currentTrack.source === 'youtube' && currentTrack.title.toLowerCase().includes('radio'))
+      currentTrack.title.toLowerCase().includes('24/7')
     )
   );
 
@@ -631,27 +634,70 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                       <span>{getTranslation(language, 'timer.custom')}</span>
                       <span className="text-[10px] text-[#666]">1 - 720 {getTranslation(language, 'timer.minutes')}</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        min="1"
-                        max="720"
-                        placeholder="VD: 20..."
-                        value={customMinutesInput}
-                        onChange={(e) => setCustomMinutesInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleApplyCustomTimer();
-                          }
-                        }}
-                        className="w-full bg-[#161622] text-white text-xs px-2.5 py-1.5 rounded-lg border border-[#2a2a3c] focus:outline-none focus:border-white/40 font-mono"
-                      />
+
+                    <div className="flex items-center gap-2">
+                      {/* Stepper container */}
+                      <div className="flex-1 flex items-center bg-[#151520] rounded-lg border border-[#2a2a3e] px-1 py-0.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cur = parseInt(customMinutesInput, 10) || 15;
+                            const next = Math.max(1, cur > 5 ? cur - 5 : 1);
+                            setCustomMinutesInput(next.toString());
+                          }}
+                          className="w-6 h-6 flex items-center justify-center text-[#888] hover:text-white hover:bg-white/10 rounded transition-colors cursor-pointer"
+                          title="-5 phút"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+
+                        <div className="flex-1 flex items-center justify-center gap-0.5">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            placeholder="30"
+                            value={customMinutesInput}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9]/g, '');
+                              setCustomMinutesInput(val);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleApplyCustomTimer();
+                              }
+                            }}
+                            className="w-10 bg-transparent text-center text-white text-xs font-mono font-bold focus:outline-none"
+                          />
+                          <span className="text-[10px] text-[#777] font-mono select-none">
+                            {getTranslation(language, 'timer.minutes')}
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cur = parseInt(customMinutesInput, 10) || 0;
+                            const next = Math.min(720, cur + 5);
+                            setCustomMinutesInput(next.toString());
+                          }}
+                          className="w-6 h-6 flex items-center justify-center text-[#888] hover:text-white hover:bg-white/10 rounded transition-colors cursor-pointer"
+                          title="+5 phút"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
                       <button
                         type="button"
                         onClick={handleApplyCustomTimer}
                         disabled={!customMinutesInput || parseInt(customMinutesInput, 10) <= 0}
-                        className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/15 hover:bg-white/25 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer flex-shrink-0"
+                        style={{
+                          backgroundColor: accentColor,
+                          color: '#fff',
+                        }}
+                        className="px-3 py-1.5 text-xs font-bold rounded-lg hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer shadow-md"
                       >
                         {getTranslation(language, 'timer.set')}
                       </button>
