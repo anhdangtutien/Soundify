@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { X, Lock, User as UserIcon, Sparkles, Loader2, Disc, Mail, AlertTriangle, Settings2, Info } from 'lucide-react';
 import { User } from '../types';
@@ -76,7 +76,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         onSuccess(user);
         onClose();
       } catch (err: unknown) {
-        setError(typeof err === 'string' ? err : 'Đăng ký thất bại');
+      setError(typeof err === 'string' ? err : 'Đăng ký thất bại');
       } finally {
         setLoading(false);
       }
@@ -148,13 +148,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
         {/* Brand Header */}
         <div className="text-center mb-5">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ffe600] to-[#00e5ff] text-black flex items-center justify-center mx-auto mb-2 shadow-[0_0_12px_rgba(255,230,0,0.35)]">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff2a55] to-[#ffffff] text-black flex items-center justify-center mx-auto mb-2 shadow-[0_0_12px_rgba(255,230,0,0.35)]">
             <Disc className="w-6 h-6 text-black" />
           </div>
           <h2 className="text-base font-black tracking-tight text-white uppercase flex items-center justify-center gap-1.5">
             SPYTIFY ACCOUNT
           </h2>
-          <p className="text-[11px] text-[#00e5ff] font-mono">SQLite Local Auth • Hoạt động 100% Offline</p>
+          <p className="text-[11px] text-[#ffffff] font-mono">SQLite Local Auth • Hoạt động 100% Offline</p>
         </div>
 
         {/* Google OAuth Help / Config Modal */}
@@ -162,13 +162,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           <div className="space-y-3">
             <div className="p-3 bg-[#121212] rounded-xl border border-[#222]">
               <div className="flex items-center gap-2 text-white font-semibold text-xs mb-1">
-                <Info className="w-4 h-4 text-[#00e5ff]" />
+                <Info className="w-4 h-4 text-[#ffffff]" />
                 <span>Vì sao Google báo lỗi 400?</span>
               </div>
               <p className="text-[11px] text-[#888] leading-relaxed">
                 Google chỉ cho phép đăng nhập qua API khi có <b>Google Client ID</b> (do Google Cloud Console cấp).
                 <br /><br />
-                <span className="text-red-400 font-semibold">Lưu ý:</span> Không điền địa chỉ email cá nhân vào ô Client ID.
+                    <span className="text-red-400 font-semibold">Lưu ý:</span> Không điền địa chỉ email cá nhân vào ô Client ID.
               </p>
             </div>
 
@@ -181,7 +181,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 value={googleClientId}
                 onChange={(e) => setGoogleClientId(e.target.value)}
                 placeholder="xxxxxx.apps.googleusercontent.com"
-                className="w-full px-3 py-2 bg-[#0f0f0f] text-white text-xs rounded-lg border border-[#222] focus:border-[#00e5ff] outline-none font-mono"
+                className="w-full px-3 py-2 bg-[#0f0f0f] text-white text-xs rounded-lg border border-[#222] focus:border-[#ffffff] outline-none font-mono"
               />
             </div>
 
@@ -191,13 +191,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 onClick={() => setShowGoogleHelp(false)}
                 className="flex-1 py-2 rounded-lg bg-[#141414] text-[#888] hover:text-white text-xs font-semibold cursor-pointer"
               >
-                Quay lại
+                Quay láº¡i
               </button>
               <button
                 type="button"
                 onClick={handleGoogleOAuthClick}
                 disabled={loading || !googleClientId.trim()}
-                className="flex-1 py-2 rounded-lg bg-[#00e5ff] text-black text-xs font-bold uppercase cursor-pointer hover:bg-white transition-colors disabled:opacity-50"
+                className="flex-1 py-2 rounded-lg bg-[#ffffff] text-black text-xs font-bold uppercase cursor-pointer hover:bg-white transition-colors disabled:opacity-50"
               >
                 Thử lại Google
               </button>
@@ -207,9 +207,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               <button
                 type="button"
                 onClick={() => { setShowGoogleHelp(false); setIsRegister(true); }}
-                className="text-xs text-[#00e5ff] hover:underline cursor-pointer"
+                className="text-xs text-[#ffffff] hover:underline cursor-pointer"
               >
-                👉 Khuyên dùng: Đăng ký trực tiếp bằng Email của bạn bên dưới
+              👉 Khuyên dùng: Đăng ký trực tiếp bằng Email của bạn bên dưới
               </button>
             </div>
           </div>
@@ -228,7 +228,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
               </svg>
-              <span>Đăng nhập với Google OAuth</span>
+            <span>Đăng nhập với Google OAuth</span>
             </button>
 
             <div className="flex items-center gap-2 mb-4">
@@ -243,7 +243,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 onClick={() => { setIsRegister(false); setError(null); }}
                 className={`flex-1 py-1.5 text-xs font-semibold uppercase tracking-wider text-center transition-colors cursor-pointer ${
                   !isRegister
-                    ? 'text-white border-b-2 border-[#00e5ff]'
+                    ? 'text-white border-b-2 border-[#ffffff]'
                     : 'text-[#666] hover:text-[#999]'
                 }`}
               >
@@ -253,7 +253,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 onClick={() => { setIsRegister(true); setError(null); }}
                 className={`flex-1 py-1.5 text-xs font-semibold uppercase tracking-wider text-center transition-colors cursor-pointer ${
                   isRegister
-                    ? 'text-white border-b-2 border-[#00e5ff]'
+                    ? 'text-white border-b-2 border-[#ffffff]'
                     : 'text-[#666] hover:text-[#999]'
                 }`}
               >
@@ -285,7 +285,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                         value={registerEmail}
                         onChange={(e) => setRegisterEmail(e.target.value)}
                         placeholder="tenban@gmail.com"
-                        className="w-full pl-9 pr-3 py-2 bg-[#0f0f0f] text-white text-xs rounded-lg border border-[#222] focus:border-[#00e5ff] outline-none transition-colors"
+                        className="w-full pl-9 pr-3 py-2 bg-[#0f0f0f] text-white text-xs rounded-lg border border-[#222] focus:border-[#ffffff] outline-none transition-colors"
                       />
                     </div>
                   </div>
@@ -302,14 +302,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                         value={registerUsername}
                         onChange={(e) => setRegisterUsername(e.target.value)}
                         placeholder="Ví dụ: minhtri2025"
-                        className="w-full pl-9 pr-3 py-2 bg-[#0f0f0f] text-white text-xs rounded-lg border border-[#222] focus:border-[#00e5ff] outline-none transition-colors"
+                        className="w-full pl-9 pr-3 py-2 bg-[#0f0f0f] text-white text-xs rounded-lg border border-[#222] focus:border-[#ffffff] outline-none transition-colors"
                       />
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#777] mb-1 font-mono">
-                      Tên hiển thị (Tùy chọn)
+                Tên hiển thị (Tùy chọn)
                     </label>
                     <div className="relative flex items-center">
                       <UserIcon className="w-4 h-4 text-[#555] absolute left-3 pointer-events-none" />
@@ -318,7 +318,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
                         placeholder="Ví dụ: Minh Trí"
-                        className="w-full pl-9 pr-3 py-2 bg-[#0f0f0f] text-white text-xs rounded-lg border border-[#222] focus:border-[#00e5ff] outline-none transition-colors"
+                        className="w-full pl-9 pr-3 py-2 bg-[#0f0f0f] text-white text-xs rounded-lg border border-[#222] focus:border-[#ffffff] outline-none transition-colors"
                       />
                     </div>
                   </div>
@@ -336,7 +336,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
                       placeholder="Email hoặc username của bạn"
-                      className="w-full pl-9 pr-3 py-2 bg-[#0f0f0f] text-white text-xs rounded-lg border border-[#222] focus:border-[#00e5ff] outline-none transition-colors"
+                      className="w-full pl-9 pr-3 py-2 bg-[#0f0f0f] text-white text-xs rounded-lg border border-[#222] focus:border-[#ffffff] outline-none transition-colors"
                     />
                   </div>
                 </div>
@@ -344,7 +344,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
               <div>
                 <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#777] mb-1 font-mono">
-                  Mật khẩu
+                  Máº­t kháº©u
                 </label>
                 <div className="relative flex items-center">
                   <Lock className="w-4 h-4 text-[#555] absolute left-3 pointer-events-none" />
@@ -354,7 +354,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Tối thiểu 6 ký tự"
-                    className="w-full pl-9 pr-3 py-2 bg-[#0f0f0f] text-white text-xs rounded-lg border border-[#222] focus:border-[#00e5ff] outline-none transition-colors"
+                    className="w-full pl-9 pr-3 py-2 bg-[#0f0f0f] text-white text-xs rounded-lg border border-[#222] focus:border-[#ffffff] outline-none transition-colors"
                   />
                 </div>
               </div>
@@ -362,14 +362,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 py-2.5 px-4 bg-gradient-to-r from-[#ffe600] to-[#00e5ff] hover:opacity-95 text-black font-black text-xs uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_12px_rgba(255,230,0,0.3)] disabled:opacity-50"
+                className="w-full mt-2 py-2.5 px-4 bg-gradient-to-r from-[#ff2a55] to-[#ffffff] hover:opacity-95 text-black font-black text-xs uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_12px_rgba(255,230,0,0.3)] disabled:opacity-50"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <>
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>{isRegister ? 'Tạo tài khoản ngay' : 'Đăng nhập'}</span>
+              <span>{isRegister ? 'Tạo tài khoản ngay' : 'Đăng nhập'}</span>
                   </>
                 )}
               </button>

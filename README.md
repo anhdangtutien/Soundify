@@ -1,106 +1,187 @@
-# ⚡ Spytify - Ultra Hi-Fi Invincible Music Player & Browser
+﻿# 🕵️‍♂️ SPYTIFY // TOP SECRET COVERT HI-FI AUDIO SYSTEM
+
+```text
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  CLASSIFIED // RESTRICTED ACCESS // LEVEL 00 AGENT CLEARANCE ONLY            ║
+║  PROJECT CODENAME: SPYTIFY                                                   ║
+║  TACTICAL DIRECTIVE: COVERT HI-FI STREAMING & AUDIO INTELLIGENCE ENGINE      ║
+║  DATABASE ENGINE: LOCAL SQLITE + CLOUD SUPABASE REAL-TIME SYNC               ║
+║  STATUS: DECLASSIFIED // MISSION ACTIVE                                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
 
 <div align="center">
 
-![Spytify Banner](https://img.shields.io/badge/Spytify-Invincible%20Hi--Fi-FFE600?style=for-the-badge&logo=music&logoColor=black)
-![Hero Cyan](https://img.shields.io/badge/Accent-Electric%20Cyan-00E5FF?style=for-the-badge)
-![Tauri v2](https://img.shields.io/badge/Tauri-v2-FFC131?style=for-the-badge&logo=tauri&logoColor=white)
-![Rust](https://img.shields.io/badge/Rust-Core-dea584?style=for-the-badge&logo=rust&logoColor=white)
-![React 19](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-rusqlite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
+![Spytify Badge](https://img.shields.io/badge/CODENAME-SPYTIFY-FF2A55?style=for-the-badge&logo=shield&logoColor=white)
+![Clearance Badge](https://img.shields.io/badge/CLEARANCE-LEVEL_00-00E5FF?style=for-the-badge&logo=keycdn&logoColor=white)
+![Rust Core](https://img.shields.io/badge/RUST_ENGINE-v1.85-DEA584?style=for-the-badge&logo=rust&logoColor=white)
+![Tauri v2](https://img.shields.io/badge/TAURI-v2_CLASSIFIED-FFC131?style=for-the-badge&logo=tauri&logoColor=black)
+![Supabase](https://img.shields.io/badge/SUPABASE-CLOUD_SYNC-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
+![React 19](https://img.shields.io/badge/REACT_19-CYBER_HUD-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![Offline SQLite](https://img.shields.io/badge/STORAGE-SQLITE_VAULT-10B981?style=for-the-badge&logo=sqlite&logoColor=white)
 
-**Spytify** là trình phát nhạc tối giản (Minimalist), hiệu năng cao mang phong cách siêu anh hùng **Invincible**: nền đen OLED thuần khiết kết hợp dải màu kép **Vàng Electric (`#FFE600`)** xen kẽ **Xanh lơ Cyan (`#00E5FF`)**.
-
-Được xây dựng trên nền tảng **Rust + Tauri v2 + React 19**, Spytify mang đến trải nghiệm nghe nhạc đỉnh cao không quảng cáo, tích hợp AI khuyến nghị tự huấn luyện 100% trên thiết bị (On-Device) và cơ sở dữ liệu SQLite nhúng.
-
-*Tác giả:* **[anhdangtutien](https://github.com/anhdangtutien)**
+<p align="center">
+  <b>Language Navigation:</b>
+  <a href="#-english-dossier">🇺🇸 English</a> |
+  <a href="#-hồ-sơ-tác-chiến-tiếng-việt">🇻🇳 Tiếng Việt</a>
+</p>
 
 </div>
 
 ---
 
-## ⚡ Tính năng nổi bật
+# 🇺🇸 ENGLISH DOSSIER
 
-### 1. 🦸‍♂️ Giao diện Phong cách Siêu anh hùng Invincible
-* **Tông màu biểu tượng:** Nền đen OLED tương phản cao kết hợp vàng hoàng gia rực rỡ (`#FFE600`) xen kẽ xanh điện tử (`#00E5FF`).
-* **Sóng âm động Invincible Visualizer:** Waveform chuyển tiếp mượt mà từ trắng thuần khiết qua vàng hoàng kim và xanh lơ.
-* **Thanh tiến trình Gradient:** Seekbar chuyển sắc mượt mà từ vàng sang xanh nhạt kèm hiệu ứng glow phát sáng khi hover.
+## 🎯 EXECUTIVE BRIEFING
+**Spytify** is a covert, cross-platform Hi-Fi audio intelligence player crafted with a stealth minimalist aesthetic. Powered by a high-performance **Rust Engine** and **Tauri v2**, Spytify intercepts audio streams across multiple global frequencies (Local Lossless, YouTube 4K Audio, SoundCloud Underground, and Audius Decentralized 320kbps Open Hi-Fi).
 
-### 2. 🌐 Nền tảng Âm nhạc Đa nguồn (Multi-Source Streaming)
-* **Audius Open Music (320kbps MP3):** Tích hợp nền tảng âm nhạc mở phi tập trung hàng đầu thế giới. Phát toàn bộ bài hát chất lượng cao **320kbps Hi-Fi**, không bị giới hạn 30s preview, không cần API Key hay tài khoản trả phí.
-* **YouTube Audio Stream:** Tìm kiếm và stream âm thanh chất lượng cao từ YouTube với chế độ phát ẩn hoặc mở cửa sổ video nổi linh hoạt.
-* **SoundCloud Integration:** Tự động bắt link và đồng bộ điều khiển qua SoundCloud Widget API.
-* **Local Lossless Engine (FLAC / WAV / MP3 / M4A / ALAC):** Quét thư mục nhạc cục bộ đa luồng siêu tốc bằng **Rayon** + **Lofty**, tự động trích xuất Cover Art dạng Base64 và thông tin Metadata trong tích tắc.
-
-### 3. 🧠 AI Gợi ý Nhạc Tự Huấn luyện (On-Device Rust AI Engine)
-* **Không dùng API trả phí:** Toàn bộ thuật toán AI chạy trực tiếp trong Rust core trên máy tính của bạn, đảm bảo tính bảo mật và quyền riêng tư tuyệt đối.
-* **Vector hóa TF-IDF & Cosine Similarity:** Phân tích từ khóa tiêu đề, nghệ sĩ, thời lượng và thể loại để tính toán điểm tương đồng (`match_score` từ 0 - 100%).
-* **AI Smart DJ Auto-Transition:** Tự động phân tích bài hát đang nghe để gợi ý bài tiếp theo mượt mà nhất trong hàng đợi.
-* **Màn hình AI Discovery Mix:** Trực quan hóa quá trình huấn luyện theo thời gian thực (Epochs, Model Loss, Accuracy, Top Tags).
-
-### 4. 🗄️ Cơ sở Dữ liệu Nhúng SQLite (`spytify.db`)
-* Lưu trữ an toàn tại thư mục hệ thống người dùng `%LOCALAPPDATA%\Spytify\spytify.db` (tự động kế thừa từ Soundify nếu có).
-* **Quản lý Tài khoản Cục bộ:** Hỗ trợ đăng ký / đăng nhập bằng Username hoặc Email, mã hóa mật khẩu an toàn với muối ngẫu nhiên (Salt + SHA-256).
-* **Lịch sử & Yêu thích:** Tự động đồng bộ và lưu trữ danh sách bài hát yêu thích cùng lịch sử nghe nhạc.
-
-### 5. 🎯 Trải nghiệm Phát nhạc Hoàn hảo (Zero Audio Overlap)
-* **Triệt tiêu chồng chéo âm thanh:** Cơ chế ngắt dứt khoát tất cả các luồng âm thanh khác khi chuyển nguồn phát (YouTube, SoundCloud, Audius, Local).
-* **Wall-Clock Time Tracking:** Tính thời gian phát chính xác dựa trên đồng hồ thực của hệ thống (`Date.now()`), không bị giật/kẹt seekbar khi người dùng chuyển sang tab khác hoặc thu nhỏ cửa sổ.
-* **Instant Focus Resync:** Tự động đồng bộ lại trạng thái Play/Pause và thời gian phát ngay khi ứng dụng nhận lại focus.
+Featuring **Dual-Vault Architecture**:
+1. **Local-First SQLite Vault**: Operates 100% offline with zero telemetry and zero external dependency.
+2. **Supabase Cloud Real-Time Sync**: Synchronizes your personal Albums, Favorites, Avatar, and UI preferences across all devices in real time for free.
 
 ---
 
-## 🛠️ Ngăn xếp Công nghệ (Tech Stack)
+## ⚡ SPEC-OPS CAPABILITIES
 
-| Thành phần | Công nghệ sử dụng |
-|---|---|
-| **Khung ứng dụng (Shell)** | [Tauri v2](https://tauri.app/) (Siêu nhẹ, ~40MB RAM so với >500MB của Electron) |
-| **Backend Core** | [Rust](https://www.rust-lang.org/) (Tokyo runtime, Rusqlite, Rayon, Lofty, Rodio, Reqwest) |
-| **Frontend Framework** | [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) |
-| **Styling & Theme** | [Tailwind CSS v4](https://tailwindcss.com/) (Invincible Hero Palette: Black `#000000`, Gold `#FFE600`, Cyan `#00E5FF`) |
-| **Bundler** | [Vite 8](https://vitejs.dev/) |
-| **Cơ sở dữ liệu** | SQLite 3 (`rusqlite` bundled) |
-| **Bộ Icon** | Lucide React |
+### 🛰️ 1. Multi-Frequency Infiltration
+* **Local Lossless Decoding**: Rapid multi-threaded directory scanner parsing FLAC, WAV, and MP3 files with ID3 tag extraction and SHA-256 fingerprinting.
+* **YouTube Hi-Fi Streamer**: Direct audio extraction with an optional covert picture-in-picture Music Video (MV) window.
+* **SoundCloud Covert Ingest**: Underground tracks, remix sets, and indie soundscapes.
+* **Audius Open Hi-Fi**: Decentralized 320kbps Lossless global audio interception.
+
+### ☁️ 2. Supabase Cloud Sync & Cross-Device Portability
+* **Real-Time Cross-Device Sync**: Connect your free Supabase database (`supabase.com`) to sync Albums, Favorites, Play History, and Avatars across laptops, desktops, and workstations.
+* **Offline Backup Vault (.json)**: 1-click encrypted JSON file export/import to migrate all settings without internet.
+* **Zero Host Cost**: Powered by free-tier Supabase PostgreSQL and local SQLite.
+
+### 🎨 3. Chameleon UI Engine
+* **Dual Theme Engine**:
+  * 🌙 **Dark Stealth**: Deep obsidian darkroom mode designed for late-night covert listening.
+  * ☀️ **Light Dossier**: Crisp intelligence file aesthetic with paper-white contrast.
+* **8 Accent Frequencies**:
+  * 🔴 Crimson Red (`#FF2A55` - Default Red Alert)
+  * 🔵 Cyber Cyan (`#00E5FF` - High-Tech Neon)
+  * 🟡 Solar Gold (`#FFE600` - Golden Agent)
+  * 🟢 Matrix Green (`#10B981` - Cyberpunk Terminal)
+  * 🟣 Phantom Violet (`#A855F7` - Stealth Phantom)
+  * ⚪ Titanium White (`#FFFFFF` - Minimalist Monochrome)
+  * 🟠 Agent Orange (`#FF6B00` - Desert Recon)
+  * 🔷 Cobalt Blue (`#3B82F6` - Deep Ocean Intel)
+  * 🎨 Custom Color Picker for any HEX code.
+* **Biometric Avatar Customization**:
+  * Upload custom images from PC with client-side 256x256 JPEG compression.
+  * 6 Preset Secret Agent Vector Avatars (007, Cyber Hacker, Golden Eye, Phantom Shadow, Covert DJ, Viper Spec-Ops).
+
+### 🤖 4. AI Smart DJ & Tactical Visualizer
+* **AI Smart DJ**: Cosine-similarity continuous audio recommendation engine.
+* **Real-Time 64-Band Audio Spectrum**: Laser radar holographic audio visualization.
+* **Cinematic Startup Radar**: 360-degree covert decryption terminal entrance.
 
 ---
 
-## 🚀 Hướng dẫn Cài đặt & Khởi chạy
+## 🚀 SUPABASE CLOUD SETUP (OPTIONAL)
 
-### Yêu cầu hệ thống
-* **Node.js:** v18+ trở lên
-* **Rust:** v1.75+ (Cài đặt qua [rustup.rs](https://rustup.rs/))
-* **Hệ điều hành:** Windows 10/11 (hỗ trợ cả macOS & Linux)
+To enable automatic cross-device sync:
+1. Create a free project at [Supabase](https://supabase.com).
+2. Open the **SQL Editor** in your Supabase dashboard and execute the script in [`supabase/schema.sql`](file:///E:/Spytify%20Dev%20App/supabase/schema.sql).
+3. In Spytify, navigate to **Tài khoản (Profile)** -> **Cài đặt khóa Supabase**, paste your **Project URL** and **Anon Key**, then click **Lưu cấu hình**.
+4. Click **Đồng bộ Cloud ngay (Sync Cloud Now)** — your music is now synced across all devices!
 
-### 1. Cài đặt các thư viện phụ thuộc
+---
+
+## 🛠️ INSTALLATION & DEPLOYMENT
+
 ```bash
+# Clone the classified repository
+git clone https://github.com/anhdangtutien/Soundify.git
+cd Soundify
+
+# Install UI dependencies
 npm install
-```
 
-### 2. Khởi chạy chế độ Phát triển (Development)
-```bash
+# Run in Development Mode
 npm run tauri dev
-```
-Ứng dụng sẽ tự động biên dịch mã nguồn Rust, khởi động Vite dev server và mở cửa sổ Spytify với tính năng Hot Reload.
 
-### 3. Đóng gói ứng dụng thành file cài đặt (Production Build)
-```bash
+# Package Production Installer (.exe / .msi)
 npm run tauri build
 ```
-Sau khi hoàn tất, bộ cài đặt và file thực thi sẽ được lưu tại:
-* **Bộ cài Windows (NSIS / MSI):** `src-tauri/target/release/bundle/nsis/`
-* **File chạy trực tiếp (Portable):** `src-tauri/target/release/Spytify.exe`
 
 ---
 
-## 👤 Tác giả
+<br/>
 
-* **GitHub:** [@anhdangtutien](https://github.com/anhdangtutien)
-* **Dự án:** Spytify - Invincible Hi-Fi Music Player
+# 🇻🇳 HỒ SƠ TÁC CHIẾN (TIẾNG VIỆT)
+
+## 🎯 TỔNG QUAN CHIẾN DỊCH
+**Spytify** là hệ thống nghe nhạc Hi-Fi đa nguồn tác chiến tối mật, kết hợp giữa tốc độ siêu tốc của **Rust Engine & Tauri v2** cùng giao diện ngụy trang tàng hình (Stealth Minimalist). Spytify thu thập và giải mã tín hiệu âm thanh từ 4 kênh tình báo toàn cầu (Nhạc Lossless nội bộ, YouTube Hi-Fi, SoundCloud Ngầm, và Audius 320kbps Lossless).
+
+Hệ thống hỗ trợ **Kiến trúc Kép (Hybrid Local + Cloud Sync)**:
+1. **Lưu trữ Cục bộ SQLite**: Hoạt động 100% ngoại tuyến (Offline), bảo mật tuyệt đối, không gửi dữ liệu ra bên ngoài.
+2. **Đồng bộ Đám mây Supabase**: Tự động đồng bộ Album, Danh sách Yêu thích, Lịch sử nghe và Avatar sang mọi máy tính khác theo thời gian thực (Hoàn toàn miễn phí).
 
 ---
 
-## 📄 Bản quyền (License)
+## ⚡ VŨ KHÍ & TÍNH NĂNG TÁC CHIẾN
 
-Dự án được phân phối dưới giấy phép [MIT License](LICENSE). Tự do sử dụng, chỉnh sửa và đóng góp!
+### 🛰️ 1. Đa Kênh Thu Thập Tín Hiệu (Multi-Source Signal)
+* **Ổ Cứng Nội Bộ (Local Flac/Wav/Mp3)**: Động cơ Rust quét đệ quy thư mục với tốc độ mili-giây, trích xuất ID3 Metadata và mã băm SHA-256.
+* **Kênh YouTube Hi-Fi**: Tách luồng âm thanh tốc độ cao, hỗ trợ cửa sổ MV màn ảnh nhỏ.
+* **Kênh SoundCloud Ngầm**: Khám phá kho nhạc Indie, EDM, Remix chất lượng cao.
+* **Kênh Audius Open Hi-Fi**: Bắt sóng luồng nhạc phi tập trung 320kbps Lossless mở toàn cầu.
+
+### ☁️ 2. Đồng Bộ Đám Mây Supabase & Sao Lưu Đa Thiết Bị
+* **Đồng bộ tự động qua máy khác**: Kết nối Supabase Cloud miễn phí trọn đời để khi bạn đăng nhập trên bất kỳ máy tính nào, Album, Yêu thích và Avatar sẽ tự động tải về đầy đủ.
+* **Két sắt Sao lưu Ngoại tuyến (.json)**: Xuất / nạp tệp `spytify_vault_backup.json` chỉ với 1 click, chuyển dữ liệu sang máy mới không cần mạng internet.
+
+### 🎨 3. Động Cơ Tắc Kè Hoa Ngụy Trang (Chameleon UI)
+* **Chế độ Hiển thị Kép**:
+  * 🌙 **Điệp vụ Ban đêm (Dark Stealth)**: Nền đen obsidian huyền bí, chống mỏi mắt khi tác chiến ban đêm.
+  * ☀️ **Hồ sơ Mật Ban ngày (Light Dossier)**: Phong cách hồ sơ giấy tình báo thanh lịch, sắc nét.
+* **8 Tần số Màu Đặc nhiệm**: Báo động đỏ (Crimson), Cyber Cyan, Solar Gold, Matrix Green, Phantom Violet, Titanium White, Agent Orange, Cobalt Blue, kèm bộ chọn màu HEX tùy ý.
+* **Ảnh Đại diện Sinh trắc học (Avatar)**: Tải ảnh từ máy tính (tự động nén canvas 256x256) hoặc chọn nhanh 6 Avatar Vector Mật vụ Spytify (007, Cyber Hacker, Golden Eye, Phantom Shadow, Covert DJ, Viper Spec-Ops).
+
+### 🤖 4. AI Smart DJ & Radar Quang Phổ Âm Thanh
+* **AI Smart DJ**: Tự động dự đoán và nối tiếp bài hát dựa trên trường vectơ nghệ sĩ và phong cách âm nhạc.
+* **Màn hình sóng âm 64 băng tần**: Trực quan hóa âm thanh thời gian thực.
+* **Màn hình khởi động điện ảnh**: Vòng quay radar laser 360 độ bảo mật trước khi vào buồng lái âm nhạc.
+
+---
+
+## 🚀 HƯỚNG DẪN KẾT NỐI SUPABASE CLOUD (TỰ ĐỘNG ĐỒNG BỘ MÁY KHÁC)
+
+1. Tạo tài khoản và tạo dự án miễn phí tại [Supabase](https://supabase.com).
+2. Vào mục **SQL Editor** trong Supabase Dashboard, dán toàn bộ mã trong file [`supabase/schema.sql`](file:///E:/Spytify%20Dev%20App/supabase/schema.sql) và bấm **Run**.
+3. Mở Spytify -> Vào mục **Tài khoản** -> **Cài đặt khóa Supabase**, dán **Project URL** và **Anon Key** của bạn rồi bấm **Lưu cấu hình**.
+4. Bấm **Đồng bộ Cloud ngay** — toàn bộ Album và bài hát của bạn sẽ được đồng bộ lên mây vĩnh viễn!
+
+---
+
+## 🛠️ CÀI ĐẶT & BIÊN DỊCH
+
+```bash
+# Tải mã nguồn đặc nhiệm
+git clone https://github.com/anhdangtutien/Soundify.git
+cd Soundify
+
+# Cài đặt thư viện giao diện
+npm install
+
+# Khởi chạy chế độ Thử nghiệm (Dev Mode)
+npm run tauri dev
+
+# Đóng gói bộ cài đặt chính thức (.exe / .msi)
+npm run tauri build
+```
+
+---
+
+## 📜 ĐIỀU KHOẢN AN NINH (DISCLAIMER)
+
+* *Phần mềm Spytify được phát triển phục vụ học tập và trải nghiệm âm nhạc cá nhân.*
+* *Mọi luồng dữ liệu truyền tải đều tuân thủ các giao thức mở của Audius, YouTube nhúng và SoundCloud công khai.*
+
+```text
+═══════════════════════════════════════════════════════════════════════════════
+        [ END OF CLASSIFIED TRANSMISSION // SPYTIFY SPEC-OPS UNIT ]
+═══════════════════════════════════════════════════════════════════════════════
+```

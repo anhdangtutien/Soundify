@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { Sidebar } from './components/Sidebar';
@@ -10,8 +10,12 @@ import { AuthModal } from './components/AuthModal';
 import { ProfileView } from './components/ProfileView';
 import { AiMixView } from './components/AiMixView';
 import { HomeTrendingView } from './components/HomeTrendingView';
-import { Track, PlaybackStatus, SearchResult, ViewType, User } from './types';
-import { FolderPlus, Disc, CheckCircle2, Tv, X, Radio, ArrowUpRight, LogIn } from 'lucide-react';
+import { AlbumsView } from './components/AlbumsView';
+import { AddToAlbumModal } from './components/AddToAlbumModal';
+import { SplashScreen } from './components/SplashScreen';
+import { cloudSyncPull, cloudSyncPush, isSupabaseConfigured } from './services/supabase';
+import { Track, PlaybackStatus, SearchResult, ViewType, User, UserAlbum } from './types';
+import { FolderPlus, Disc, CheckCircle2, Tv, X, Radio, ArrowUpRight, LogIn, Sun, Moon } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon } from './components/Icons';
 
 export default function App() {
@@ -27,6 +31,136 @@ export default function App() {
   const [smartDjEnabled, setSmartDjEnabled] = useState(true);
   const [repeatMode, setRepeatMode] = useState<'all' | 'one' | 'off'>('all'); // default: auto-play next
   const [isShuffle, setIsShuffle] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+
+  const [accentColor, setAccentColor] = useState<string>(() => {
+    return localStorage.getItem('spytify_accent_color') || '#ff2a55';
+  });
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--accent-color', accentColor);
+  }, [accentColor]);
+
+  const handleUpdateAccentColor = (newColor: string) => {
+    setAccentColor(newColor);
+    localStorage.setItem('spytify_accent_color', newColor);
+    document.documentElement.style.setProperty('--accent-color', newColor);
+    showNotification(`Đã đổi màu chủ đạo: ${newColor}`);
+  };
+
+  const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('spytify_theme_mode') as 'dark' | 'light') || 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', themeMode);
+    if (themeMode === 'light') {
+      document.documentElement.classList.add('light-mode');
+    } else {
+      document.documentElement.classList.remove('light-mode');
+    }
+  }, [themeMode]);
+
+  const handleToggleThemeMode = () => {
+    const next = themeMode === 'dark' ? 'light' : 'dark';
+    setThemeMode(next);
+    localStorage.setItem('spytify_theme_mode', next);
+    showNotification(`Đã chuyển sang ${next === 'light' ? 'Chế độ Sáng (Light Dossier)' : 'Chế độ Tối (Stealth Dark)'}`);
+  };
+
+  const handleUpdateAvatar = async (newAvatar: string) => {
+    if (currentUser) {
+      try {
+        await invoke('auth_update_avatar', { userId: currentUser.id, avatar: newAvatar });
+        setCurrentUser(prev => prev ? { ...prev, avatar: newAvatar } : null);
+        showNotification('Đã cập nhật ảnh đại diện vào SQLite!');
+      } catch (e) {
+        console.error('Failed to update avatar in DB:', e);
+        setCurrentUser(prev => prev ? { ...prev, avatar: newAvatar } : null);
+      }
+    } else {
+      localStorage.setItem('spytify_guest_avatar', newAvatar);
+      showNotification('Đã lưu ảnh đại diện!');
+    }
+  };
+
+  const [albums, setAlbums] = useState<UserAlbum[]>(() => {
+    try {
+      const stored = localStorage.getItem('spytify_user_albums');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [trackToAddToAlbum, setTrackToAddToAlbum] = useState<Track | null>(null);
+  const [isAddToAlbumModalOpen, setIsAddToAlbumModalOpen] = useState(false);
+
+  const handleCreateAlbum = (title: string, description: string): UserAlbum => {
+    const newAlbum: UserAlbum = {
+      id: 'album_' + Date.now(),
+      title,
+      description,
+      tracks: [],
+      created_at: new Date().toISOString(),
+    };
+    setAlbums(prev => {
+      const updated = [newAlbum, ...prev];
+      localStorage.setItem('spytify_user_albums', JSON.stringify(updated));
+      if (currentUserRef.current && isSupabaseConfigured()) {
+        cloudSyncPush(currentUserRef.current.id, { albums: updated }).catch(console.error);
+      }
+      return updated;
+    });
+    showNotification('Đã tạo album: ' + title);
+    return newAlbum;
+  };
+
+  const handleDeleteAlbum = (albumId: string) => {
+    setAlbums(prev => {
+      const updated = prev.filter(a => a.id !== albumId);
+      localStorage.setItem('spytify_user_albums', JSON.stringify(updated));
+      return updated;
+    });
+    showNotification('Đã xóa album');
+  };
+
+  const handleAddTrackToAlbum = (albumId: string, track: Track) => {
+    setAlbums(prev => {
+      const updated = prev.map(a => {
+        if (a.id === albumId) {
+          if (a.tracks.some(t => t.id === track.id)) return a;
+          return { ...a, tracks: [...a.tracks, track] };
+        }
+        return a;
+      });
+      localStorage.setItem('spytify_user_albums', JSON.stringify(updated));
+      return updated;
+    });
+    showNotification('Đã thêm bài hát vào album!');
+  };
+
+  const handleRemoveTrackFromAlbum = (albumId: string, trackId: string) => {
+    setAlbums(prev => {
+      const updated = prev.map(a => {
+        if (a.id === albumId) {
+          return { ...a, tracks: a.tracks.filter(t => t.id !== trackId) };
+        }
+        return a;
+      });
+      localStorage.setItem('spytify_user_albums', JSON.stringify(updated));
+      return updated;
+    });
+    showNotification('Đã gỡ bài hát khỏi album');
+  };
+
+  const handlePlayAlbum = (album: UserAlbum) => {
+    if (album.tracks.length > 0) {
+      setTracks(album.tracks);
+      playTrackInternal(album.tracks[0]);
+      showNotification('▶ Đang phát album: ' + album.title);
+    }
+  };
+
 
   const [favorites, setFavorites] = useState<Set<string>>(() => {
     try { return new Set(JSON.parse(localStorage.getItem('soundify_favorites') || '[]')); }
@@ -44,6 +178,7 @@ export default function App() {
   const currentTrackRef = useRef<Track | null>(null);
   const isPlayingRef = useRef(false);
   const tracksRef = useRef<Track[]>([]);
+  const displayedTracksRef = useRef<Track[]>([]);
   const currentUserRef = useRef<User | null>(null);
   const repeatModeRef = useRef<'all' | 'one' | 'off'>('all');
   const isShuffleRef = useRef(false);
@@ -58,7 +193,7 @@ export default function App() {
   useEffect(() => { repeatModeRef.current = repeatMode; }, [repeatMode]);
   useEffect(() => { isShuffleRef.current = isShuffle; }, [isShuffle]);
 
-  // ─── RESTORE USER SESSION FROM SQLITE ────────────────────────────────────
+  // â”€â”€â”€ RESTORE USER SESSION FROM SQLITE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const savedUserId = localStorage.getItem('soundify_active_user_id');
     if (savedUserId) {
@@ -93,6 +228,30 @@ export default function App() {
     localStorage.setItem('soundify_active_user_id', user.id);
     loadFavoritesFromDb(user.id);
     showNotification(`Xin chào, ${user.display_name}! Đã kết nối SQLite`);
+
+    // Auto-sync with Supabase Cloud if configured
+    if (isSupabaseConfigured()) {
+      cloudSyncPull(user.id).then(cloudData => {
+        if (cloudData) {
+          if (cloudData.albums && cloudData.albums.length > 0) {
+            setAlbums(prev => {
+              const existingIds = new Set(prev.map(a => a.id));
+              const newAlbums = cloudData.albums.filter(a => !existingIds.has(a.id));
+              const merged = [...prev, ...newAlbums];
+              localStorage.setItem('spytify_user_albums', JSON.stringify(merged));
+              return merged;
+            });
+          }
+          if (cloudData.avatar && !user.avatar) {
+            setCurrentUser(prev => prev ? { ...prev, avatar: cloudData.avatar } : null);
+          }
+          if (cloudData.accentColor) {
+            handleUpdateAccentColor(cloudData.accentColor);
+          }
+          showNotification(`🟢 Đã tự động đồng bộ Supabase Cloud cho @${user.username}`);
+        }
+      }).catch(console.error);
+    }
   };
 
   const handleLogout = () => {
@@ -102,7 +261,7 @@ export default function App() {
     setCurrentView('library');
   };
 
-  // ─── AUTO-PLAY NEXT TRACK & AI SMART DJ ──────────────────────────────────
+  // â”€â”€â”€ AUTO-PLAY NEXT TRACK & AI SMART DJ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleNext = useCallback(async () => {
     const all = tracksRef.current;
     const cur = currentTrackRef.current;
@@ -190,7 +349,7 @@ export default function App() {
     playTrackInternal(nextTrack);
   }, [smartDjEnabled]);
 
-  // ─── WALL-CLOCK TIME TICKER (IMMUNE TO BACKGROUND TAB THROTTLING) ────────
+  // â”€â”€â”€ WALL-CLOCK TIME TICKER (IMMUNE TO BACKGROUND TAB THROTTLING) â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const interval = setInterval(() => {
       const track = currentTrackRef.current;
@@ -211,7 +370,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [handleNext]);
 
-  // ─── INSTANT RESYNC WHEN SWITCHING BACK TO APP WINDOW ────────────────────
+  // â”€â”€â”€ INSTANT RESYNC WHEN SWITCHING BACK TO APP WINDOW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const onWindowRegainedFocus = async () => {
       const track = currentTrackRef.current;
@@ -255,17 +414,31 @@ export default function App() {
 
         // YouTube events
         if (data.event === 'onStateChange') {
+          if (currentTrackRef.current?.source !== 'youtube') return;
           if (data.info === 1) setIsPlaying(true);
           else if (data.info === 2) setIsPlaying(false);
           else if (data.info === 0) { setIsPlaying(false); handleNext(); }
         }
         if (data.event === 'infoDelivery' && data.info) {
+          if (currentTrackRef.current?.source !== 'youtube') return;
           if (typeof data.info.currentTime === 'number') {
-            setCurrentTime(data.info.currentTime);
-            accumulatedTimeRef.current = data.info.currentTime;
-            if (isPlayingRef.current) playStartTimestampRef.current = Date.now();
+            const rawCur = data.info.currentTime;
+            // Guard against YouTube Live streams sending epoch timestamps (>86400 seconds)
+            if (rawCur > 86400) {
+              setDuration(0);
+            } else if (rawCur >= 0) {
+              setCurrentTime(rawCur);
+              accumulatedTimeRef.current = rawCur;
+              if (isPlayingRef.current) playStartTimestampRef.current = Date.now();
+            }
           }
-          if (typeof data.info.duration === 'number' && data.info.duration > 0) setDuration(data.info.duration);
+          if (typeof data.info.duration === 'number') {
+            if (data.info.duration > 0 && data.info.duration < 86400) {
+              setDuration(data.info.duration);
+            } else if (data.info.duration === 0) {
+              setDuration(0);
+            }
+          }
           if (data.info.playerState === 1) setIsPlaying(true);
           if (data.info.playerState === 2) setIsPlaying(false);
         }
@@ -273,6 +446,14 @@ export default function App() {
         // SoundCloud Widget events
         const scEvent = data.soundcloudEvent || (typeof data.method === 'string' && ['play', 'pause', 'finish', 'playProgress', 'seek'].includes(data.method) ? data.method : null);
         if (scEvent) {
+          if (currentTrackRef.current?.source !== 'soundcloud') return;
+
+          // Extract duration from SoundCloud widget events if provided
+          const rawDur = data.data?.duration ?? data.value?.duration ?? data.duration;
+          if (typeof rawDur === 'number' && rawDur > 0) {
+            const durSecs = Math.round(rawDur / 1000);
+            if (durSecs > 0 && durSecs < 86400) setDuration(durSecs);
+          }
           if (scEvent === 'play') {
             setIsPlaying(true);
             playStartTimestampRef.current = Date.now();
@@ -314,7 +495,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [ytVideoId]);
 
-  // ─── AUDIUS HTML5 audio element (320kbps MP3 direct stream) ──────────────
+  // â”€â”€â”€ AUDIUS HTML5 audio element (320kbps MP3 direct stream) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const audio = new Audio();
     onlineAudioRef.current = audio;
@@ -330,7 +511,7 @@ export default function App() {
     return () => { audio.pause(); audio.removeEventListener('timeupdate', onTimeUpdate); audio.removeEventListener('ended', onEnded); };
   }, [handleNext]);
 
-  // ─── LOCAL playback polling ───────────────────────────────────────────────
+  // â”€â”€â”€ LOCAL playback polling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     const interval = setInterval(async () => {
       if (currentTrackRef.current?.source !== 'local') return;
@@ -374,11 +555,20 @@ export default function App() {
     }
   };
 
-  // ─── Core play function ───────────────────────────────────────────────────
+  // â”€â”€â”€ Core play function â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const playTrackInternal = async (track: Track) => {
+    currentTrackRef.current = track;
     setCurrentTrack(track);
     setCurrentTime(0);
-    setDuration(track.duration_secs || 0);
+
+    const isLiveTrack = !track.duration_secs ||
+      track.duration_secs <= 0 ||
+      track.title.toLowerCase().includes('live') ||
+      track.title.toLowerCase().includes('trực tiếp') ||
+      track.title.toLowerCase().includes('24/7') ||
+      track.title.toLowerCase().includes('radio');
+
+    setDuration(isLiveTrack ? 0 : (track.duration_secs || 0));
     setIsPlaying(false);
 
     // Reset Wall-clock timer
@@ -416,7 +606,8 @@ export default function App() {
 
       onlineAudioRef.current?.pause();
 
-      let videoId = track.path_or_url;
+      let videoId = track.path_or_url || track.id;
+      if (videoId.startsWith('yt_')) videoId = videoId.replace('yt_', '');
       if (videoId.includes('v=')) videoId = videoId.split('v=')[1].split('&')[0];
       setYtVideoId(videoId);
       setIsPlaying(true);
@@ -431,9 +622,24 @@ export default function App() {
 
       onlineAudioRef.current?.pause();
 
-      setScTrackUrl(track.path_or_url);
-      setIsPlaying(true);
-      showNotification(`▶ SoundCloud: ${track.title}`);
+      let scUrl = track.path_or_url;
+      if (!scUrl || !scUrl.startsWith('http')) {
+        // Fallback: search online on soundcloud
+        showNotification(`Đang tìm nguồn SoundCloud cho: ${track.title}...`);
+        try {
+          const res = await invoke<SearchResult[]>('search_online', { query: `${track.title} ${track.artist}`, source: 'soundcloud' });
+          if (res && res.length > 0) {
+            scUrl = res[0].url_or_id;
+          }
+        } catch {}
+      }
+      if (scUrl) {
+        setScTrackUrl(scUrl);
+        setIsPlaying(true);
+        showNotification(`▶ SoundCloud: ${track.title}`);
+      } else {
+        showNotification('Không tìm thấy nguồn SoundCloud.');
+      }
 
     } else if (track.source === 'audius') {
       try { await invoke('stop_track'); } catch {}
@@ -508,7 +714,8 @@ export default function App() {
   const handleSeek = async (secs: number) => {
     if (!currentTrack) return;
     // Don't seek on live streams or invalid durations to avoid crashes
-    if (duration <= 0) return;
+    const effDur = duration > 0 ? duration : (currentTrack.duration_secs || 0);
+    if (effDur <= 0) return;
     const lowerTitle = currentTrack.title.toLowerCase();
     if (lowerTitle.includes('live') || lowerTitle.includes('trực tiếp') || lowerTitle.includes('24/7')) return;
 
@@ -537,6 +744,33 @@ export default function App() {
     sendYtCmd('setVolume', [v * 100]);
     sendScCmd('setVolume', v * 100);
     if (onlineAudioRef.current) onlineAudioRef.current.volume = v;
+  };
+
+  
+  const handleUserNext = () => {
+    const list = displayedTracksRef.current.length > 0 ? displayedTracksRef.current : (tracksRef.current.length > 0 ? tracksRef.current : tracks);
+    if (!list.length || !currentTrackRef.current) return;
+    const curId = currentTrackRef.current.id;
+    const idx = list.findIndex(t => t.id === curId);
+    if (idx === -1) {
+      playTrackInternal(list[0]);
+    } else {
+      const nextIdx = (idx + 1) % list.length;
+      playTrackInternal(list[nextIdx]);
+    }
+  };
+
+  const handleUserPrev = () => {
+    const list = displayedTracksRef.current.length > 0 ? displayedTracksRef.current : (tracksRef.current.length > 0 ? tracksRef.current : tracks);
+    if (!list.length || !currentTrackRef.current) return;
+    const curId = currentTrackRef.current.id;
+    const idx = list.findIndex(t => t.id === curId);
+    if (idx === -1) {
+      playTrackInternal(list[list.length - 1]);
+    } else {
+      const prevIdx = (idx - 1 + list.length) % list.length;
+      playTrackInternal(list[prevIdx]);
+    }
   };
 
   const handlePrev = () => {
@@ -620,17 +854,44 @@ export default function App() {
     }
   });
 
+  displayedTracksRef.current = displayedTracks;
   const localCount = tracks.filter(t => t.source === 'local').length;
 
   return (
     <div className="flex flex-col h-screen w-screen bg-black text-[#a0a0a0] overflow-hidden select-none font-sans">
-      {/* Toast Notification — Invincible Accent */}
+      {/* Spy Cinematic Startup Screen */}
+      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+      {/* Toast Notification â€” Invincible Accent */}
       {statusMessage && (
-        <div className="fixed top-4 right-4 z-50 bg-[#121216] text-white border border-[#ffe600]/50 px-4 py-2 rounded-lg font-mono text-xs shadow-[0_0_15px_rgba(255,230,0,0.25)] flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-[#ffe600]" />
-          <span>{statusMessage}</span>
+        <div 
+          className="fixed top-4 right-4 z-50 px-4 py-2.5 rounded-xl font-mono text-xs flex items-center gap-2.5 transition-all animate-in fade-in slide-in-from-top-2 duration-200 border shadow-lg backdrop-blur-md"
+          style={{
+            backgroundColor: themeMode === 'light' ? '#ffffff' : '#0e0e14',
+            color: themeMode === 'light' ? '#0f172a' : '#ffffff',
+            borderColor: `${accentColor}60`,
+            boxShadow: themeMode === 'light' 
+              ? `0 4px 20px rgba(0,0,0,0.1), 0 0 12px ${accentColor}30` 
+              : `0 4px 25px rgba(0,0,0,0.6), 0 0 15px ${accentColor}40`
+          }}
+        >
+          <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: accentColor }} />
+          <span className="font-semibold tracking-wide" style={{ color: themeMode === 'light' ? '#0f172a' : '#ffffff' }}>
+            {statusMessage}
+          </span>
         </div>
       )}
+
+      <AddToAlbumModal
+        isOpen={isAddToAlbumModalOpen}
+        onClose={() => {
+          setIsAddToAlbumModalOpen(false);
+          setTrackToAddToAlbum(null);
+        }}
+        trackToAdd={trackToAddToAlbum}
+        albums={albums}
+        onAddTrackToAlbum={handleAddTrackToAlbum}
+        onCreateAlbum={handleCreateAlbum}
+      />
 
       {/* Auth Modal */}
       <AuthModal
@@ -639,7 +900,7 @@ export default function App() {
         onSuccess={handleLoginSuccess}
       />
 
-      {/* YouTube iframe — single instance toggled by CSS */}
+      {/* YouTube iframe â€” single instance toggled by CSS */}
       {ytVideoId && (
         <>
           {showYoutubeVideo && (
@@ -669,10 +930,11 @@ export default function App() {
         </>
       )}
 
-      {/* SoundCloud Widget — hidden player */}
+      {/* SoundCloud Widget â€” hidden player */}
       {scTrackUrl && (
         <div className="fixed -top-1 -left-1 w-1 h-1 overflow-hidden opacity-0 pointer-events-none">
           <iframe
+            key={scTrackUrl}
             ref={scIframeRef}
             src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(scTrackUrl)}&auto_play=true&hide_related=true&show_artwork=false&show_user=false&show_reposts=false&visual=false&color=%2300e5ff`}
             title="SoundCloud Player"
@@ -690,16 +952,18 @@ export default function App() {
           onSelectFolder={handleSelectFolder}
           localTrackCount={localCount}
           favoritesCount={favorites.size}
+          albumCount={albums.length}
           currentUser={currentUser}
           onOpenAuth={() => setIsAuthModalOpen(true)}
+          accentColor={accentColor}
         />
 
         <main className="flex-1 flex flex-col overflow-hidden bg-[#000000]">
-          {/* Header Bar — Minimalist */}
+          {/* Header Bar â€” Minimalist */}
           <header className="h-12 px-6 flex items-center justify-between border-b border-[#141416] bg-black/95 backdrop-blur z-20">
-            <div className="flex items-center gap-2 text-xs font-medium text-white">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#ffe600]"></span>
-              <span className="tracking-tight">Spytify</span>
+            <div className="flex items-center gap-2.5 text-xs font-medium text-white">
+              <img src="/spytify-logo.png" alt="Spytify" className="w-5 h-5 rounded-md object-cover border border-[#262632]" />
+              <span className="tracking-tight font-bold">Spytify</span>
             </div>
             <div className="flex items-center gap-2.5">
               {currentTrack?.source === 'youtube' && !!ytVideoId && (
@@ -712,14 +976,14 @@ export default function App() {
                   }`}
                 >
                   <Tv className="w-3.5 h-3.5" />
-                  {showYoutubeVideo ? 'Thu nhỏ' : 'MV'}
+                  {showYoutubeVideo ? 'Thu nhỏ' : 'MV'}
                 </button>
               )}
               <button
                 onClick={handleSelectFolder}
                 className="px-3 py-1 bg-[#121212] hover:bg-[#1c1c1c] text-white text-xs font-medium rounded-md border border-[#222] transition-colors flex items-center gap-1.5 cursor-pointer"
               >
-                <FolderPlus className="w-3.5 h-3.5 text-[#00e5ff]" />
+                <FolderPlus className="w-3.5 h-3.5 text-white" />
                 Chọn thư mục
               </button>
             </div>
@@ -729,7 +993,26 @@ export default function App() {
           <div className="flex-1 overflow-y-auto px-7 py-5">
             {showVisualizer && currentView !== 'profile' && currentView !== 'ai_mix' && <AudioVisualizer isPlaying={isPlaying} />}
 
-            {currentView === 'library' ? (
+            {currentView === 'albums' ? (
+              <AlbumsView
+                albums={albums}
+                onCreateAlbum={handleCreateAlbum}
+                onDeleteAlbum={handleDeleteAlbum}
+                onRemoveTrackFromAlbum={handleRemoveTrackFromAlbum}
+                onPlayTrack={handlePlayTrack}
+                onPlayAlbum={handlePlayAlbum}
+                currentTrack={currentTrack}
+                isPlaying={isPlaying}
+                favorites={favorites}
+                onToggleFavorite={(id) => {
+                  const t = displayedTracks.find(x => x.id === id) || {
+                    id, title: 'Bài hát', artist: 'Nghệ sĩ', album: 'Spytify', duration_secs: 180, path_or_url: '', source: 'youtube'
+                  };
+                  handleToggleFavorite(t);
+                }}
+                onTogglePlay={handleTogglePlay}
+              />
+            ) : currentView === 'library' ? (
               <HomeTrendingView
                 onPlaySearchResult={handlePlaySearchResult}
                 currentTrack={currentTrack}
@@ -754,6 +1037,11 @@ export default function App() {
             ) : currentView === 'profile' ? (
               <ProfileView
                 currentUser={currentUser}
+                accentColor={accentColor}
+                themeMode={themeMode}
+                onUpdateAccentColor={handleUpdateAccentColor}
+                onToggleThemeMode={handleToggleThemeMode}
+                onUpdateAvatar={handleUpdateAvatar}
                 onLogout={handleLogout}
                 onOpenAuth={() => setIsAuthModalOpen(true)}
                 onPlayTrack={handlePlayTrack}
@@ -773,12 +1061,12 @@ export default function App() {
                       <Radio className="w-3 h-3 text-red-500 animate-pulse" />
                       YOUTUBE AUDIO STREAM
                     </span>
-                    <h2 className="text-xl font-extrabold text-white mt-1 tracking-tight">Nghe nhạc YouTube</h2>
-                    <p className="text-xs text-[#666] mt-0.5">Truyền tải âm thanh trực tiếp — Hỗ trợ xem MV video thu nhỏ</p>
+                    <h2 className="text-xl font-extrabold text-white mt-1 tracking-tight">Nghe nháº¡c YouTube</h2>
+                    <p className="text-xs text-[#666] mt-0.5">Truyền tải âm thanh trực tiếp từ YouTube - Hỗ trợ xem MV thu nhỏ</p>
                   </div>
                   <button
                     onClick={() => setCurrentView('search')}
-                    className="px-4 py-2 rounded bg-white hover:bg-[#00e5ff] text-black font-semibold text-xs cursor-pointer transition-colors flex items-center gap-1"
+                    className="px-4 py-2 rounded bg-white hover:bg-[#ff2a55] text-black font-semibold text-xs cursor-pointer transition-colors flex items-center gap-1"
                   >
                     <span>Tìm bài hát</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />
@@ -821,11 +1109,11 @@ export default function App() {
                       SOUNDCLOUD STREAM
                     </span>
                     <h2 className="text-xl font-extrabold text-white mt-1 tracking-tight">SoundCloud Stream</h2>
-                    <p className="text-xs text-[#666] mt-0.5">Kho nhạc Remix, Lo-Fi, Deep House &amp; Indie phong phú</p>
+                    <p className="text-xs text-[#666] mt-0.5">Kho nhạc Remix, Lo-Fi, Deep House & Indie phong phú</p>
                   </div>
                   <button
                     onClick={() => setCurrentView('search')}
-                    className="px-4 py-2 rounded bg-white hover:bg-[#00e5ff] text-black font-semibold text-xs cursor-pointer transition-colors flex items-center gap-1"
+                    className="px-4 py-2 rounded bg-white hover:bg-[#ff2a55] text-black font-semibold text-xs cursor-pointer transition-colors flex items-center gap-1"
                   >
                     <span>Tìm bài hát</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />
@@ -863,8 +1151,8 @@ export default function App() {
               <div>
                 <div className="mb-5 p-5 rounded-xl bg-[#0a0a0c] border border-[#1a1a20] flex items-center justify-between shadow-sm">
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[#ffe600] font-mono flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#00e5ff]"></span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--accent-color,#ff2a55)] font-mono flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-color,#ff2a55)]"></span>
                       {currentView === 'local' ? 'Ổ CỨNG NỘI BỘ' : currentView === 'favorites' ? 'DANH SÁCH YÊU THÍCH (SQLITE)' : currentView === 'audius' ? 'AUDIUS OPEN HI-FI (320KBPS)' : 'TẤT CẢ NGUỒN PHÁT'}
                     </span>
                     <h2 className="text-2xl font-black text-white mt-1 tracking-tight">
@@ -875,7 +1163,7 @@ export default function App() {
                   {displayedTracks.length > 0 && (
                     <button
                       onClick={() => handlePlayTrack(displayedTracks[0])}
-                      className="w-11 h-11 rounded-full bg-gradient-to-br from-[#ffe600] to-[#00e5ff] hover:scale-105 active:scale-95 text-black flex items-center justify-center transition-all cursor-pointer shadow-[0_0_12px_rgba(255,230,0,0.35)]"
+                      className="w-11 h-11 rounded-full bg-white hover:bg-[var(--accent-color,#ff2a55)] hover:text-white hover:scale-105 active:scale-95 text-black flex items-center justify-center transition-all cursor-pointer shadow-[0_0_12px_rgba(255,255,255,0.25)]"
                     >
                       <Disc className="w-5 h-5 text-black" />
                     </button>
@@ -918,11 +1206,18 @@ export default function App() {
         }}
         onToggleShuffle={() => setIsShuffle(p => !p)}
         onTogglePlay={handleTogglePlay}
-        onPrev={handlePrev}
-        onNext={handleNext}
+        onPrev={handleUserPrev}
+        onNext={handleUserNext}
         onSeek={handleSeek}
         onVolumeChange={handleVolumeChange}
         onToggleFavorite={() => currentTrack && handleToggleFavorite(currentTrack)}
+        accentColor={accentColor}
+        onAddToAlbum={() => {
+          if (currentTrack) {
+            setTrackToAddToAlbum(currentTrack);
+            setIsAddToAlbumModalOpen(true);
+          }
+        }}
         onToggleVisualizer={() => setShowVisualizer(p => !p)}
         showVisualizer={showVisualizer}
       />

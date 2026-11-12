@@ -178,6 +178,15 @@ async fn auth_start_google_oauth(
 }
 
 #[tauri::command]
+fn auth_update_avatar(
+    user_id: String,
+    avatar: String,
+    db: State<'_, DatabaseManager>,
+) -> Result<(), String> {
+    db.update_avatar(&user_id, &avatar)
+}
+
+#[tauri::command]
 fn auth_get_current_user(
     user_id: String,
     db: State<'_, DatabaseManager>,
@@ -282,6 +291,7 @@ pub fn run() {
             auth_google_login,
             auth_start_google_oauth,
             auth_get_current_user,
+            auth_update_avatar,
             db_get_favorites,
             db_toggle_favorite,
             db_add_history,

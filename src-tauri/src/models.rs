@@ -68,6 +68,8 @@ pub struct HistoryItem {
     pub source: String,
     pub duration_secs: u64,
     pub listened_at: String,
+    pub path_or_url: Option<String>,
+    pub track_json: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

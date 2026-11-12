@@ -1,4 +1,9 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
+
+:root {
+  --accent-color: #ff2a55;
+  --accent-color-rgb: 255, 42, 85;
+}
 
 @layer base {
   body {
@@ -8,7 +13,7 @@
     height: 100vh;
     width: 100vw;
     background-color: #000000;
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     letter-spacing: -0.01em;
   }
 }
@@ -32,42 +37,142 @@
   background: rgba(255, 255, 255, 0.35);
 }
 
-/* Invincible Hero Accents: Electric Yellow & Vibrant Cyan */
-.accent-cyan {
-  color: #00e5ff;
+/* Spy Classified Dynamic Accent: Adapts to User Theme Color */
+.accent-red {
+  color: var(--accent-color, #ff2a55) !important;
 }
 
-.bg-accent-cyan {
-  background-color: #00e5ff;
+.bg-accent-red {
+  background-color: var(--accent-color, #ff2a55) !important;
 }
 
-.border-accent-cyan {
-  border-color: #00e5ff;
+.border-accent-red {
+  border-color: var(--accent-color, #ff2a55) !important;
 }
 
-.accent-yellow {
-  color: #ffe600;
+.spy-gradient {
+  background: linear-gradient(135deg, var(--accent-color, #ff2a55) 0%, #ffffff 100%) !important;
 }
 
-.bg-accent-yellow {
-  background-color: #ffe600;
-}
-
-.border-accent-yellow {
-  border-color: #ffe600;
-}
-
-.invincible-gradient {
-  background: linear-gradient(135deg, #ffe600 0%, #00e5ff 100%);
-}
-
-.invincible-text-gradient {
-  background: linear-gradient(135deg, #ffe600 0%, #00e5ff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-/* Range input styling */
+/* Range input styling: seekbar & volume */
 input[type="range"] {
-  accent-color: #ffe600;
+  accent-color: var(--accent-color, #ff2a55);
+}
+
+/* ═════════════════════════════════════════════════════════════════════
+   LIGHT MODE: SPY PAPER INTELLIGENCE DOSSIER (BẠCH BÁO ĐẶC NHIỆM)
+   ═════════════════════════════════════════════════════════════════════ */
+.light-mode body {
+  background-color: #f8fafc !important;
+  color: #334155 !important;
+}
+
+.light-mode ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15) !important;
+}
+
+.light-mode ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.35) !important;
+}
+
+.light-mode aside {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light-mode header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light-mode main {
+  background-color: #f8fafc !important;
+}
+
+/* Bottom Player Bar in light mode */
+.light-mode footer,
+.light-mode .h-20.bg-black {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Background panel replacements */
+.light-mode .bg-black {
+  background-color: #ffffff !important;
+}
+
+.light-mode .bg-\[\#000000\] {
+  background-color: #f8fafc !important;
+}
+
+.light-mode .bg-\[\#080808\],
+.light-mode .bg-\[\#08080b\],
+.light-mode .bg-\[\#09090c\],
+.light-mode .bg-\[\#0a0a0c\],
+.light-mode .bg-\[\#0a0a0d\],
+.light-mode .bg-\[\#0c0c10\],
+.light-mode .bg-\[\#0d0d12\],
+.light-mode .bg-\[\#0e0e12\],
+.light-mode .bg-\[\#101014\],
+.light-mode .bg-\[\#121212\],
+.light-mode .bg-\[\#121218\] {
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.light-mode .bg-\[\#14141a\],
+.light-mode .bg-\[\#14141c\],
+.light-mode .bg-\[\#15151e\],
+.light-mode .bg-\[\#161620\],
+.light-mode .bg-\[\#181824\],
+.light-mode .bg-\[\#16161c\] {
+  background-color: #f1f5f9 !important;
+}
+
+/* Borders */
+.light-mode .border-\[\#141416\],
+.light-mode .border-\[\#141418\],
+.light-mode .border-\[\#161620\],
+.light-mode .border-\[\#181818\],
+.light-mode .border-\[\#181822\],
+.light-mode .border-\[\#1a1a20\],
+.light-mode .border-\[\#1a1a22\],
+.light-mode .border-\[\#1b1b24\],
+.light-mode .border-\[\#1e1e24\],
+.light-mode .border-\[\#1e1e28\],
+.light-mode .border-\[\#22222a\],
+.light-mode .border-\[\#222\],
+.light-mode .border-\[\#252535\],
+.light-mode .border-\[\#262630\],
+.light-mode .border-\[\#262632\],
+.light-mode .border-\[\#262634\],
+.light-mode .border-\[\#2b2b3a\],
+.light-mode .border-\[\#333\],
+.light-mode .border-\[\#38384a\] {
+  border-color: #e2e8f0 !important;
+}
+
+/* Text overrides in Light Mode */
+.light-mode .text-white {
+  color: #0f172a !important;
+}
+
+.light-mode .text-\[\#8e8e9f\],
+.light-mode .text-\[\#888899\],
+.light-mode .text-\[\#888\],
+.light-mode .text-\[\#777\],
+.light-mode .text-\[\#666\],
+.light-mode .text-\[\#666677\],
+.light-mode .text-\[\#555\],
+.light-mode .text-\[\#aaa\] {
+  color: #64748b !important;
+}
+
+/* Hover background in light mode */
+.light-mode .hover\:bg-\[\#0e0e12\]:hover,
+.light-mode .hover\:bg-\[\#121218\]:hover,
+.light-mode .hover\:bg-\[\#141418\]:hover,
+.light-mode .hover\:bg-\[\#181820\]:hover,
+.light-mode .hover\:bg-\[\#1c1c1c\]:hover {
+  background-color: #f1f5f9 !important;
 }

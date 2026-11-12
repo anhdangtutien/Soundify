@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Pause, Clock3, Heart, Music, HardDrive, Disc3 } from 'lucide-react';
+import { Play, Pause, Clock3, Heart, Music, HardDrive, FolderPlus } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { Track } from '../types';
 
@@ -11,6 +11,7 @@ interface TrackTableProps {
   onTrackSelect: (track: Track) => void;
   onTogglePlay: () => void;
   onToggleFavorite: (trackId: string) => void;
+  onAddToAlbum?: (track: Track) => void;
 }
 
 export const TrackTable: React.FC<TrackTableProps> = ({
@@ -21,9 +22,10 @@ export const TrackTable: React.FC<TrackTableProps> = ({
   onTrackSelect,
   onTogglePlay,
   onToggleFavorite,
+  onAddToAlbum,
 }) => {
   const formatTime = (secs: number) => {
-    if (isNaN(secs) || secs <= 0) return '--:--';
+    if (isNaN(secs) || secs <= 0 || secs > 86400) return '--:--';
     const mins = Math.floor(secs / 60);
     const remainingSecs = Math.floor(secs % 60);
     return `${mins}:${remainingSecs < 10 ? '0' : ''}${remainingSecs}`;
@@ -33,8 +35,8 @@ export const TrackTable: React.FC<TrackTableProps> = ({
     switch (source) {
       case 'youtube':
         return (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-[#141414] text-red-400 border border-red-500/20">
-            <YoutubeIcon className="w-3 h-3 text-red-400" />
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-[#141414] text-[#ff4e6b] border border-[#ff2a55]/25">
+            <YoutubeIcon className="w-3 h-3 text-[#ff4e6b]" />
             <span>YT</span>
           </div>
         );
@@ -47,15 +49,15 @@ export const TrackTable: React.FC<TrackTableProps> = ({
         );
       case 'audius':
         return (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-[#141416] text-[#00e5ff] border border-[#00e5ff]/30">
-            <AudiusIcon className="w-3 h-3 text-[#cc00ff]" />
-            <span>AUDIUS 320K</span>
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-[#141416] text-white border border-white/20">
+            <AudiusIcon className="w-3 h-3 text-[#ff2a55]" />
+            <span>AUDIUS</span>
           </div>
         );
       default:
         return (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-[#161612] text-[#ffe600] border border-[#ffe600]/30">
-            <HardDrive className="w-3 h-3 text-[#ffe600]" />
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-[#141418] text-white border border-white/20">
+            <HardDrive className="w-3 h-3 text-white" />
             <span>LOSSLESS</span>
           </div>
         );
@@ -65,11 +67,11 @@ export const TrackTable: React.FC<TrackTableProps> = ({
   if (tracks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center p-8">
-        <div className="w-14 h-14 rounded-full bg-[#0d0d0d] border border-[#1a1a1a] flex items-center justify-center text-[#444] mb-3">
+        <div className="w-14 h-14 rounded-full bg-[#0d0d10] border border-[#1a1a24] flex items-center justify-center text-[#555] mb-3">
           <Music className="w-6 h-6" />
         </div>
         <h3 className="text-sm font-bold text-white mb-1">Thư viện trống</h3>
-        <p className="text-xs text-[#666] max-w-sm">
+        <p className="text-xs text-[#777] max-w-sm">
           Nhấn "Chọn thư mục" ở thanh bên để quét nhạc FLAC/MP3 từ ổ cứng, hoặc tìm kiếm trên YouTube / SoundCloud.
         </p>
       </div>
@@ -78,8 +80,8 @@ export const TrackTable: React.FC<TrackTableProps> = ({
 
   return (
     <div className="w-full text-xs select-none">
-      {/* Header — TIDAL Minimalist */}
-      <div className="grid grid-cols-[40px_1fr_1fr_90px_70px] px-3 py-2 border-b border-[#141414] text-[10px] font-bold text-[#555] uppercase tracking-wider sticky top-0 bg-black/90 backdrop-blur z-10">
+      {/* Header — Spy Minimalist */}
+      <div className="grid grid-cols-[40px_1fr_1fr_90px_90px] px-3 py-2 border-b border-[#141418] text-[10px] font-bold text-[#666677] uppercase tracking-wider sticky top-0 bg-black/90 backdrop-blur z-10 font-mono">
         <span className="text-center">#</span>
         <span>Tiêu đề</span>
         <span>Album / Nghệ sĩ</span>
@@ -90,7 +92,7 @@ export const TrackTable: React.FC<TrackTableProps> = ({
       </div>
 
       {/* Rows */}
-      <div className="divide-y divide-[#0c0c0c]/50">
+      <div className="divide-y divide-[#101014]">
         {tracks.map((track, idx) => {
           const isSelected = currentTrack?.id === track.id;
           const isFav = favorites.has(track.id);
@@ -99,15 +101,15 @@ export const TrackTable: React.FC<TrackTableProps> = ({
             <div
               key={track.id}
               onDoubleClick={() => onTrackSelect(track)}
-              className={`grid grid-cols-[40px_1fr_1fr_90px_70px] items-center px-3 py-2 rounded-md transition-colors group cursor-pointer ${
+              className={`grid grid-cols-[40px_1fr_1fr_90px_90px] items-center px-3 py-2 rounded-md transition-colors group cursor-pointer ${
                 isSelected
-                  ? 'bg-[#141416] text-white border-l-2 border-[#ffe600]'
-                  : 'hover:bg-[#0c0c0e] text-[#888] hover:text-white'
+                  ? 'bg-[#14141c] text-white border-l-2 border-[#ff2a55]'
+                  : 'hover:bg-[#0c0c10] text-[#888899] hover:text-white'
               }`}
             >
               {/* Col 1: Play button / Number */}
               <div className="flex items-center justify-center relative">
-                <span className={`text-[11px] font-mono ${isSelected ? 'text-[#ffe600] font-bold' : 'group-hover:hidden text-[#444]'}`}>
+                <span className={`text-[11px] font-mono ${isSelected ? 'text-[#ff2a55] font-bold' : 'group-hover:hidden text-[#444]'}`}>
                   {idx + 1}
                 </span>
                 <button
@@ -124,16 +126,16 @@ export const TrackTable: React.FC<TrackTableProps> = ({
                   }`}
                 >
                   {isSelected && isPlaying ? (
-                    <Pause className="w-3.5 h-3.5 fill-current text-[#ffe600]" />
+                    <Pause className="w-3.5 h-3.5 fill-current text-[#ff2a55]" />
                   ) : (
-                    <Play className="w-3.5 h-3.5 fill-current text-white hover:text-[#00e5ff]" />
+                    <Play className="w-3.5 h-3.5 fill-current text-white hover:text-[#ff2a55]" />
                   )}
                 </button>
               </div>
 
               {/* Col 2: Title & Artist & Cover */}
               <div className="flex items-center gap-3 overflow-hidden pr-3">
-                <div className="w-9 h-9 rounded bg-[#111] border border-[#1e1e1e] flex-shrink-0 overflow-hidden relative">
+                <div className="w-9 h-9 rounded bg-[#111] border border-[#1e1e24] flex-shrink-0 overflow-hidden relative">
                   {track.cover_art ? (
                     <img
                       src={track.cover_art}
@@ -141,7 +143,7 @@ export const TrackTable: React.FC<TrackTableProps> = ({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-[#444]">
+                    <div className="w-full h-full flex items-center justify-center text-[#555]">
                       <Music className="w-4 h-4" />
                     </div>
                   )}
@@ -150,19 +152,19 @@ export const TrackTable: React.FC<TrackTableProps> = ({
                 <div className="flex flex-col overflow-hidden">
                   <span
                     className={`font-semibold truncate text-xs ${
-                      isSelected ? 'text-[#ffe600] font-bold' : 'text-white'
+                      isSelected ? 'text-white font-bold' : 'text-white'
                     }`}
                   >
                     {track.title}
                   </span>
-                  <span className="text-[11px] text-[#00e5ff]/70 truncate group-hover:text-[#00e5ff]">
+                  <span className="text-[11px] text-[#8e8e9f] truncate group-hover:text-white">
                     {track.artist}
                   </span>
                 </div>
               </div>
 
               {/* Col 3: Album */}
-              <div className="truncate text-[11px] text-[#666] pr-3 font-mono">
+              <div className="truncate text-[11px] text-[#666677] pr-3 font-mono">
                 {track.album || 'Unknown Album'}
               </div>
 
@@ -171,17 +173,30 @@ export const TrackTable: React.FC<TrackTableProps> = ({
                 {getSourceBadge(track.source)}
               </div>
 
-              {/* Col 5: Duration & Like */}
-              <div className="flex items-center justify-end gap-2.5 text-[11px] pr-1 font-mono text-[#555]">
+              {/* Col 5: Duration & Like & Add to Album */}
+              <div className="flex items-center justify-end gap-2 text-[11px] pr-1 font-mono text-[#666]">
+                {onAddToAlbum && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddToAlbum(track);
+                    }}
+                    title="Thêm vào Album"
+                    className="p-1 transition-colors cursor-pointer opacity-0 group-hover:opacity-100 text-[#666] hover:text-[#ff2a55]"
+                  >
+                    <FolderPlus className="w-3.5 h-3.5" />
+                  </button>
+                )}
+
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onToggleFavorite(track.id);
                   }}
-                  className={`p-1 transition-colors ${
+                  className={`p-1 transition-colors cursor-pointer ${
                     isFav
-                      ? 'text-[#ffe600] fill-[#ffe600] drop-shadow-[0_0_6px_#ffe600]'
-                      : 'opacity-0 group-hover:opacity-100 text-[#444] hover:text-[#00e5ff]'
+                      ? 'text-[#ff2a55] fill-[#ff2a55] drop-shadow-[0_0_6px_#ff2a55]'
+                      : 'opacity-0 group-hover:opacity-100 text-[#555] hover:text-[#ff2a55]'
                   }`}
                 >
                   <Heart className={`w-3.5 h-3.5 ${isFav ? 'fill-current' : ''}`} />

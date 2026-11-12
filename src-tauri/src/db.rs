@@ -75,6 +75,8 @@ impl DatabaseManager {
         // Soft migrations if columns do not exist
         let _ = conn.execute("ALTER TABLE users ADD COLUMN google_id TEXT", []);
         let _ = conn.execute("ALTER TABLE users ADD COLUMN email TEXT", []);
+        let _ = conn.execute("ALTER TABLE playback_history ADD COLUMN path_or_url TEXT", []);
+        let _ = conn.execute("ALTER TABLE playback_history ADD COLUMN track_json TEXT", []);
 
         Ok(Self {
             conn: Mutex::new(conn),
@@ -257,6 +259,16 @@ impl DatabaseManager {
         }
     }
 
+    pub fn update_avatar(&self, user_id: &str, avatar: &str) -> Result<(), String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        conn.execute(
+            "UPDATE users SET avatar = ?1 WHERE id = ?2",
+            rusqlite::params![avatar, user_id],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
     pub fn get_favorites(&self, user_id: &str) -> Result<Vec<Track>, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut stmt = conn
@@ -309,9 +321,10 @@ impl DatabaseManager {
     pub fn add_history(&self, user_id: &str, track: &Track) -> Result<(), String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let source_str = format!("{:?}", track.source).to_lowercase();
+        let track_json = serde_json::to_string(track).unwrap_or_default();
         conn.execute(
-            "INSERT INTO playback_history (user_id, track_id, track_title, artist, source, duration_secs) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![user_id, track.id, track.title, track.artist, source_str, track.duration_secs],
+            "INSERT INTO playback_history (user_id, track_id, track_title, artist, source, duration_secs, path_or_url, track_json) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![user_id, track.id, track.title, track.artist, source_str, track.duration_secs, track.path_or_url, track_json],
         )
         .map_err(|e| e.to_string())?;
         Ok(())
@@ -320,7 +333,7 @@ impl DatabaseManager {
     pub fn get_history(&self, user_id: &str, limit: u32) -> Result<Vec<HistoryItem>, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut stmt = conn
-            .prepare("SELECT id, user_id, track_id, track_title, artist, source, duration_secs, listened_at FROM playback_history WHERE user_id = ?1 ORDER BY listened_at DESC LIMIT ?2")
+            .prepare("SELECT id, user_id, track_id, track_title, artist, source, duration_secs, listened_at, path_or_url, track_json FROM playback_history WHERE user_id = ?1 ORDER BY listened_at DESC LIMIT ?2")
             .map_err(|e| e.to_string())?;
 
         let rows = stmt
@@ -334,6 +347,8 @@ impl DatabaseManager {
                     source: row.get(5)?,
                     duration_secs: row.get(6)?,
                     listened_at: row.get(7)?,
+                    path_or_url: row.get(8).unwrap_or(None),
+                    track_json: row.get(9).unwrap_or(None),
                 })
             })
             .map_err(|e| e.to_string())?;

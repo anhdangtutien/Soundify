@@ -53,6 +53,8 @@ export interface HistoryItem {
   source: string;
   duration_secs: number;
   listened_at: string;
+  path_or_url?: string;
+  track_json?: string;
 }
 
 export interface RecommendationResult {
@@ -69,6 +71,15 @@ export interface TrainingReport {
   status: string;
 }
 
+export interface UserAlbum {
+  id: string;
+  title: string;
+  description?: string;
+  cover_art?: string | null;
+  tracks: Track[];
+  created_at: string;
+}
+
 export type ViewType =
   | 'library'
   | 'search'
@@ -76,6 +87,7 @@ export type ViewType =
   | 'youtube'
   | 'audius'
   | 'favorites'
+  | 'albums'
   | 'soundcloud'
   | 'profile'
   | 'ai_mix';
