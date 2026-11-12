@@ -178,6 +178,16 @@ async fn auth_start_google_oauth(
 }
 
 #[tauri::command]
+fn save_text_file(path: String, content: String) -> Result<(), String> {
+    std::fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn read_text_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn auth_update_avatar(
     user_id: String,
     avatar: String,
@@ -292,6 +302,8 @@ pub fn run() {
             auth_start_google_oauth,
             auth_get_current_user,
             auth_update_avatar,
+            save_text_file,
+            read_text_file,
             db_get_favorites,
             db_toggle_favorite,
             db_add_history,

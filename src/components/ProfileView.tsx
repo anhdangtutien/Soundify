@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useState, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { open, save } from '@tauri-apps/plugin-dialog';
 import { User, UserStats, HistoryItem, Track } from '../types';
 import { 
   User as UserIcon, LogOut, Clock, Heart, Headphones, 
@@ -203,8 +204,30 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     }
   };
 
-  // Cross-Device Backup: Export Vault to JSON
-  const handleExportBackup = () => {
+  const applyBackupContent = (jsonStr: string) => {
+    try {
+      const data = JSON.parse(jsonStr);
+      if (data.albums && Array.isArray(data.albums)) {
+        localStorage.setItem('spytify_user_albums', JSON.stringify(data.albums));
+      }
+      if (data.avatar) {
+        onUpdateAvatar(data.avatar);
+      }
+      if (data.accentColor) {
+        onUpdateAccentColor(data.accentColor);
+      }
+      if (data.themeMode && data.themeMode !== themeMode) {
+        onToggleThemeMode();
+      }
+      alert('Đã khôi phục hồ sơ và Album Spytify thành công từ tệp sao lưu!');
+      window.location.reload();
+    } catch (err) {
+      alert('Tệp sao lưu không hợp lệ hoặc sai định dạng JSON: ' + err);
+    }
+  };
+
+  // Cross-Device Backup: Export Vault to JSON using Native Windows Dialog
+  const handleExportBackup = async () => {
     try {
       const storedAlbums = localStorage.getItem('spytify_user_albums');
       const albumsData = storedAlbums ? JSON.parse(storedAlbums) : [];
@@ -220,44 +243,74 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         history: history,
       };
 
-      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+      const jsonStr = JSON.stringify(backupData, null, 2);
+
+      // 1. Try Native Tauri save file dialog
+      try {
+        const filePath = await save({
+          filters: [{ name: 'Spytify Backup Vault', extensions: ['json'] }],
+          defaultPath: `spytify_vault_${currentUser?.username || 'agent'}_backup.json`,
+        });
+        if (filePath) {
+          await invoke('save_text_file', { path: filePath, content: jsonStr });
+          alert('Đã lưu tệp sao lưu thành công tại:\n' + filePath);
+          return;
+        }
+      } catch (nativeErr) {
+        console.warn('Native save dialog fallback:', nativeErr);
+      }
+
+      // 2. Browser DOM fallback
+      const blob = new Blob([jsonStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `spytify_vault_${currentUser?.username || 'agent'}_backup.json`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Failed to export backup:', err);
+      alert('Lỗi xuất tệp sao lưu: ' + err);
     }
   };
 
-  // Cross-Device Backup: Import Vault from JSON
-  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Cross-Device Backup: Import Vault from JSON using Native Windows Dialog
+  const handleNativeImportBackup = async () => {
+    try {
+      let content = '';
+      try {
+        const selected = await open({
+          multiple: false,
+          filters: [{ name: 'Spytify Backup Vault', extensions: ['json'] }],
+        });
+        if (selected && typeof selected === 'string') {
+          content = await invoke<string>('read_text_file', { path: selected });
+        }
+      } catch (nativeErr) {
+        console.warn('Native open dialog fallback:', nativeErr);
+      }
+
+      if (content) {
+        applyBackupContent(content);
+        return;
+      }
+
+      // Fallback to HTML input
+      backupInputRef.current?.click();
+    } catch (err) {
+      console.error('Failed to import backup:', err);
+      backupInputRef.current?.click();
+    }
+  };
+
+  const handleHtmlFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
-      try {
-        const data = JSON.parse(event.target?.result as string);
-        if (data.albums && Array.isArray(data.albums)) {
-          localStorage.setItem('spytify_user_albums', JSON.stringify(data.albums));
-        }
-        if (data.avatar) {
-          onUpdateAvatar(data.avatar);
-        }
-        if (data.accentColor) {
-          onUpdateAccentColor(data.accentColor);
-        }
-        if (data.themeMode && data.themeMode !== themeMode) {
-          onToggleThemeMode();
-        }
-        alert('Đã khôi phục hồ sơ và Album Spytify thành công từ tệp sao lưu!');
-        window.location.reload();
-      } catch (err) {
-        alert('Tệp sao lưu không hợp lệ hoặc bị lỗi!');
-      }
+      applyBackupContent(event.target?.result as string);
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -277,7 +330,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         ref={backupInputRef} 
         type="file" 
         accept=".json" 
-        onChange={handleImportBackup} 
+        onChange={handleHtmlFileChange} 
         className="hidden" 
       />
 
@@ -671,7 +724,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </button>
 
             <button
-              onClick={() => backupInputRef.current?.click()}
+              onClick={handleNativeImportBackup}
               className="p-3.5 rounded-xl border border-[#222230] bg-[#0c0c12] hover:bg-[#14141c] hover:border-white/40 flex items-center gap-3 transition-all cursor-pointer group"
             >
               <div 

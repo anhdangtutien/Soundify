@@ -191,7 +191,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 onClick={() => setShowGoogleHelp(false)}
                 className="flex-1 py-2 rounded-lg bg-[#141414] text-[#888] hover:text-white text-xs font-semibold cursor-pointer"
               >
-                Quay láº¡i
+                Quay lại
               </button>
               <button
                 type="button"

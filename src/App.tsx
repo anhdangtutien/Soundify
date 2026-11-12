@@ -1061,7 +1061,7 @@ export default function App() {
                       <Radio className="w-3 h-3 text-red-500 animate-pulse" />
                       YOUTUBE AUDIO STREAM
                     </span>
-                    <h2 className="text-xl font-extrabold text-white mt-1 tracking-tight">Nghe nháº¡c YouTube</h2>
+                    <h2 className="text-xl font-extrabold text-white mt-1 tracking-tight">Nghe nhạc YouTube</h2>
                     <p className="text-xs text-[#666] mt-0.5">Truyền tải âm thanh trực tiếp từ YouTube - Hỗ trợ xem MV thu nhỏ</p>
                   </div>
                   <button
