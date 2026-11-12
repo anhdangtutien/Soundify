@@ -203,7 +203,10 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
     switch (source) {
       case 'youtube':
         return (
-          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#16161c] text-[#ff4e6b] border border-[#ff2a55]/30 flex items-center gap-1 font-mono">
+          <span 
+            className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#16161c] border flex items-center gap-1 font-mono"
+            style={{ color: accentColor, borderColor: `${accentColor}50` }}
+          >
             <YoutubeIcon className="w-2.5 h-2.5" />YT HI-FI
           </span>
         );
@@ -216,7 +219,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
       case 'audius':
         return (
           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#16161c] text-white border border-white/20 flex items-center gap-1 font-mono">
-            <AudiusIcon className="w-2.5 h-2.5 text-[#ff2a55]" />AUDIUS
+            <AudiusIcon className="w-2.5 h-2.5" style={{ color: accentColor }} />AUDIUS
           </span>
         );
       default:
@@ -238,8 +241,15 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
       <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#0d0d12] via-[#09090c] to-black border border-[#1c1c24] p-6 lg:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
         <div className="z-10 max-w-xl space-y-3">
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full bg-[#ff2a55]/20 text-[#ff2a55] border border-[#ff2a55]/40 text-[10px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5">
-              <Crown className="w-3 h-3 text-[#ff2a55]" />
+            <span 
+              className="px-2.5 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5"
+              style={{
+                backgroundColor: `${accentColor}20`,
+                color: accentColor,
+                borderColor: `${accentColor}50`,
+              }}
+            >
+              <Crown className="w-3 h-3" style={{ color: accentColor }} />
               BẢNG XẾP HẠNG TOÀN CẦU #1
             </span>
             <span className="text-xs text-[#8e8e9f] font-mono">Top Trending Stream</span>
@@ -290,7 +300,14 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
             {getSourceBadge(featured.source)}
           </div>
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="w-12 h-12 rounded-full bg-[#ff2a55] text-white flex items-center justify-center shadow-lg">
+            <div 
+              className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-transform"
+              style={{
+                backgroundColor: accentColor,
+                color: getContrastTextColor(accentColor),
+                boxShadow: `0 0 16px ${accentColor}60`,
+              }}
+            >
               <Play className="w-5 h-5 fill-current ml-0.5" />
             </div>
           </div>
@@ -324,7 +341,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
           disabled={loading}
           className="p-2 rounded-lg bg-[#0e0e12] hover:bg-[#16161e] text-[#888] hover:text-white border border-[#1e1e26] transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-mono"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#ff2a55]' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} style={{ color: loading ? accentColor : undefined }} />
           <span className="hidden sm:inline">Cập nhật</span>
         </button>
       </div>
@@ -333,7 +350,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
       <div className="space-y-4">
         <div className="flex items-center justify-between border-b border-[#161620] pb-2">
           <h2 className="text-sm font-bold text-white flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-[#ff2a55]" />
+            <TrendingUp className="w-4 h-4" style={{ color: accentColor }} />
             Bảng xếp hạng hôm nay
           </h2>
           <span className="text-xs text-[#777] font-mono">Top 10 bài hát</span>
@@ -345,19 +362,36 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
             const isRank1 = rank === 1;
             const isRank2 = rank === 2;
             const isRank3 = rank === 3;
+            const isCurrent = currentTrack && (
+              item.url_or_id === currentTrack.id ||
+              item.url_or_id === currentTrack.path_or_url ||
+              item.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase()
+            );
 
             return (
               <div
                 key={idx}
                 onClick={() => onPlaySearchResult(item)}
-                className="p-3 rounded-xl bg-[#09090c] hover:bg-[#121218] border border-[#161620] hover:border-[#ff2a55]/40 transition-all flex items-center justify-between gap-3 group cursor-pointer shadow-sm"
+                style={{
+                  borderColor: isCurrent ? accentColor : undefined,
+                  backgroundColor: isCurrent ? `${accentColor}18` : undefined,
+                  boxShadow: isCurrent ? `0 0 14px ${accentColor}30` : undefined,
+                }}
+                className={`p-3 rounded-xl bg-[#09090c] hover:bg-[#121218] border transition-all flex items-center justify-between gap-3 group cursor-pointer shadow-sm ${
+                  isCurrent ? '' : 'border-[#161620] hover:border-[#2a2a38]'
+                }`}
               >
                 <div className="flex items-center gap-3 overflow-hidden">
                   {/* Rank Badge */}
                   <div
+                    style={isRank1 ? {
+                      backgroundColor: accentColor,
+                      color: getContrastTextColor(accentColor),
+                      boxShadow: `0 0 10px ${accentColor}50`,
+                    } : undefined}
                     className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs font-mono flex-shrink-0 ${
                       isRank1
-                        ? 'bg-[#ff2a55] text-white shadow-[0_0_8px_rgba(255,42,85,0.4)]'
+                        ? ''
                         : isRank2
                         ? 'bg-white text-black'
                         : isRank3
@@ -384,7 +418,11 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
 
                   {/* Song Info */}
                   <div className="overflow-hidden">
-                    <p className="text-xs font-bold text-white truncate group-hover:text-[#ff2a55] transition-colors" title={item.title}>
+                    <p 
+                      className="text-xs font-bold text-white truncate transition-colors" 
+                      style={{ color: isCurrent ? accentColor : undefined }}
+                      title={item.title}
+                    >
                       {item.title}
                     </p>
                     <p className="text-[11px] text-[#8e8e9f] truncate font-mono mt-0.5">
@@ -407,7 +445,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
       {/* ─── TRENDING MOODS & GENRES ──────────────────────────────────────── */}
       <div className="space-y-4 pt-2">
         <h2 className="text-sm font-bold text-white flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#ff2a55]" />
+          <Sparkles className="w-4 h-4" style={{ color: accentColor }} />
           Bộ sưu tập thịnh hành
         </h2>
 
@@ -423,14 +461,14 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
             <button
               key={idx}
               onClick={() => setActiveCategory(col.query)}
-              className="p-3.5 rounded-xl bg-[#0c0c10] hover:bg-[#14141a] border border-[#1a1a24] hover:border-[#ff2a55]/50 transition-all text-left flex flex-col justify-between h-28 group cursor-pointer shadow-sm"
+              className="p-3.5 rounded-xl bg-[#0c0c10] hover:bg-[#14141a] border border-[#1a1a24] hover:border-[#2a2a38] transition-all text-left flex flex-col justify-between h-28 group cursor-pointer shadow-sm"
             >
               <div className="flex items-center justify-between w-full">
-                <span className="text-[10px] font-mono text-[#ff2a55] font-bold uppercase">CHỦ ĐỀ #{idx + 1}</span>
+                <span className="text-[10px] font-mono font-bold uppercase" style={{ color: accentColor }}>CHỦ ĐỀ #{idx + 1}</span>
                 <Play className="w-3.5 h-3.5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <div>
-                <p className="text-xs font-bold text-white group-hover:text-[#ff2a55] transition-colors leading-tight">{col.title}</p>
+                <p className="text-xs font-bold text-white group-hover:text-white transition-colors leading-tight">{col.title}</p>
                 <p className="text-[10px] text-[#777] line-clamp-1 mt-0.5">{col.desc}</p>
               </div>
             </button>
@@ -454,7 +492,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
               <div
                 key={idx}
                 onClick={() => onPlaySearchResult(item)}
-                className="p-2.5 rounded-xl bg-[#09090c] hover:bg-[#121218] border border-[#161620] hover:border-[#ff2a55]/30 transition-all flex flex-col group cursor-pointer"
+                className="p-2.5 rounded-xl bg-[#09090c] hover:bg-[#121218] border border-[#161620] hover:border-[#2a2a38] transition-all flex flex-col group cursor-pointer"
               >
                 <div className="relative aspect-square w-full rounded-lg overflow-hidden mb-2 bg-[#14141c]">
                   {item.thumbnail ? (
@@ -465,7 +503,13 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
                     </div>
                   )}
 
-                  <div className="absolute right-2 bottom-2 w-8 h-8 rounded-full bg-white hover:bg-[#ff2a55] hover:text-white text-black flex items-center justify-center shadow-lg opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all">
+                  <div 
+                    className="absolute right-2 bottom-2 w-8 h-8 rounded-full flex items-center justify-center shadow-lg opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all cursor-pointer"
+                    style={{
+                      backgroundColor: accentColor,
+                      color: getContrastTextColor(accentColor),
+                    }}
+                  >
                     <Play className="w-4 h-4 fill-current ml-0.5" />
                   </div>
 

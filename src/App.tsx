@@ -16,7 +16,7 @@ import { SplashScreen } from './components/SplashScreen';
 import { cloudSyncPull, cloudSyncPush, isSupabaseConfigured } from './services/supabase';
 import { deduplicateTracks } from './utils/trackUtils';
 import { Track, PlaybackStatus, SearchResult, ViewType, User, UserAlbum } from './types';
-import { FolderPlus, Disc, CheckCircle2, Tv, X, Radio, ArrowUpRight, LogIn, Sun, Moon } from 'lucide-react';
+import { FolderPlus, Disc, CheckCircle2, Tv, X, Radio, ArrowUpRight, LogIn, Sun, Moon, Music, Play } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon } from './components/Icons';
 
 export default function App() {
@@ -209,6 +209,48 @@ export default function App() {
   // Set of all track titles & IDs already listened to (persisted from SQLite & session)
   const listenedHistoryTitlesRef = useRef<Set<string>>(new Set());
 
+  // Next Track Floating Pop-up state & timer
+  interface NextTrackPopupData {
+    title: string;
+    artist: string;
+    thumbnail?: string;
+    source: string;
+    modeLabel: string;
+    isCountdown?: boolean;
+    remainingSecs?: number;
+    alternatives?: Track[];
+  }
+  const [nextTrackPopup, setNextTrackPopup] = useState<NextTrackPopupData | null>(null);
+  const nextTrackPopupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const endOfTrackPopupShownForRef = useRef<string | null>(null);
+  const preloadedAlternativesRef = useRef<Track[]>([]);
+  const preloadedNextTrackRef = useRef<Track | null>(null);
+
+  const currentTimeRef = useRef(0);
+  const durationRef = useRef(0);
+  useEffect(() => { currentTimeRef.current = currentTime; }, [currentTime]);
+  useEffect(() => { durationRef.current = duration; }, [duration]);
+
+  const triggerNextTrackPopup = (track: Track, modeLabel?: string) => {
+    if (nextTrackPopupTimerRef.current) clearTimeout(nextTrackPopupTimerRef.current);
+    setNextTrackPopup({
+      title: track.title,
+      artist: track.artist,
+      thumbnail: track.cover_art || undefined,
+      source: track.source,
+      modeLabel: modeLabel || (
+        recommendModeRef.current === 'fresh' ? '🌟 Khám phá bài mới (<10p)' :
+        recommendModeRef.current === 'mix' ? '🎵 Pha trộn Smart Mix' :
+        '📋 Tiếp theo trong danh sách'
+      ),
+      isCountdown: false,
+      alternatives: preloadedAlternativesRef.current.slice(0, 3),
+    });
+    nextTrackPopupTimerRef.current = setTimeout(() => {
+      setNextTrackPopup(null);
+    }, 7000);
+  };
+
   // Keep refs in sync
   useEffect(() => { currentTrackRef.current = currentTrack; }, [currentTrack]);
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
@@ -233,6 +275,53 @@ export default function App() {
       })
       .catch(() => {});
   }, [currentUser]);
+
+  // Pre-fetch related tracks and alternatives when currentTrack changes
+  useEffect(() => {
+    if (!currentTrack) {
+      preloadedAlternativesRef.current = [];
+      preloadedNextTrackRef.current = null;
+      return;
+    }
+    endOfTrackPopupShownForRef.current = null;
+
+    const fetchUpcoming = async () => {
+      try {
+        const related = await invoke<SearchResult[]>('get_related_tracks', {
+          title: currentTrack.title,
+          artist: currentTrack.artist,
+        });
+
+        if (related && related.length > 0) {
+          const listened = listenedHistoryTitlesRef.current;
+          const curTitleLower = currentTrack.title.toLowerCase();
+
+          const candidates = related.filter(r => {
+            const rTitle = r.title.toLowerCase();
+            return !rTitle.includes(curTitleLower) && !curTitleLower.includes(rTitle) && !listened.has(rTitle);
+          }).map((r): Track => ({
+            id: `${r.source}_rec_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            title: r.title,
+            artist: r.artist,
+            album: r.album || 'Gợi ý cùng thể loại',
+            duration_secs: r.duration_secs || 210,
+            path_or_url: r.url_or_id,
+            cover_art: r.thumbnail,
+            source: r.source,
+          }));
+
+          if (candidates.length > 0) {
+            preloadedNextTrackRef.current = candidates[0];
+            preloadedAlternativesRef.current = candidates.slice(1, 6);
+          }
+        }
+      } catch (err) {
+        console.error('Error prefetching upcoming songs:', err);
+      }
+    };
+
+    fetchUpcoming();
+  }, [currentTrack]);
 
   // ─── RESTORE USER SESSION FROM SQLITE ──────────────────────────────────────
   useEffect(() => {
@@ -318,6 +407,32 @@ export default function App() {
     });
   };
 
+  const displayedTracks = useMemo(() => {
+    const filtered = tracks.filter(t => {
+      switch (currentView) {
+        case 'local': return t.source === 'local';
+        case 'youtube': return t.source === 'youtube';
+        case 'soundcloud': return t.source === 'soundcloud';
+        case 'audius': return t.source === 'audius';
+        case 'favorites': return favorites.has(t.id);
+        default: return true;
+      }
+    });
+    return deduplicateTracks(filtered);
+  }, [tracks, currentView, favorites]);
+
+  displayedTracksRef.current = displayedTracks;
+
+  const upcomingTrack = useMemo(() => {
+    if (!currentTrack || displayedTracks.length === 0) return null;
+    const idx = displayedTracks.findIndex(t => t.id === currentTrack.id);
+    if (idx !== -1 && idx < displayedTracks.length - 1) {
+      return displayedTracks[idx + 1];
+    }
+    if (displayedTracks.length > 0) return displayedTracks[0];
+    return null;
+  }, [currentTrack, displayedTracks]);
+
   // ─── AUTO-PLAY NEXT TRACK & AUTO-RECOMMEND ENGINE ──────────────────────────
   const handleNext = useCallback(async (isManualSkip = false) => {
     const all = tracksRef.current;
@@ -341,6 +456,7 @@ export default function App() {
       const remaining = all.filter(t => t.id !== cur?.id);
       const randomTrack = remaining[Math.floor(Math.random() * remaining.length)];
       if (randomTrack) {
+        triggerNextTrackPopup(randomTrack, '🔀 Phát ngẫu nhiên');
         playTrackInternal(randomTrack);
         return;
       }
@@ -392,6 +508,7 @@ export default function App() {
               };
 
               setTracks(prev => deduplicateTracks([...prev, newTrack]));
+              triggerNextTrackPopup(newTrack, '🌟 Khám phá bài MỚI (<10p)');
               playTrackInternal(newTrack);
               const srcLabel = newTrack.source === 'soundcloud' ? 'SoundCloud' : newTrack.source === 'audius' ? 'Audius 320K' : 'YouTube';
               showNotification(`🌟 Khám phá mới [${srcLabel}]: ${newTrack.title} - ${newTrack.artist}`);
@@ -413,6 +530,7 @@ export default function App() {
               candidates: all,
             });
             if (nextAiTrack && nextAiTrack.id !== cur.id) {
+              triggerNextTrackPopup(nextAiTrack, '🎵 Đề xuất Smart Mix Thư viện');
               playTrackInternal(nextAiTrack);
               showNotification(`🎵 Pha trộn: ${nextAiTrack.title}`);
               return;
@@ -449,6 +567,7 @@ export default function App() {
             };
 
             setTracks(prev => deduplicateTracks([...prev, newTrack]));
+            triggerNextTrackPopup(newTrack, '🎵 Đề xuất Smart Mix (<10p)');
             playTrackInternal(newTrack);
             const srcLabel = newTrack.source === 'soundcloud' ? 'SoundCloud' : newTrack.source === 'audius' ? 'Audius 320K' : 'YouTube';
             showNotification(`🎵 Đề xuất Mix [${srcLabel}]: ${newTrack.title} - ${newTrack.artist}`);
@@ -462,13 +581,19 @@ export default function App() {
 
     // 5. Default sequential next
     if (!cur) {
-      playTrackInternal(all[0]);
+      if (all[0]) {
+        triggerNextTrackPopup(all[0], '📋 Bắt đầu danh sách');
+        playTrackInternal(all[0]);
+      }
       return;
     }
 
     const idx = all.findIndex(t => t.id === cur.id);
     const nextTrack = all[(idx + 1) % all.length];
-    playTrackInternal(nextTrack);
+    if (nextTrack) {
+      triggerNextTrackPopup(nextTrack, '📋 Tiếp theo trong danh sách');
+      playTrackInternal(nextTrack);
+    }
   }, [recommendMode]);
 
   // â”€â”€â”€ WALL-CLOCK TIME TICKER (IMMUNE TO BACKGROUND TAB THROTTLING) â”€â”€â”€â”€â”€â”€â”€â”€
@@ -477,20 +602,54 @@ export default function App() {
       const track = currentTrackRef.current;
       if (!track || !isPlayingRef.current) return;
 
+      let curTime = 0;
+      let dur = track.duration_secs || 0;
+
       if (track.source === 'youtube' || track.source === 'soundcloud') {
         if (playStartTimestampRef.current) {
           const elapsed = accumulatedTimeRef.current + (Date.now() - playStartTimestampRef.current) / 1000;
-          const dur = track.duration_secs || 0;
+          curTime = elapsed;
           if (dur > 0 && elapsed >= dur) {
             handleNext();
+            return;
           } else {
             setCurrentTime(elapsed);
+          }
+        }
+      } else {
+        curTime = currentTimeRef.current || 0;
+        dur = durationRef.current || track.duration_secs || 0;
+      }
+
+      // Trigger Pop-up 5-10s before audio ends
+      if (dur > 15 && curTime > 5) {
+        const remaining = dur - curTime;
+        if (remaining <= 10 && remaining >= 1.5) {
+          if (endOfTrackPopupShownForRef.current !== track.id) {
+            endOfTrackPopupShownForRef.current = track.id;
+            const nextOne = preloadedNextTrackRef.current || upcomingTrack;
+            if (nextOne) {
+              setNextTrackPopup({
+                title: nextOne.title,
+                artist: nextOne.artist,
+                thumbnail: nextOne.cover_art || undefined,
+                source: nextOne.source,
+                modeLabel: recommendModeRef.current === 'fresh' 
+                  ? '🌟 Khám phá bài mới (<10p)' 
+                  : recommendModeRef.current === 'mix' 
+                  ? '🎵 Pha trộn Smart Mix' 
+                  : '📋 Tiếp theo trong danh sách',
+                isCountdown: true,
+                remainingSecs: Math.round(remaining),
+                alternatives: preloadedAlternativesRef.current.slice(0, 3),
+              });
+            }
           }
         }
       }
     }, 250);
     return () => clearInterval(interval);
-  }, [handleNext]);
+  }, [handleNext, upcomingTrack]);
 
   // â”€â”€â”€ INSTANT RESYNC WHEN SWITCHING BACK TO APP WINDOW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
@@ -974,27 +1133,132 @@ export default function App() {
     playTrackInternal(track);
   };
 
-  const displayedTracks = useMemo(() => {
-    const filtered = tracks.filter(t => {
-      switch (currentView) {
-        case 'local': return t.source === 'local';
-        case 'youtube': return t.source === 'youtube';
-        case 'soundcloud': return t.source === 'soundcloud';
-        case 'audius': return t.source === 'audius';
-        case 'favorites': return favorites.has(t.id);
-        default: return true;
-      }
-    });
-    return deduplicateTracks(filtered);
-  }, [tracks, currentView, favorites]);
-
-  displayedTracksRef.current = displayedTracks;
   const localCount = tracks.filter(t => t.source === 'local').length;
 
   return (
     <div className="flex flex-col h-screen w-screen bg-black text-[#a0a0a0] overflow-hidden select-none font-sans">
       {/* Spy Cinematic Startup Screen */}
       {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+
+      {/* ─── NEXT TRACK POPUP (5-10s BEFORE END & SAME-GENRE ALTERNATIVES) ── */}
+      {nextTrackPopup && (
+        <div 
+          className="fixed bottom-24 right-6 z-50 w-84 max-w-[calc(100vw-3rem)] p-4 rounded-2xl bg-[#0c0c14]/95 backdrop-blur-xl border shadow-2xl flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300"
+          style={{
+            borderColor: `${accentColor}60`,
+            boxShadow: `0 12px 35px rgba(0,0,0,0.8), 0 0 16px ${accentColor}30`
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-[#1c1c28] pb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: accentColor }}>
+                <span className="animate-pulse">⏭</span> {nextTrackPopup.isCountdown ? 'SẮP PHÁT TIẾP THEO' : 'BÀI TIẾP THEO'}
+              </span>
+              {nextTrackPopup.isCountdown && typeof nextTrackPopup.remainingSecs === 'number' && (
+                <span 
+                  className="text-[9px] font-mono px-1.5 py-0.5 rounded font-bold"
+                  style={{ backgroundColor: `${accentColor}25`, color: accentColor }}
+                >
+                  ~{nextTrackPopup.remainingSecs}s
+                </span>
+              )}
+            </div>
+            <button 
+              onClick={() => setNextTrackPopup(null)}
+              className="text-[#666] hover:text-white transition-colors cursor-pointer text-xs p-1 leading-none"
+              title="Đóng popup"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Main Next Track Card */}
+          <div className="flex items-center gap-3 p-2 rounded-xl bg-[#14141c] border border-[#222230]">
+            <div className="w-11 h-11 rounded-lg overflow-hidden bg-[#181824] flex-shrink-0 border border-[#2a2a38]">
+              {nextTrackPopup.thumbnail ? (
+                <img src={nextTrackPopup.thumbnail} alt={nextTrackPopup.title} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[#555]">
+                  <Music className="w-5 h-5" />
+                </div>
+              )}
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <p className="text-xs font-bold text-white truncate" title={nextTrackPopup.title}>
+                {nextTrackPopup.title}
+              </p>
+              <p className="text-[11px] text-[#8e8e9f] truncate">
+                {nextTrackPopup.artist}
+              </p>
+              <span className="text-[9px] font-mono text-[#777] uppercase">
+                {nextTrackPopup.source} • {nextTrackPopup.modeLabel}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                if (preloadedNextTrackRef.current) {
+                  playTrackInternal(preloadedNextTrackRef.current);
+                } else {
+                  handleNext(true);
+                }
+                setNextTrackPopup(null);
+              }}
+              style={{
+                backgroundColor: accentColor,
+                color: '#ffffff',
+              }}
+              className="p-2 rounded-lg hover:scale-105 active:scale-95 transition-transform flex-shrink-0 cursor-pointer shadow-sm"
+              title="Phát bài này ngay"
+            >
+              <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+            </button>
+          </div>
+
+          {/* Alternatives / Similar Genre Recommendations */}
+          {nextTrackPopup.alternatives && nextTrackPopup.alternatives.length > 0 && (
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between text-[10px] font-mono font-bold text-[#888899]">
+                <span>🎶 GỢI Ý CÙNG THỂ LOẠI KHÁC</span>
+                <span className="text-[9px] text-[#555]">Bấm để chọn bài</span>
+              </div>
+              <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5">
+                {nextTrackPopup.alternatives.map((alt) => (
+                  <div
+                    key={alt.id}
+                    onClick={() => {
+                      playTrackInternal(alt);
+                      setNextTrackPopup(null);
+                    }}
+                    className="p-1.5 rounded-lg bg-[#0e0e16] hover:bg-[#181824] border border-[#1a1a26] hover:border-[#2e2e42] transition-colors flex items-center gap-2 cursor-pointer group"
+                  >
+                    <div className="w-7 h-7 rounded overflow-hidden bg-[#161620] flex-shrink-0 relative">
+                      {alt.cover_art ? (
+                        <img src={alt.cover_art} alt={alt.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[#555]">
+                          <Music className="w-3 h-3" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Play className="w-2.5 h-2.5 fill-current text-white" />
+                      </div>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <p className="text-[11px] font-semibold text-white truncate group-hover:text-white" title={alt.title}>
+                        {alt.title}
+                      </p>
+                      <p className="text-[9px] text-[#777] truncate font-mono">
+                        {alt.artist} • <span className="uppercase">{alt.source}</span>
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       {/* Toast Notification â€” Invincible Accent */}
       {statusMessage && (
         <div 
@@ -1146,6 +1410,7 @@ export default function App() {
                   handleToggleFavorite(t);
                 }}
                 onTogglePlay={handleTogglePlay}
+                accentColor={accentColor}
               />
             ) : currentView === 'library' ? (
               <HomeTrendingView
@@ -1188,6 +1453,7 @@ export default function App() {
                 onSearchOnline={handleSearchOnline}
                 localTracks={tracks}
                 onTrackSelect={handlePlayTrack}
+                accentColor={accentColor}
               />
             ) : currentView === 'youtube' ? (
               <div>
@@ -1202,7 +1468,7 @@ export default function App() {
                   </div>
                   <button
                     onClick={() => setCurrentView('search')}
-                    className="px-4 py-2 rounded bg-white hover:bg-[#ff2a55] text-black font-semibold text-xs cursor-pointer transition-colors flex items-center gap-1"
+                    className="px-4 py-2 rounded bg-white hover:bg-neutral-200 text-black font-semibold text-xs cursor-pointer transition-colors flex items-center gap-1"
                   >
                     <span>Tìm bài hát</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />
@@ -1230,6 +1496,7 @@ export default function App() {
                   favorites={favorites}
                   onTrackSelect={handlePlayTrack}
                   onTogglePlay={handleTogglePlay}
+                  accentColor={accentColor}
                   onToggleFavorite={(id) => {
                     const t = displayedTracks.find(x => x.id === id);
                     if (t) handleToggleFavorite(t);
@@ -1249,7 +1516,7 @@ export default function App() {
                   </div>
                   <button
                     onClick={() => setCurrentView('search')}
-                    className="px-4 py-2 rounded bg-white hover:bg-[#ff2a55] text-black font-semibold text-xs cursor-pointer transition-colors flex items-center gap-1"
+                    className="px-4 py-2 rounded bg-white hover:bg-neutral-200 text-black font-semibold text-xs cursor-pointer transition-colors flex items-center gap-1"
                   >
                     <span>Tìm bài hát</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />
@@ -1277,6 +1544,7 @@ export default function App() {
                   favorites={favorites}
                   onTrackSelect={handlePlayTrack}
                   onTogglePlay={handleTogglePlay}
+                  accentColor={accentColor}
                   onToggleFavorite={(id) => {
                     const t = displayedTracks.find(x => x.id === id);
                     if (t) handleToggleFavorite(t);
@@ -1287,8 +1555,8 @@ export default function App() {
               <div>
                 <div className="mb-5 p-5 rounded-xl bg-[#0a0a0c] border border-[#1a1a20] flex items-center justify-between shadow-sm">
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--accent-color,#ff2a55)] font-mono flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-color,#ff2a55)]"></span>
+                    <span className="text-[10px] font-black uppercase tracking-widest font-mono flex items-center gap-1.5" style={{ color: accentColor }}>
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentColor }}></span>
                       {currentView === 'local' ? 'Ổ CỨNG NỘI BỘ' : currentView === 'favorites' ? 'DANH SÁCH YÊU THÍCH (SQLITE)' : currentView === 'audius' ? 'AUDIUS OPEN HI-FI (320KBPS)' : 'TẤT CẢ NGUỒN PHÁT'}
                     </span>
                     <h2 className="text-2xl font-black text-white mt-1 tracking-tight">
@@ -1299,9 +1567,14 @@ export default function App() {
                   {displayedTracks.length > 0 && (
                     <button
                       onClick={() => handlePlayTrack(displayedTracks[0])}
-                      className="w-11 h-11 rounded-full bg-white hover:bg-[var(--accent-color,#ff2a55)] hover:text-white hover:scale-105 active:scale-95 text-black flex items-center justify-center transition-all cursor-pointer shadow-[0_0_12px_rgba(255,255,255,0.25)]"
+                      style={{
+                        backgroundColor: accentColor,
+                        color: '#ffffff',
+                        boxShadow: `0 0 16px ${accentColor}50`
+                      }}
+                      className="w-11 h-11 rounded-full hover:scale-105 active:scale-95 flex items-center justify-center transition-all cursor-pointer"
                     >
-                      <Disc className="w-5 h-5 text-black" />
+                      <Disc className="w-5 h-5 fill-current" />
                     </button>
                   )}
                 </div>
@@ -1312,6 +1585,7 @@ export default function App() {
                   favorites={favorites}
                   onTrackSelect={handlePlayTrack}
                   onTogglePlay={handleTogglePlay}
+                  accentColor={accentColor}
                   onToggleFavorite={(id) => {
                     const t = displayedTracks.find(x => x.id === id);
                     if (t) handleToggleFavorite(t);
@@ -1326,6 +1600,7 @@ export default function App() {
       {/* Ultra Hi-Fi Player Bar */}
       <PlayerBar
         currentTrack={currentTrack}
+        upcomingTrack={upcomingTrack}
         isPlaying={isPlaying}
         currentTime={currentTime}
         duration={duration}

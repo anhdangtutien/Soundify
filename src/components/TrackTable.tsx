@@ -12,6 +12,7 @@ interface TrackTableProps {
   onTogglePlay: () => void;
   onToggleFavorite: (trackId: string) => void;
   onAddToAlbum?: (track: Track) => void;
+  accentColor?: string;
 }
 
 export const TrackTable: React.FC<TrackTableProps> = ({
@@ -23,6 +24,7 @@ export const TrackTable: React.FC<TrackTableProps> = ({
   onTogglePlay,
   onToggleFavorite,
   onAddToAlbum,
+  accentColor = '#ff2a55',
 }) => {
   const formatTime = (secs: number) => {
     if (isNaN(secs) || secs <= 0 || secs > 86400) return '--:--';
@@ -35,8 +37,11 @@ export const TrackTable: React.FC<TrackTableProps> = ({
     switch (source) {
       case 'youtube':
         return (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-[#141414] text-[#ff4e6b] border border-[#ff2a55]/25">
-            <YoutubeIcon className="w-3 h-3 text-[#ff4e6b]" />
+          <div 
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-[#141414] border"
+            style={{ color: accentColor, borderColor: `${accentColor}40` }}
+          >
+            <YoutubeIcon className="w-3 h-3" />
             <span>YT</span>
           </div>
         );
@@ -50,7 +55,7 @@ export const TrackTable: React.FC<TrackTableProps> = ({
       case 'audius':
         return (
           <div className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-[#141416] text-white border border-white/20">
-            <AudiusIcon className="w-3 h-3 text-[#ff2a55]" />
+            <AudiusIcon className="w-3 h-3" style={{ color: accentColor }} />
             <span>AUDIUS</span>
           </div>
         );
@@ -101,15 +106,22 @@ export const TrackTable: React.FC<TrackTableProps> = ({
             <div
               key={track.id}
               onDoubleClick={() => onTrackSelect(track)}
+              style={{
+                borderLeftColor: isSelected ? accentColor : 'transparent',
+                backgroundColor: isSelected ? `${accentColor}18` : undefined,
+              }}
               className={`grid grid-cols-[40px_1fr_1fr_90px_90px] items-center px-3 py-2 rounded-md transition-colors group cursor-pointer ${
                 isSelected
-                  ? 'bg-[#14141c] text-white border-l-2 border-[#ff2a55]'
-                  : 'hover:bg-[#0c0c10] text-[#888899] hover:text-white'
+                  ? 'text-white border-l-2'
+                  : 'hover:bg-[#0c0c10] text-[#888899] hover:text-white border-l-2 border-transparent'
               }`}
             >
               {/* Col 1: Play button / Number */}
               <div className="flex items-center justify-center relative">
-                <span className={`text-[11px] font-mono ${isSelected ? 'text-[#ff2a55] font-bold' : 'group-hover:hidden text-[#444]'}`}>
+                <span 
+                  className={`text-[11px] font-mono ${isSelected ? 'font-bold' : 'group-hover:hidden text-[#444]'}`}
+                  style={{ color: isSelected ? accentColor : undefined }}
+                >
                   {idx + 1}
                 </span>
                 <button
@@ -126,9 +138,9 @@ export const TrackTable: React.FC<TrackTableProps> = ({
                   }`}
                 >
                   {isSelected && isPlaying ? (
-                    <Pause className="w-3.5 h-3.5 fill-current text-[#ff2a55]" />
+                    <Pause className="w-3.5 h-3.5 fill-current" style={{ color: accentColor }} />
                   ) : (
-                    <Play className="w-3.5 h-3.5 fill-current text-white hover:text-[#ff2a55]" />
+                    <Play className="w-3.5 h-3.5 fill-current text-white hover:opacity-80" />
                   )}
                 </button>
               </div>
@@ -152,8 +164,9 @@ export const TrackTable: React.FC<TrackTableProps> = ({
                 <div className="flex flex-col overflow-hidden">
                   <span
                     className={`font-semibold truncate text-xs ${
-                      isSelected ? 'text-white font-bold' : 'text-white'
+                      isSelected ? 'font-bold' : 'text-white'
                     }`}
+                    style={{ color: isSelected ? accentColor : '#ffffff' }}
                   >
                     {track.title}
                   </span>
@@ -182,7 +195,7 @@ export const TrackTable: React.FC<TrackTableProps> = ({
                       onAddToAlbum(track);
                     }}
                     title="Thêm vào Album"
-                    className="p-1 transition-colors cursor-pointer opacity-0 group-hover:opacity-100 text-[#666] hover:text-[#ff2a55]"
+                    className="p-1 transition-colors cursor-pointer opacity-0 group-hover:opacity-100 text-[#666] hover:text-white"
                   >
                     <FolderPlus className="w-3.5 h-3.5" />
                   </button>
@@ -195,11 +208,15 @@ export const TrackTable: React.FC<TrackTableProps> = ({
                   }}
                   className={`p-1 transition-colors cursor-pointer ${
                     isFav
-                      ? 'text-[#ff2a55] fill-[#ff2a55] drop-shadow-[0_0_6px_#ff2a55]'
-                      : 'opacity-0 group-hover:opacity-100 text-[#555] hover:text-[#ff2a55]'
+                      ? 'drop-shadow-sm'
+                      : 'opacity-0 group-hover:opacity-100 text-[#555] hover:text-white'
                   }`}
+                  style={isFav ? { color: accentColor } : undefined}
                 >
-                  <Heart className={`w-3.5 h-3.5 ${isFav ? 'fill-current' : ''}`} />
+                  <Heart 
+                    className="w-3.5 h-3.5" 
+                    style={isFav ? { fill: accentColor, color: accentColor } : undefined} 
+                  />
                 </button>
                 <span>{formatTime(track.duration_secs)}</span>
               </div>

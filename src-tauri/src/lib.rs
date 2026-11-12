@@ -56,6 +56,39 @@ fn get_playback_status(state: State<'_, AudioPlayerManager>) -> Result<PlaybackS
 }
 
 #[tauri::command]
+async fn get_search_suggestions(query: String) -> Result<Vec<String>, String> {
+    let clean = query.trim();
+    if clean.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let res = client
+        .get("https://suggestqueries.google.com/complete/search")
+        .query(&[("client", "firefox"), ("ds", "yt"), ("q", clean)])
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let val = res.json::<serde_json::Value>().await.map_err(|e| e.to_string())?;
+    let mut suggestions = Vec::new();
+
+    if let Some(arr) = val.get(1).and_then(|v| v.as_array()) {
+        for item in arr {
+            if let Some(s) = item.as_str() {
+                suggestions.push(s.to_string());
+            }
+        }
+    }
+
+    Ok(suggestions)
+}
+
+#[tauri::command]
 async fn search_online(query: String, source: String) -> Result<Vec<SearchResult>, String> {
     match source.to_lowercase().as_str() {
         "youtube" => sources::youtube::search_youtube(&query).await,
@@ -117,48 +150,102 @@ async fn get_trending_hits(category: String) -> Result<Vec<SearchResult>, String
     }
 }
 
+fn extract_core_song_title(raw_title: &str, artist: &str) -> String {
+    let mut t = raw_title.trim().to_string();
+    
+    // If title is "Artist - Song Title", strip the artist part
+    if let Some((_, song)) = t.split_once(" - ") {
+        t = song.to_string();
+    } else if let Some((_, song)) = t.split_once(" – ") {
+        t = song.to_string();
+    } else if let Some((_, song)) = t.split_once(" : ") {
+        t = song.to_string();
+    }
+
+    // Strip out common clutter: (Official Video), [MV], (Lyric Video), feat., ft., etc.
+    let patterns = [
+        "(official", "[official", "(video", "[video", "(audio", "[audio",
+        "(lyric", "[lyric", "(mv", "[mv", "(visualizer", "[visualizer",
+        "(feat", "[feat", "(ft.", "[ft.", "(prod.", "[prod.", "official music video",
+        "official audio", "official video", "lyrics", "full audio", "hd", "4k"
+    ];
+
+    let mut lower = t.to_lowercase();
+    for p in patterns {
+        if let Some(idx) = lower.find(p) {
+            t.truncate(idx);
+            lower.truncate(idx);
+        }
+    }
+
+    // Remove artist name if it still lingers in title
+    let art_lower = artist.to_lowercase();
+    if !art_lower.is_empty() && lower.contains(&art_lower) {
+        t = t.replace(artist, "");
+    }
+
+    let core = t.trim().trim_matches(|c: char| !c.is_alphanumeric()).trim().to_string();
+    if core.is_empty() {
+        raw_title.trim().to_string()
+    } else {
+        core
+    }
+}
+
 #[tauri::command]
 async fn get_related_tracks(title: String, artist: String) -> Result<Vec<SearchResult>, String> {
     let clean_artist = artist.trim();
     let clean_title = title.trim();
+    let core_title = extract_core_song_title(clean_title, clean_artist);
+    let core_lower = core_title.to_lowercase();
 
-    // 1. Fetch concurrently from ALL 3 SOURCES: YouTube, SoundCloud, and Audius
-    let yt_query = format!("{} songs similar to {}", clean_artist, clean_title);
-    let sc_query = format!("{} {}", clean_artist, clean_title);
-    let audius_query = format!("{} chill", clean_artist);
+    // 1. Fetch diverse related music:
+    // - Search 1: Other hits and popular songs by this artist / genre
+    // - Search 2: Songs from similar artists in the same style
+    // - Search 3: SoundCloud tracks in this genre
+    // - Search 4: Audius open hi-fi tracks
+    let yt_query1 = if !clean_artist.is_empty() && clean_artist.to_lowercase() != "unknown" {
+        format!("{} top hits official audio", clean_artist)
+    } else {
+        format!("{} songs similar genre audio", core_title)
+    };
 
-    let (yt_res, sc_res, audius_res) = tokio::join!(
-        sources::youtube::search_youtube(&yt_query),
+    let yt_query2 = if !clean_artist.is_empty() && clean_artist.to_lowercase() != "unknown" {
+        format!("artists similar to {} music hits", clean_artist)
+    } else {
+        format!("music like {} hits audio", core_title)
+    };
+
+    let sc_query = if !clean_artist.is_empty() && clean_artist.to_lowercase() != "unknown" {
+        format!("{} remix hits", clean_artist)
+    } else {
+        format!("{} remix", core_title)
+    };
+
+    let audius_query = if !clean_artist.is_empty() && clean_artist.to_lowercase() != "unknown" {
+        clean_artist.to_string()
+    } else {
+        "trending electronic pop".to_string()
+    };
+
+    let (yt_res1, yt_res2, sc_res, audius_res) = tokio::join!(
+        sources::youtube::search_youtube(&yt_query1),
+        sources::youtube::search_youtube(&yt_query2),
         sources::soundcloud::search_soundcloud(&sc_query),
         sources::audius::search_audius(&audius_query)
     );
 
     let mut combined: Vec<SearchResult> = Vec::new();
 
-    // YouTube results
-    if let Ok(mut yt) = yt_res {
-        if yt.is_empty() {
-            if let Ok(extra) = sources::youtube::search_youtube(&format!("{} official audio", clean_artist)).await {
-                yt = extra;
-            }
-        }
-        combined.extend(yt);
-    }
+    if let Ok(yt1) = yt_res1 { combined.extend(yt1); }
+    if let Ok(yt2) = yt_res2 { combined.extend(yt2); }
+    if let Ok(sc) = sc_res { combined.extend(sc); }
+    if let Ok(audius) = audius_res { combined.extend(audius); }
 
-    // SoundCloud results (remixes, indie gems)
-    if let Ok(sc) = sc_res {
-        combined.extend(sc);
-    }
-
-    // Audius results (320kbps Lossless decentralized)
-    if let Ok(audius) = audius_res {
-        combined.extend(audius);
-    }
-
-    // 2. Strict Duration and Keyword Filter:
-    // - Eliminate 1-hour / 2-hour long compilations, podcasts, non-stop mixes
-    // - Strongly prioritize tracks under 10 minutes (<= 600s)
-    let title_lower = clean_title.to_lowercase();
+    // 2. Strict Duration and Same-Song Filter:
+    // - Eliminate tracks that are just other versions/remixes of the SAME song (e.g. "Closer")
+    // - Eliminate audio longer than 10 minutes (600s)
+    // - Eliminate compilations / 1-hour / livestream tracks
     let long_indicators = [
         "1 hour", "1hour", "1 hr", "2 hour", "2hour", "3 hour", "10 hour",
         "full album", "compilation", "mixtape", "nonstop", "continuous mix",
@@ -168,8 +255,8 @@ async fn get_related_tracks(title: String, artist: String) -> Result<Vec<SearchR
     combined.retain(|r| {
         let t = r.title.to_lowercase();
 
-        // Filter out same title
-        if t == title_lower || t.contains(&title_lower) || title_lower.contains(&t) {
+        // Strictly eliminate any song containing the core title keyword if core_title has at least 3 chars
+        if core_lower.len() >= 3 && t.contains(&core_lower) {
             return false;
         }
 
@@ -186,21 +273,33 @@ async fn get_related_tracks(title: String, artist: String) -> Result<Vec<SearchR
         true
     });
 
-    // 3. Shuffle & interleave all 3 sources randomly
+    // Deduplicate by title similarity
+    let mut unique: Vec<SearchResult> = Vec::new();
+    for item in combined {
+        let item_title_norm = item.title.trim().to_lowercase();
+        if !unique.iter().any(|u| {
+            let u_title_norm = u.title.trim().to_lowercase();
+            u_title_norm == item_title_norm || u.url_or_id == item.url_or_id
+        }) {
+            unique.push(item);
+        }
+    }
+
+    // 3. Shuffle results randomly
     use std::time::{SystemTime, UNIX_EPOCH};
     let seed = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis())
         .unwrap_or(42) as usize;
 
-    if combined.len() > 1 {
-        for i in (1..combined.len()).rev() {
+    if unique.len() > 1 {
+        for i in (1..unique.len()).rev() {
             let j = (seed.wrapping_add(i * 7919)) % (i + 1);
-            combined.swap(i, j);
+            unique.swap(i, j);
         }
     }
 
-    Ok(combined)
+    Ok(unique)
 }
 
 // ─── DATABASE & AUTH COMMANDS ────────────────────────────────────────────────
@@ -362,6 +461,7 @@ pub fn run() {
             seek_track,
             get_playback_status,
             search_online,
+            get_search_suggestions,
             get_related_tracks,
             get_trending_hits,
             auth_register,

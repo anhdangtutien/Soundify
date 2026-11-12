@@ -12,8 +12,8 @@ export const SoundCloudIcon: React.FC<{ className?: string }> = ({ className = '
   </svg>
 );
 
-export const AudiusIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+export const AudiusIcon: React.FC<{ className?: string; style?: React.CSSProperties }> = ({ className = 'w-4 h-4', style }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className} style={style}>
     <path d="M12 2L2 8.5v7L12 22l10-6.5v-7L12 2zm0 3.3l7 4.55v4.3L12 18.7l-7-4.55v-4.3L12 5.3zm-1 3.7v6l5-3-5-3z" />
   </svg>
 );

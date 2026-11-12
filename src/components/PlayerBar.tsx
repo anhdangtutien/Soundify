@@ -9,6 +9,7 @@ import { getContrastTextColor } from '../utils/trackUtils';
 
 interface PlayerBarProps {
   currentTrack: Track | null;
+  upcomingTrack?: Track | null;
   isPlaying: boolean;
   currentTime: number;
   duration: number;
@@ -36,7 +37,7 @@ interface PlayerBarProps {
 }
 
 export const PlayerBar: React.FC<PlayerBarProps> = ({
-  currentTrack, isPlaying, currentTime, duration, volume, isFavorite,
+  currentTrack, upcomingTrack, isPlaying, currentTime, duration, volume, isFavorite,
   repeatMode, isShuffle, onToggleRepeat, onToggleShuffle,
   onTogglePlay, onPrev, onNext, onSeek, onVolumeChange,
   onToggleFavorite, onAddToAlbum, onToggleVisualizer, showVisualizer,
@@ -198,8 +199,9 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           <button
             onClick={onToggleShuffle}
             title={isShuffle ? 'Bật phát ngẫu nhiên' : 'Tắt phát ngẫu nhiên'}
+            style={isShuffle ? { color: accentColor, filter: `drop-shadow(0 0 8px ${accentColor}80)` } : undefined}
             className={`transition-colors cursor-pointer ${
-              isShuffle ? 'text-[var(--accent-color, #ff2a55)] drop-shadow-[0_0_8px_rgba(255,42,85,0.6)]' : 'text-[#666] hover:text-white'
+              isShuffle ? '' : 'text-[#666] hover:text-white'
             }`}
           >
             <Shuffle className="w-3.5 h-3.5" />
@@ -221,19 +223,95 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           >
             {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
           </button>
-          <button onClick={onNext} className="text-[#888] hover:text-white transition-colors cursor-pointer">
-            <SkipForward className="w-4 h-4 fill-current" />
-          </button>
+
+          {/* Next Button with Upcoming Song Pop-up */}
+          <div className="relative group/next flex items-center">
+            <button 
+              onClick={onNext} 
+              className="text-[#888] hover:text-white transition-colors cursor-pointer p-1"
+              title="Bài tiếp theo"
+            >
+              <SkipForward className="w-4 h-4 fill-current" />
+            </button>
+
+            {/* Next Track Preview Pop-up */}
+            <div 
+              className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-64 p-3 rounded-xl bg-[#0c0c12]/95 backdrop-blur-md border shadow-2xl opacity-0 group-hover/next:opacity-100 pointer-events-none group-hover/next:pointer-events-auto transition-all duration-200 z-50 flex flex-col gap-2"
+              style={{
+                borderColor: `${accentColor}40`,
+                boxShadow: `0 8px 30px rgba(0,0,0,0.8), 0 0 14px ${accentColor}25`
+              }}
+            >
+              <div className="flex items-center justify-between border-b border-[#1c1c28] pb-1.5">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: accentColor }}>
+                  <SkipForward className="w-3 h-3 fill-current" />
+                  Bài tiếp theo
+                </span>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#161622] text-[#88889f]">
+                  {recommendMode === 'fresh' ? '🌟 Mới (<10p)' : recommendMode === 'mix' ? '🎵 Mix' : 'Tuần tự'}
+                </span>
+              </div>
+
+              {upcomingTrack ? (
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#161620] flex-shrink-0 border border-[#222]">
+                    {upcomingTrack.cover_art ? (
+                      <img src={upcomingTrack.cover_art} alt={upcomingTrack.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[#555]">
+                        <Music className="w-4 h-4" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="overflow-hidden flex-1">
+                    <p className="text-xs font-bold text-white truncate" title={upcomingTrack.title}>
+                      {upcomingTrack.title}
+                    </p>
+                    <p className="text-[10px] text-[#8e8e9f] truncate">
+                      {upcomingTrack.artist}
+                    </p>
+                  </div>
+                  <button
+                    onClick={onNext}
+                    style={{ backgroundColor: accentColor, color: getContrastTextColor(accentColor) }}
+                    className="p-1.5 rounded-lg text-white hover:scale-105 transition-transform flex-shrink-0 cursor-pointer"
+                    title="Phát bài này ngay"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-white">Khám phá ngẫu nhiên</p>
+                  <p className="text-[10px] text-[#8e8e9f] leading-snug">
+                    Tự động tìm bài hát MỚI (&lt; 10 phút) cùng thể loại từ YouTube, SoundCloud & Audius.
+                  </p>
+                  <button
+                    onClick={onNext}
+                    style={{ backgroundColor: accentColor, color: getContrastTextColor(accentColor) }}
+                    className="w-full mt-1 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-transform active:scale-95 cursor-pointer"
+                  >
+                    Chuyển bài ngay
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
           <button
             onClick={onToggleRepeat}
             title={repeatMode === 'all' ? 'Tự động chuyển bài (Lặp lại danh sách)' : repeatMode === 'one' ? 'Lặp lại 1 bài' : 'Dừng khi hết bài'}
+            style={repeatMode !== 'off' ? { color: accentColor } : undefined}
             className={`transition-colors cursor-pointer relative flex items-center justify-center ${
-              repeatMode !== 'off' ? 'text-[var(--accent-color, #ff2a55)]' : 'text-[#666] hover:text-white'
+              repeatMode !== 'off' ? '' : 'text-[#666] hover:text-white'
             }`}
           >
             <Repeat className="w-3.5 h-3.5" />
             {repeatMode === 'one' && (
-              <span className="absolute -top-1.5 -right-1.5 text-[8px] font-black font-mono bg-[var(--accent-color, #ff2a55)] text-white rounded-full px-1 leading-tight">
+              <span 
+                className="absolute -top-1.5 -right-1.5 text-[8px] font-black font-mono rounded-full px-1 leading-tight"
+                style={{ backgroundColor: accentColor, color: getContrastTextColor(accentColor) }}
+              >
                 1
               </span>
             )}
@@ -396,10 +474,16 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
         <button
           onClick={onToggleVisualizer}
           title="Bật/Tắt sóng âm thanh Spy"
-          className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+          style={showVisualizer ? {
+            color: accentColor,
+            backgroundColor: `${accentColor}18`,
+            borderColor: `${accentColor}50`,
+            boxShadow: `0 0 10px ${accentColor}30`,
+          } : undefined}
+          className={`p-1.5 rounded-md transition-colors cursor-pointer border ${
             showVisualizer
-              ? 'text-[var(--accent-color, #ff2a55)] bg-[#1a0e14] border border-[var(--accent-color, #ff2a55)]/40 shadow-[0_0_8px_rgba(255,42,85,0.3)]'
-              : 'text-[#666] hover:text-white'
+              ? ''
+              : 'text-[#666] hover:text-white border-transparent'
           }`}
         >
           <Sparkles className="w-4 h-4" />
@@ -411,7 +495,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
         {/* Volume Slider */}
         <div className="flex items-center gap-2">
           <button onClick={handleMuteToggle} className="text-[#777] hover:text-white transition-colors cursor-pointer">
-            {volume === 0 ? <VolumeX className="w-4 h-4 text-[var(--accent-color, #ff2a55)]" /> : <Volume2 className="w-4 h-4" />}
+            {volume === 0 ? <VolumeX className="w-4 h-4" style={{ color: accentColor }} /> : <Volume2 className="w-4 h-4" />}
           </button>
           <div className="relative flex items-center w-20 h-4 group cursor-pointer">
             <div 

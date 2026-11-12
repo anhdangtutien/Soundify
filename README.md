@@ -1,15 +1,5 @@
 ﻿# 🕵️‍♂️ SPYTIFY // TOP SECRET COVERT HI-FI AUDIO SYSTEM
 
-```text
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  CLASSIFIED // RESTRICTED ACCESS // LEVEL 00 AGENT CLEARANCE ONLY            ║
-║  PROJECT CODENAME: SPYTIFY                                                   ║
-║  TACTICAL DIRECTIVE: COVERT HI-FI STREAMING & AUDIO INTELLIGENCE ENGINE      ║
-║  DATABASE ENGINE: LOCAL SQLITE + CLOUD SUPABASE REAL-TIME SYNC               ║
-║  STATUS: DECLASSIFIED // MISSION ACTIVE                                      ║
-╚══════════════════════════════════════════════════════════════════════════════╝
-```
-
 <div align="center">
 
 ![Spytify Badge](https://img.shields.io/badge/CODENAME-SPYTIFY-FF2A55?style=for-the-badge&logo=shield&logoColor=white)
@@ -30,7 +20,7 @@
 
 | Định dạng / Format | Kích thước / Size | Liên kết tải trực tiếp / Direct Link |
 | :--- | :--- | :--- |
-| **Windows Setup (.exe)** <br> *(Khuyên dùng - Cài đặt tự động, tự tạo Desktop icon)* | `~3.79 MB` | [📥 **Tải Spytify_0.1.0_x64-setup.exe**](https://github.com/anhdangtutien/Spytify/raw/main/installers/Spytify_0.1.0_x64-setup.exe) |
+| **Windows Setup (.exe)** <br> *(Khuyên dùng - Cài đặt tự động, tự tạo Desktop icon)* | `~3.8 MB` | [📥 **Tải Spytify_0.1.1_x64-setup.exe**](https://github.com/anhdangtutien/Spytify/raw/main/installers/Spytify_0.1.1_x64-setup.exe) |
 
 </div>
 
@@ -345,9 +335,3 @@ npm run tauri build
 
 * *Phần mềm Spytify được phát triển phục vụ học tập và trải nghiệm âm nhạc cá nhân.*
 * *Mọi luồng dữ liệu truyền tải đều tuân thủ các giao thức mở của Audius, YouTube nhúng và SoundCloud công khai.*
-
-```text
-═══════════════════════════════════════════════════════════════════════════════
-        [ END OF CLASSIFIED TRANSMISSION // SPYTIFY SPEC-OPS UNIT ]
-═══════════════════════════════════════════════════════════════════════════════
-```

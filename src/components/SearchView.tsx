@@ -1,28 +1,68 @@
-import React, { useState } from 'react';
-import { Search, Loader2, Play, Music, Disc3 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { Search, Loader2, Play, Music, Disc3, Sparkles, ArrowUpRight } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { SearchResult, Track } from '../types';
+import { getContrastTextColor } from '../utils/trackUtils';
 
 interface SearchViewProps {
   onPlaySearchResult: (result: SearchResult) => void;
   onSearchOnline: (query: string, source: string) => Promise<SearchResult[]>;
   localTracks: Track[];
   onTrackSelect: (track: Track) => void;
+  accentColor?: string;
 }
 
 const POPULAR = ['Die With A Smile', 'APT. ROSÉ', 'Sơn Tùng M-TP', 'Creepy Nuts', 'Alan Walker', 'V-Pop 2025', 'Lo-Fi Beats', 'Billie Eilish'];
 
 type Filter = 'all' | 'youtube' | 'soundcloud' | 'audius' | 'local';
 
-export const SearchView: React.FC<SearchViewProps> = ({ onPlaySearchResult, onSearchOnline, localTracks, onTrackSelect }) => {
+export const SearchView: React.FC<SearchViewProps> = ({ 
+  onPlaySearchResult, onSearchOnline, localTracks, onTrackSelect,
+  accentColor = '#ff2a55',
+}) => {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+
+  // Debounced auto-complete keyword suggestions
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setSelectedIndex(-1);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const remoteSug = await invoke<string[]>('get_search_suggestions', { query: q });
+        const localMatches = localTracks
+          .filter(t => t.title.toLowerCase().includes(q.toLowerCase()) || t.artist.toLowerCase().includes(q.toLowerCase()))
+          .map(t => t.title)
+          .slice(0, 3);
+        const combined = Array.from(new Set([...localMatches, ...remoteSug])).slice(0, 7);
+        setSuggestions(combined);
+        if (combined.length > 0) {
+          setShowSuggestions(true);
+        }
+      } catch (e) {
+        console.error('Failed to get suggestions:', e);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [query, localTracks]);
 
   const doSearch = async (q: string, f: Filter) => {
     if (!q.trim()) return;
     setLoading(true);
+    setShowSuggestions(false);
     try {
       const res = await onSearchOnline(q.trim(), f === 'all' ? 'all' : f);
       setResults(res);
@@ -33,9 +73,42 @@ export const SearchView: React.FC<SearchViewProps> = ({ onPlaySearchResult, onSe
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); doSearch(query, filter); };
-  const handleFilterChange = (f: Filter) => { setFilter(f); if (query) doSearch(query, f); };
-  const handleQuick = (term: string) => { setQuery(term); doSearch(term, filter); };
+  const handleSubmit = (e: React.FormEvent) => { 
+    e.preventDefault(); 
+    doSearch(query, filter); 
+  };
+  
+  const handleFilterChange = (f: Filter) => { 
+    setFilter(f); 
+    if (query) doSearch(query, f); 
+  };
+  
+  const handleQuick = (term: string) => { 
+    setQuery(term); 
+    doSearch(term, filter); 
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex(prev => (prev + 1) % suggestions.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(prev => (prev <= 0 ? suggestions.length - 1 : prev - 1));
+    } else if (e.key === 'Enter') {
+      if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
+        e.preventDefault();
+        const chosen = suggestions[selectedIndex];
+        setQuery(chosen);
+        setShowSuggestions(false);
+        doSearch(chosen, filter);
+      }
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+    }
+  };
 
   const filteredLocal = localTracks.filter(t =>
     t.title.toLowerCase().includes(query.toLowerCase()) ||
@@ -46,7 +119,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ onPlaySearchResult, onSe
     const cls = sm ? 'w-3 h-3' : 'w-3.5 h-3.5';
     if (source === 'youtube') return <YoutubeIcon className={`${cls} text-[#ff4e6b]`} />;
     if (source === 'soundcloud') return <SoundCloudIcon className={`${cls} text-orange-400`} />;
-    if (source === 'audius') return <AudiusIcon className={`${cls} text-[#ff2a55]`} />;
+    if (source === 'audius') return <AudiusIcon className={`${cls}`} style={{ color: accentColor }} />;
     return <Disc3 className={`${cls} text-white`} />;
   };
 
@@ -59,28 +132,82 @@ export const SearchView: React.FC<SearchViewProps> = ({ onPlaySearchResult, onSe
   ];
 
   return (
-    <div className="flex-1 p-6 overflow-y-auto">
+    <div className="flex-1 max-w-4xl pb-16">
       <div className="max-w-2xl mb-6">
         <h2 className="text-lg font-bold tracking-tight text-white mb-3">
           Tìm kiếm
         </h2>
-        <form onSubmit={handleSubmit} className="relative flex items-center">
-          <Search className="w-4 h-4 text-[#666] absolute left-3.5 pointer-events-none" />
-          <input
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Tìm nghệ sĩ, bài hát hoặc album..."
-            className="w-full pl-10 pr-28 py-2.5 bg-[#0a0a0d] hover:bg-[#121216] focus:bg-[#121216] text-white rounded-lg text-xs outline-none border border-[#1e1e26] focus:border-[#ff2a55] transition-all"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="absolute right-1.5 px-3.5 py-1.5 bg-[#ff2a55] hover:bg-white hover:text-black disabled:opacity-50 text-white text-[11px] font-bold rounded-md cursor-pointer transition-all flex items-center gap-1.5 shadow-[0_0_8px_rgba(255,42,85,0.3)]"
-          >
-            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Tìm'}
-          </button>
-        </form>
+        <div className="relative z-30">
+          <form onSubmit={handleSubmit} className="relative flex items-center">
+            <Search className="w-4 h-4 text-[#666] absolute left-3.5 pointer-events-none" />
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 250)}
+              placeholder="Tìm nghệ sĩ, bài hát hoặc album..."
+              className="w-full pl-10 pr-28 py-2.5 bg-[#0a0a0d] hover:bg-[#121216] focus:bg-[#121216] text-white rounded-lg text-xs outline-none border border-[#1e1e26] transition-all"
+              style={{ borderColor: query ? `${accentColor}60` : undefined }}
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                backgroundColor: accentColor,
+                color: getContrastTextColor(accentColor),
+                boxShadow: `0 0 10px ${accentColor}40`,
+              }}
+              className="absolute right-1.5 px-4 py-1.5 hover:opacity-90 active:scale-95 disabled:opacity-50 text-[11px] font-bold rounded-md cursor-pointer transition-all flex items-center gap-1.5"
+            >
+              {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Tìm'}
+            </button>
+          </form>
+
+          {/* Keyword Suggestions Dropdown */}
+          {showSuggestions && suggestions.length > 0 && (
+            <div 
+              className="absolute top-full left-0 right-0 mt-2 py-1.5 rounded-xl bg-[#0e0e14] border shadow-2xl z-50 font-sans"
+              style={{
+                borderColor: `${accentColor}50`,
+                boxShadow: `0 16px 36px rgba(0,0,0,0.9), 0 0 16px ${accentColor}25`
+              }}
+            >
+              <div className="px-3.5 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-[#666] flex items-center justify-between border-b border-[#1c1c28] mb-1">
+                <span className="flex items-center gap-1.5" style={{ color: accentColor }}>
+                  <Sparkles className="w-3 h-3" />
+                  Gợi ý từ khóa
+                </span>
+                <span className="text-[9px] text-[#555]">Bấm hoặc dùng phím ↑ ↓</span>
+              </div>
+              <div className="max-h-72 overflow-y-auto">
+                {suggestions.map((sug, idx) => (
+                  <div
+                    key={idx}
+                    onMouseDown={() => {
+                      setQuery(sug);
+                      setShowSuggestions(false);
+                      doSearch(sug, filter);
+                    }}
+                    className={`px-3.5 py-2 text-xs flex items-center justify-between cursor-pointer transition-colors ${
+                      selectedIndex === idx 
+                        ? 'bg-[#181824] text-white font-semibold' 
+                        : 'text-[#bbb] hover:text-white hover:bg-[#14141c]'
+                    }`}
+                    style={selectedIndex === idx ? { color: accentColor } : undefined}
+                  >
+                    <div className="flex items-center gap-2.5 overflow-hidden">
+                      <Search className="w-3.5 h-3.5 text-[#666] flex-shrink-0" />
+                      <span className="truncate">{sug}</span>
+                    </div>
+                    <ArrowUpRight className="w-3 h-3 text-[#555] opacity-0 group-hover:opacity-100 flex-shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Filter Pills */}
         <div className="flex gap-1.5 mt-3 flex-wrap">

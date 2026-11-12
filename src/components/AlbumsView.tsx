@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { Track, UserAlbum } from '../types';
 import { TrackTable } from './TrackTable';
-import { deduplicateTracks } from '../utils/trackUtils';
+import { deduplicateTracks, getContrastTextColor } from '../utils/trackUtils';
 
 interface AlbumsViewProps {
   albums: UserAlbum[];
@@ -19,6 +19,7 @@ interface AlbumsViewProps {
   favorites: Set<string>;
   onToggleFavorite: (trackId: string) => void;
   onTogglePlay: () => void;
+  accentColor?: string;
 }
 
 export const AlbumsView: React.FC<AlbumsViewProps> = ({
@@ -33,6 +34,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
   favorites,
   onToggleFavorite,
   onTogglePlay,
+  accentColor = '#ff2a55',
 }) => {
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -153,12 +155,19 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <Disc className="w-16 h-16 text-[#ff2a55]" />
+                <Disc className="w-16 h-16" style={{ color: accentColor }} />
               )}
             </div>
 
             <div className="flex-1 space-y-2 text-center sm:text-left">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-[#ff2a55] font-bold px-2.5 py-0.5 rounded bg-[#ff2a55]/15 border border-[#ff2a55]/30">
+              <span 
+                className="text-[10px] font-mono uppercase tracking-wider font-bold px-2.5 py-0.5 rounded border"
+                style={{
+                  color: accentColor,
+                  backgroundColor: `${accentColor}15`,
+                  borderColor: `${accentColor}30`,
+                }}
+              >
                 Album Người Dùng
               </span>
               <h1 className="text-2xl font-black text-white tracking-tight">{selectedAlbum.title}</h1>
@@ -177,7 +186,12 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                 <button
                   onClick={() => onPlayAlbum({ ...selectedAlbum, tracks: cleanAlbumTracks })}
                   disabled={cleanAlbumTracks.length === 0}
-                  className="px-5 py-2.5 rounded-xl bg-white hover:bg-[#ff2a55] hover:text-white text-black font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shadow-md disabled:opacity-40"
+                  style={{
+                    backgroundColor: accentColor,
+                    color: getContrastTextColor(accentColor),
+                    boxShadow: `0 0 16px ${accentColor}40`,
+                  }}
+                  className="px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shadow-md disabled:opacity-40 hover:opacity-90"
                 >
                   <Play className="w-4 h-4 fill-current ml-0.5" />
                   <span>Phát tất cả</span>
@@ -201,7 +215,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
           {/* Track List */}
           <div>
             <h2 className="text-xs font-bold text-white uppercase tracking-wider font-mono mb-3 flex items-center gap-2">
-              <Music className="w-3.5 h-3.5 text-[#ff2a55]" />
+              <Music className="w-3.5 h-3.5" style={{ color: accentColor }} />
               Danh sách bài hát trong Album ({cleanAlbumTracks.length})
             </h2>
 
@@ -210,7 +224,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                 <Disc className="w-10 h-10 text-[#444] mx-auto mb-2" />
                 <p className="text-xs font-bold text-white">Album chưa có bài hát nào</p>
                 <p className="text-[11px] text-[#666] mt-1 max-w-sm mx-auto">
-                  Bạn có thể bấm vào biểu tượng dấu cộng <span className="text-[#ff2a55] font-bold">+</span> trên bất kỳ bài hát nào ở tab Thịnh hành, Tìm kiếm để thêm vào album này!
+                  Bạn có thể bấm vào biểu tượng dấu cộng <span className="font-bold" style={{ color: accentColor }}>+</span> trên bất kỳ bài hát nào ở tab Thịnh hành, Tìm kiếm để thêm vào album này!
                 </p>
               </div>
             ) : (
@@ -240,7 +254,10 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                         </div>
                       </div>
                       <div className="overflow-hidden">
-                        <p className="text-xs font-semibold text-white truncate group-hover:text-[#ff2a55] transition-colors">
+                        <p 
+                          className="text-xs font-semibold text-white truncate transition-colors"
+                          style={{ color: currentTrack?.id === track.id ? accentColor : undefined }}
+                        >
                           {track.title}
                         </p>
                         <p className="text-[11px] text-[#8e8e9f] truncate">{track.artist}</p>
@@ -274,7 +291,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
           <div className="flex items-center justify-between pb-3 border-b border-[#161620]">
             <div>
               <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-                <Layers className="w-5 h-5 text-[#ff2a55]" />
+                <Layers className="w-5 h-5" style={{ color: accentColor }} />
                 Album Của Bạn
               </h1>
               <p className="text-xs text-[#777] mt-0.5 font-mono">Tự do phân loại &amp; sáng tạo danh sách bài hát yêu thích</p>
@@ -282,7 +299,12 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
 
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-[#ff2a55] hover:bg-white hover:text-black text-white text-xs font-bold transition-all shadow-[0_0_12px_rgba(255,42,85,0.35)] cursor-pointer flex items-center gap-2"
+              style={{
+                backgroundColor: accentColor,
+                color: getContrastTextColor(accentColor),
+                boxShadow: `0 0 12px ${accentColor}40`,
+              }}
+              className="px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 hover:opacity-90"
             >
               <Plus className="w-4 h-4" />
               <span>Tạo Album mới</span>
@@ -291,7 +313,10 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
 
           {albums.length === 0 ? (
             <div className="text-center py-16 bg-[#08080a] border border-[#161620] rounded-2xl p-8 space-y-3">
-              <div className="w-14 h-14 rounded-2xl bg-[#14141c] border border-[#222] flex items-center justify-center text-[#ff2a55] mx-auto shadow-sm">
+              <div 
+                className="w-14 h-14 rounded-2xl bg-[#14141c] border border-[#222] flex items-center justify-center mx-auto shadow-sm"
+                style={{ color: accentColor }}
+              >
                 <FolderPlus className="w-6 h-6" />
               </div>
               <h3 className="text-sm font-bold text-white">Chưa có album nào</h3>
@@ -301,7 +326,11 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
               <div className="pt-2">
                 <button
                   onClick={() => setIsCreateModalOpen(true)}
-                  className="px-5 py-2.5 rounded-xl bg-white hover:bg-[#ff2a55] hover:text-white text-black font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md inline-flex items-center gap-2"
+                  style={{
+                    backgroundColor: accentColor,
+                    color: getContrastTextColor(accentColor),
+                  }}
+                  className="px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md inline-flex items-center gap-2 hover:opacity-90"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Tạo ngay bây giờ</span>
@@ -317,7 +346,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                   <div
                     key={album.id}
                     onClick={() => setSelectedAlbumId(album.id)}
-                    className="p-3 rounded-2xl bg-[#09090c] hover:bg-[#121218] border border-[#161620] hover:border-[#ff2a55]/40 transition-all flex flex-col group cursor-pointer shadow-sm"
+                    className="p-3 rounded-2xl bg-[#09090c] hover:bg-[#121218] border border-[#161620] hover:border-[#222230] transition-all flex flex-col group cursor-pointer shadow-sm"
                   >
                     <div className="relative aspect-square w-full rounded-xl overflow-hidden mb-2.5 bg-[#14141c] border border-[#1e1e28]">
                       {coverArt ? (
@@ -328,16 +357,22 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-[#444] bg-gradient-to-br from-[#121218] to-[#0a0a0e]">
-                          <Disc className="w-10 h-10 text-[#ff2a55]/80" />
+                          <Disc className="w-10 h-10" style={{ color: accentColor }} />
                         </div>
                       )}
 
-                      <div className="absolute right-2 bottom-2 w-9 h-9 rounded-full bg-white hover:bg-[#ff2a55] text-black hover:text-white flex items-center justify-center shadow-lg opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all">
+                      <div 
+                        className="absolute right-2 bottom-2 w-9 h-9 rounded-full flex items-center justify-center shadow-lg opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all cursor-pointer"
+                        style={{
+                          backgroundColor: accentColor,
+                          color: getContrastTextColor(accentColor),
+                        }}
+                      >
                         <Play className="w-4 h-4 fill-current ml-0.5" />
                       </div>
                     </div>
 
-                    <p className="text-xs font-bold text-white truncate group-hover:text-[#ff2a55] transition-colors" title={album.title}>
+                    <p className="text-xs font-bold text-white truncate transition-colors" title={album.title}>
                       {album.title}
                     </p>
                     <p className="text-[11px] text-[#777] font-mono mt-0.5">
