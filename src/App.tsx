@@ -30,6 +30,9 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [smartDjEnabled, setSmartDjEnabled] = useState(true);
+  const [autoRecommend, setAutoRecommend] = useState<boolean>(() => {
+    return localStorage.getItem('spytify_auto_recommend') !== 'false';
+  });
   const [repeatMode, setRepeatMode] = useState<'all' | 'one' | 'off'>('all'); // default: auto-play next
   const [isShuffle, setIsShuffle] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
@@ -198,6 +201,7 @@ export default function App() {
   const displayedTracksRef = useRef<Track[]>([]);
   const currentUserRef = useRef<User | null>(null);
   const repeatModeRef = useRef<'all' | 'one' | 'off'>('all');
+  const autoRecommendRef = useRef(autoRecommend);
   const isShuffleRef = useRef(false);
   const playStartTimestampRef = useRef<number | null>(null);
   const accumulatedTimeRef = useRef<number>(0);
@@ -208,6 +212,7 @@ export default function App() {
   useEffect(() => { tracksRef.current = tracks; }, [tracks]);
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
   useEffect(() => { repeatModeRef.current = repeatMode; }, [repeatMode]);
+  useEffect(() => { autoRecommendRef.current = autoRecommend; }, [autoRecommend]);
   useEffect(() => { isShuffleRef.current = isShuffle; }, [isShuffle]);
 
   // â”€â”€â”€ RESTORE USER SESSION FROM SQLITE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -276,24 +281,36 @@ export default function App() {
     setCurrentView('library');
   };
 
-  // â”€â”€â”€ AUTO-PLAY NEXT TRACK & AI SMART DJ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const handleToggleAutoRecommend = () => {
+    const next = !autoRecommend;
+    setAutoRecommend(next);
+    localStorage.setItem('spytify_auto_recommend', String(next));
+    showNotification(
+      next
+        ? '📻 Đã bật Chế độ Đề xuất nhạc tiếp theo (Tự động phát bài cùng phong cách khi hết bài)'
+        : '⏹ Đã tắt Chế độ Đề xuất nhạc (Phát tuần tự theo danh sách)'
+    );
+  };
+
+  // ─── AUTO-PLAY NEXT TRACK & AUTO-RECOMMEND ENGINE ──────────────────────────
   const handleNext = useCallback(async () => {
     const all = tracksRef.current;
     const cur = currentTrackRef.current;
     if (!all.length) return;
 
-    // Check repeat mode
+    // 1. Repeat single track mode
     if (repeatModeRef.current === 'one' && cur) {
       playTrackInternal(cur);
       return;
     }
 
-    if (repeatModeRef.current === 'off') {
+    // 2. Repeat off and NOT in auto-recommend mode
+    if (repeatModeRef.current === 'off' && !autoRecommendRef.current) {
       setIsPlaying(false);
       return;
     }
 
-    // Shuffle mode
+    // 3. Shuffle mode within playlist
     if (isShuffleRef.current && all.length > 1) {
       const remaining = all.filter(t => t.id !== cur?.id);
       const randomTrack = remaining[Math.floor(Math.random() * remaining.length)];
@@ -303,66 +320,72 @@ export default function App() {
       }
     }
 
-    // AI Smart DJ transition
-    if (smartDjEnabled && all.length > 1 && cur) {
-      try {
-        const nextAiTrack = await invoke<Track | null>('ai_smart_dj_next', {
-          currentTrack: cur,
-          candidates: all,
-        });
-        if (nextAiTrack && nextAiTrack.id !== cur.id) {
-          playTrackInternal(nextAiTrack);
-          return;
+    // 4. CHẾ ĐỘ ĐỀ XUẤT NHẠC TIẾP THEO (SMART AUTO-RECOMMEND MODE)
+    if (autoRecommendRef.current && cur) {
+      // If we have multiple tracks in current queue, prioritize AI Smart DJ matching
+      if (all.length > 1) {
+        try {
+          const nextAiTrack = await invoke<Track | null>('ai_smart_dj_next', {
+            currentTrack: cur,
+            candidates: all,
+          });
+          if (nextAiTrack && nextAiTrack.id !== cur.id) {
+            playTrackInternal(nextAiTrack);
+            showNotification(`📻 Đề xuất bài tiếp theo: ${nextAiTrack.title}`);
+            return;
+          }
+        } catch (e) {
+          console.error('AI Smart DJ error:', e);
         }
-      } catch (e) {
-        console.error(e);
+      }
+
+      // If at end of queue or single track: automatically fetch online related songs!
+      const idx = all.findIndex(t => t.id === cur.id);
+      const isAtEnd = idx === all.length - 1 || all.length <= 1;
+
+      if (isAtEnd) {
+        try {
+          showNotification(`📻 Đang tìm bài hát cùng phong cách với ${cur.artist}...`);
+          const related = await invoke<SearchResult[]>('get_related_tracks', {
+            title: cur.title,
+            artist: cur.artist,
+          });
+
+          if (related && related.length > 0) {
+            const newTracks: Track[] = related.map((r, i) => ({
+              id: `radio_${Date.now()}_${i}`,
+              title: r.title,
+              artist: r.artist,
+              album: r.album || 'Radio Discovery',
+              duration_secs: r.duration_secs || 210,
+              path_or_url: r.url_or_id,
+              cover_art: r.thumbnail,
+              source: r.source,
+            }));
+
+            // Deduplicate and append to playlist
+            setTracks(prev => deduplicateTracks([...prev, ...newTracks]));
+            const toPlay = newTracks[0];
+            playTrackInternal(toPlay);
+            showNotification(`📻 Đề xuất bài tiếp theo: ${toPlay.title} - ${toPlay.artist}`);
+            return;
+          }
+        } catch (err) {
+          console.error('Error fetching auto-discovery related tracks:', err);
+        }
       }
     }
 
-    // Default sequential next or Auto-Discovery Stream
+    // 5. Default sequential next
     if (!cur) {
       playTrackInternal(all[0]);
       return;
     }
 
     const idx = all.findIndex(t => t.id === cur.id);
-    const isAtEnd = idx === all.length - 1;
-
-    // AUTO-DISCOVERY RADIO: When reaching end of queue, automatically fetch related songs of the same genre/artist!
-    if (isAtEnd || all.length <= 1) {
-      try {
-        showNotification(`📻 Đang tìm bài hát cùng phong cách với ${cur.artist}...`);
-        const related = await invoke<SearchResult[]>('get_related_tracks', {
-          title: cur.title,
-          artist: cur.artist,
-        });
-
-        if (related && related.length > 0) {
-          const newTracks: Track[] = related.map((r, i) => ({
-            id: `radio_${Date.now()}_${i}`,
-            title: r.title,
-            artist: r.artist,
-            album: r.album || 'Radio Discovery',
-            duration_secs: r.duration_secs || 210,
-            path_or_url: r.url_or_id,
-            cover_art: r.thumbnail,
-            source: r.source,
-          }));
-
-          // Append new related tracks to queue
-          setTracks(prev => [...prev, ...newTracks]);
-          playTrackInternal(newTracks[0]);
-          showNotification(`📻 Đề xuất cùng thể loại: ${newTracks[0].title}`);
-          return;
-        }
-      } catch (err) {
-        console.error('Error fetching auto-discovery related tracks:', err);
-      }
-    }
-
     const nextTrack = all[(idx + 1) % all.length];
     playTrackInternal(nextTrack);
-  }, [smartDjEnabled]);
+  }, [autoRecommend]);
 
   // â”€â”€â”€ WALL-CLOCK TIME TICKER (IMMUNE TO BACKGROUND TAB THROTTLING) â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
@@ -1239,6 +1262,9 @@ export default function App() {
         }}
         onToggleVisualizer={() => setShowVisualizer(p => !p)}
         showVisualizer={showVisualizer}
+        themeMode={themeMode}
+        autoRecommend={autoRecommend}
+        onToggleAutoRecommend={handleToggleAutoRecommend}
       />
     </div>
   );

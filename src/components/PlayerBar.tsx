@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat,
-  Volume2, VolumeX, Heart, Music, Sparkles, FolderPlus
+  Volume2, VolumeX, Heart, Music, Sparkles, FolderPlus, Radio
 } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { Track } from '../types';
@@ -29,6 +29,8 @@ interface PlayerBarProps {
   showVisualizer: boolean;
   accentColor?: string;
   themeMode?: 'dark' | 'light';
+  autoRecommend?: boolean;
+  onToggleAutoRecommend?: () => void;
 }
 
 export const PlayerBar: React.FC<PlayerBarProps> = ({
@@ -38,6 +40,8 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   onToggleFavorite, onAddToAlbum, onToggleVisualizer, showVisualizer,
   accentColor = '#ff2a55',
   themeMode = 'dark',
+  autoRecommend = true,
+  onToggleAutoRecommend,
 }) => {
   const [prevVolume, setPrevVolume] = useState(volume || 0.8);
   const [isDragging, setIsDragging] = useState(false);
@@ -230,6 +234,41 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
               </span>
             )}
           </button>
+
+          {/* AI Auto-Recommend Next Track (Endless Radio) */}
+          {onToggleAutoRecommend && (
+            <button
+              onClick={onToggleAutoRecommend}
+              title={
+                autoRecommend
+                  ? 'Chế độ Đề xuất nhạc tiếp theo: ĐANG BẬT (Tự động tìm và phát bài cùng gu khi hết bài)'
+                  : 'Chế độ Đề xuất nhạc tiếp theo: ĐANG TẮT (Bấm để bật tự động đề xuất)'
+              }
+              className={`p-1.5 rounded-lg transition-all cursor-pointer relative flex items-center justify-center ${
+                autoRecommend
+                  ? 'bg-white/10 text-white shadow-sm'
+                  : 'text-[#666] hover:text-white'
+              }`}
+              style={{
+                color: autoRecommend ? accentColor : undefined,
+                borderColor: autoRecommend ? `${accentColor}40` : 'transparent',
+              }}
+            >
+              <Radio className="w-3.5 h-3.5" />
+              {autoRecommend && (
+                <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                  <span 
+                    className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                    style={{ backgroundColor: accentColor }}
+                  />
+                  <span 
+                    className="relative inline-flex rounded-full h-2 w-2"
+                    style={{ backgroundColor: accentColor }}
+                  />
+                </span>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Seekbar Area — Adapts to Live Stream, Buffering, or Regular Track */}

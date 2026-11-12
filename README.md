@@ -26,12 +26,11 @@
   <a href="#-hồ-sơ-tác-chiến-tiếng-việt">🇻🇳 Tiếng Việt</a>
 </p>
 
-### 🚀 TẢI VỀ CÀI ĐẶT NGAY // DIRECT DOWNLOADS (WINDOWS 10 & 11)
+### 🚀 TẢI VỀ CÀI ĐẶT NGAY // DIRECT DOWNLOAD (WINDOWS 10 & 11)
 
 | Định dạng / Format | Kích thước / Size | Liên kết tải trực tiếp / Direct Link |
 | :--- | :--- | :--- |
-| **Windows Setup (.exe)** <br> *(Khuyên dùng - Cài đặt tự động)* | `~3.79 MB` | [📥 **Tải Spytify_0.1.0_x64-setup.exe**](https://github.com/anhdangtutien/Spytify/raw/main/installers/Spytify_0.1.0_x64-setup.exe) |
-| **Windows Package (.msi)** <br> *(Bản đóng gói Windows MSI)* | `~5.06 MB` | [📥 **Tải Spytify_0.1.0_x64_en-US.msi**](https://github.com/anhdangtutien/Spytify/raw/main/installers/Spytify_0.1.0_x64_en-US.msi) |
+| **Windows Setup (.exe)** <br> *(Khuyên dùng - Cài đặt tự động, tự tạo Desktop icon)* | `~3.79 MB` | [📥 **Tải Spytify_0.1.0_x64-setup.exe**](https://github.com/anhdangtutien/Spytify/raw/main/installers/Spytify_0.1.0_x64-setup.exe) |
 
 </div>
 
@@ -90,7 +89,87 @@ Featuring **Dual-Vault Architecture**:
 
 To enable automatic cross-device sync:
 1. Create a free project at [Supabase](https://supabase.com).
-2. Open the **SQL Editor** in your Supabase dashboard and execute the script in [`supabase/schema.sql`](file:///E:/Spytify%20Dev%20App/supabase/schema.sql).
+2. Open the **SQL Editor** in your Supabase dashboard, copy and paste the SQL script below, then click **Run**:
+
+<details open>
+<summary><b>📋 Click to view the Supabase Initialization SQL Script (Mã SQL khởi tạo Supabase)</b></summary>
+
+```sql
+-- ==============================================================================
+-- 🕵️‍♂️ SPYTIFY SPEC-OPS // SUPABASE CLOUD DATABASE SCHEMA
+-- ==============================================================================
+-- Copy toàn bộ đoạn script này dán vào Supabase SQL Editor và bấm "Run"
+
+-- 1. Profiles & UI Preferences Table
+CREATE TABLE IF NOT EXISTS public.spytify_profiles (
+    id TEXT PRIMARY KEY,
+    username TEXT,
+    display_name TEXT,
+    avatar TEXT,
+    accent_color TEXT DEFAULT '#FF2A55',
+    theme_mode TEXT DEFAULT 'dark',
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- 2. User Albums Table
+CREATE TABLE IF NOT EXISTS public.spytify_albums (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    tracks JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+CREATE INDEX IF NOT EXISTS idx_spytify_albums_user_id ON public.spytify_albums(user_id);
+
+-- 3. User Favorites Table
+CREATE TABLE IF NOT EXISTS public.spytify_favorites (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    track_id TEXT NOT NULL,
+    track_json JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+CREATE INDEX IF NOT EXISTS idx_spytify_favs_user_id ON public.spytify_favorites(user_id);
+
+-- 4. User Playback History Table (Top 30 recent tracks with cover art & playback URLs)
+CREATE TABLE IF NOT EXISTS public.spytify_history (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    track_id TEXT NOT NULL,
+    track_title TEXT NOT NULL,
+    artist TEXT NOT NULL,
+    source TEXT NOT NULL,
+    duration_secs INTEGER NOT NULL,
+    path_or_url TEXT,
+    cover_art TEXT,
+    track_json JSONB,
+    listened_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+CREATE INDEX IF NOT EXISTS idx_spytify_history_user_id ON public.spytify_history(user_id);
+
+-- 5. Row Level Security (RLS) Policies
+ALTER TABLE public.spytify_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.spytify_albums ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.spytify_favorites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.spytify_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read-write for spytify_profiles" 
+    ON public.spytify_profiles FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow public read-write for spytify_albums" 
+    ON public.spytify_albums FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow public read-write for spytify_favorites" 
+    ON public.spytify_favorites FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow public read-write for spytify_history" 
+    ON public.spytify_history FOR ALL USING (true) WITH CHECK (true);
+```
+
+</details>
 3. In Spytify, navigate to **Tài khoản (Profile)** -> **Cài đặt khóa Supabase**, paste your **Project URL** and **Anon Key**, then click **Lưu cấu hình**.
 4. Click **Đồng bộ Cloud ngay (Sync Cloud Now)** — your music is now synced across all devices!
 
@@ -109,7 +188,7 @@ npm install
 # Run in Development Mode
 npm run tauri dev
 
-# Package Production Installer (.exe / .msi)
+# Package Production Installer (.exe)
 npm run tauri build
 ```
 
@@ -157,7 +236,87 @@ Hệ thống hỗ trợ **Kiến trúc Kép (Hybrid Local + Cloud Sync)**:
 ## 🚀 HƯỚNG DẪN KẾT NỐI SUPABASE CLOUD (TỰ ĐỘNG ĐỒNG BỘ MÁY KHÁC)
 
 1. Tạo tài khoản và tạo dự án miễn phí tại [Supabase](https://supabase.com).
-2. Vào mục **SQL Editor** trong Supabase Dashboard, dán toàn bộ mã trong file [`supabase/schema.sql`](file:///E:/Spytify%20Dev%20App/supabase/schema.sql) và bấm **Run**.
+2. Vào mục **SQL Editor** trong Supabase Dashboard, dán toàn bộ mã SQL bên dưới và bấm **Run**:
+
+<details open>
+<summary><b>📋 Click to view the Supabase Initialization SQL Script (Mã SQL khởi tạo Supabase)</b></summary>
+
+```sql
+-- ==============================================================================
+-- 🕵️‍♂️ SPYTIFY SPEC-OPS // SUPABASE CLOUD DATABASE SCHEMA
+-- ==============================================================================
+-- Copy toàn bộ đoạn script này dán vào Supabase SQL Editor và bấm "Run"
+
+-- 1. Profiles & UI Preferences Table
+CREATE TABLE IF NOT EXISTS public.spytify_profiles (
+    id TEXT PRIMARY KEY,
+    username TEXT,
+    display_name TEXT,
+    avatar TEXT,
+    accent_color TEXT DEFAULT '#FF2A55',
+    theme_mode TEXT DEFAULT 'dark',
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- 2. User Albums Table
+CREATE TABLE IF NOT EXISTS public.spytify_albums (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    tracks JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+CREATE INDEX IF NOT EXISTS idx_spytify_albums_user_id ON public.spytify_albums(user_id);
+
+-- 3. User Favorites Table
+CREATE TABLE IF NOT EXISTS public.spytify_favorites (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    track_id TEXT NOT NULL,
+    track_json JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+CREATE INDEX IF NOT EXISTS idx_spytify_favs_user_id ON public.spytify_favorites(user_id);
+
+-- 4. User Playback History Table (Top 30 recent tracks with cover art & playback URLs)
+CREATE TABLE IF NOT EXISTS public.spytify_history (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    track_id TEXT NOT NULL,
+    track_title TEXT NOT NULL,
+    artist TEXT NOT NULL,
+    source TEXT NOT NULL,
+    duration_secs INTEGER NOT NULL,
+    path_or_url TEXT,
+    cover_art TEXT,
+    track_json JSONB,
+    listened_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+CREATE INDEX IF NOT EXISTS idx_spytify_history_user_id ON public.spytify_history(user_id);
+
+-- 5. Row Level Security (RLS) Policies
+ALTER TABLE public.spytify_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.spytify_albums ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.spytify_favorites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.spytify_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read-write for spytify_profiles" 
+    ON public.spytify_profiles FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow public read-write for spytify_albums" 
+    ON public.spytify_albums FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow public read-write for spytify_favorites" 
+    ON public.spytify_favorites FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow public read-write for spytify_history" 
+    ON public.spytify_history FOR ALL USING (true) WITH CHECK (true);
+```
+
+</details>
 3. Mở Spytify -> Vào mục **Tài khoản** -> **Cài đặt khóa Supabase**, dán **Project URL** và **Anon Key** của bạn rồi bấm **Lưu cấu hình**.
 4. Bấm **Đồng bộ Cloud ngay** — toàn bộ Album và bài hát của bạn sẽ được đồng bộ lên mây vĩnh viễn!
 
@@ -176,7 +335,7 @@ npm install
 # Khởi chạy chế độ Thử nghiệm (Dev Mode)
 npm run tauri dev
 
-# Đóng gói bộ cài đặt chính thức (.exe / .msi)
+# Đóng gói bộ cài đặt chính thức (.exe)
 npm run tauri build
 ```
 
