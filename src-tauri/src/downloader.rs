@@ -106,6 +106,7 @@ impl Downloader {
                 let mut cmd = Command::new(&ytdlp);
                 cmd.args(&[
                     "-f", "ba[ext=m4a]/ba[ext=mp3]/ba",
+                    "--add-metadata",
                     "--no-playlist",
                     "--max-filesize", "60M",
                     "-o", &out_template_str,
@@ -146,6 +147,7 @@ impl Downloader {
                     let mut cmd = Command::new(&ytdlp);
                     cmd.args(&[
                         "-f", "ba[ext=m4a]/ba[ext=mp3]/ba",
+                        "--add-metadata",
                         "--no-playlist",
                         "-o", &out_template_str,
                         &track.path_or_url,

@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
 import { openPath } from '@tauri-apps/plugin-opener';
@@ -134,6 +134,59 @@ export default function App() {
     setShowLanguageDropdown(false);
     const langInfo = SUPPORTED_LANGUAGES.find(l => l.code === newLang);
     showNotification(`${getTranslation(newLang, 'toast.langChanged')} ${langInfo ? `${langInfo.flag} ${langInfo.nativeName}` : newLang}`);
+  };
+
+  // ─── SLEEP TIMER (HẸN GIỜ TẮT NHẠC) ───────────────────────────
+  const [sleepTimerMinutes, setSleepTimerMinutes] = useState<number | null>(null);
+  const [sleepTimerRemainingSecs, setSleepTimerRemainingSecs] = useState<number | null>(null);
+  const sleepTimerMinutesRef = useRef<number | null>(null);
+  sleepTimerMinutesRef.current = sleepTimerMinutes;
+
+  useEffect(() => {
+    if (sleepTimerRemainingSecs === null) return;
+
+    if (sleepTimerRemainingSecs <= 0) {
+      setIsPlaying(false);
+      sendYtCmd('stopVideo');
+      sendScCmd('pause');
+      onlineAudioRef.current?.pause();
+      try { invoke('stop_track'); } catch {}
+
+      setSleepTimerMinutes(null);
+      setSleepTimerRemainingSecs(null);
+      showNotification(getTranslation(language, 'timer.timeoutNotification'));
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setSleepTimerRemainingSecs(prev => {
+        if (prev === null) return null;
+        if (prev <= 1) return 0;
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [sleepTimerRemainingSecs, language]);
+
+  const handleSetSleepTimer = (minutes: number | null) => {
+    if (minutes === null) {
+      setSleepTimerMinutes(null);
+      setSleepTimerRemainingSecs(null);
+      showNotification(getTranslation(language, 'timer.canceledNotification'));
+      return;
+    }
+
+    if (minutes === 0) {
+      setSleepTimerMinutes(0);
+      setSleepTimerRemainingSecs(null);
+      showNotification(getTranslation(language, 'timer.setEndNotification'));
+      return;
+    }
+
+    setSleepTimerMinutes(minutes);
+    setSleepTimerRemainingSecs(minutes * 60);
+    showNotification(getTranslation(language, 'timer.setNotification', { time: `${minutes} phút` }));
   };
 
   const handleUpdateAvatar = async (newAvatar: string) => {
@@ -553,6 +606,19 @@ export default function App() {
       const cur = currentTrackRef.current;
       if (!all.length) return;
 
+      // 0. Check if sleep timer is set to "End of current track"
+      if (!isManualSkip && sleepTimerMinutesRef.current === 0) {
+        setIsPlaying(false);
+        sendYtCmd('stopVideo');
+        sendScCmd('pause');
+        onlineAudioRef.current?.pause();
+        try { invoke('stop_track'); } catch {}
+        setSleepTimerMinutes(null);
+        setSleepTimerRemainingSecs(null);
+        showNotification(getTranslation(language, 'timer.timeoutNotification'));
+        return;
+      }
+
       // 1. Repeat single track mode (only when track ends naturally, not on manual skip)
       if (!isManualSkip && repeatModeRef.current === 'one' && cur) {
         playTrackInternal(cur);
@@ -925,14 +991,16 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [ytVideoId]);
 
-  // â”€â”€â”€ AUDIUS HTML5 audio element (320kbps MP3 direct stream) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── AUDIUS & LOCAL HTML5 audio element (Native decoding for MP3, M4A, WebM, etc.) ───
   useEffect(() => {
     const audio = new Audio();
     onlineAudioRef.current = audio;
     const onTimeUpdate = () => {
-      if (currentTrackRef.current?.source === 'audius') {
+      if (currentTrackRef.current?.source === 'audius' || currentTrackRef.current?.source === 'local') {
         setCurrentTime(audio.currentTime);
-        if (audio.duration > 0) setDuration(audio.duration);
+        if (audio.duration > 0 && !isNaN(audio.duration)) {
+          setDuration(audio.duration);
+        }
       }
     };
     const onEnded = () => {
@@ -1042,12 +1110,31 @@ export default function App() {
       sendScCmd('pause');
       setScTrackUrl(null);
 
-      onlineAudioRef.current?.pause();
-      try {
-        await invoke('play_track', { track });
-        setIsPlaying(true);
-      } catch (err) {
-        showNotification(`${getTranslation(language, 'toast.playbackError')}: ${err}`);
+      // 1. Play local file using native browser audio with convertFileSrc
+      let playedViaBrowser = false;
+      if (onlineAudioRef.current) {
+        try {
+          const fileUrl = convertFileSrc(track.path_or_url);
+          onlineAudioRef.current.src = fileUrl;
+          onlineAudioRef.current.volume = volume;
+          await onlineAudioRef.current.play();
+          setIsPlaying(true);
+          playedViaBrowser = true;
+          showNotification(`▶ ${track.title} - ${track.artist}`);
+        } catch (e) {
+          console.warn('Browser convertFileSrc play failed, fallback to Rodio:', e);
+        }
+      }
+
+      // 2. If browser could not play, fallback to Rust Rodio with Symphonia
+      if (!playedViaBrowser) {
+        try {
+          await invoke('play_track', { track });
+          setIsPlaying(true);
+          showNotification(`▶ ${track.title} - ${track.artist}`);
+        } catch (err) {
+          showNotification(`${getTranslation(language, 'toast.playbackError')}: ${err}`);
+        }
       }
 
     } else if (track.source === 'youtube') {
@@ -1137,6 +1224,7 @@ export default function App() {
       setIsPlaying(false);
 
       if (track.source === 'local') {
+        onlineAudioRef.current?.pause();
         try { await invoke('pause_track'); } catch {}
       } else if (track.source === 'youtube') {
         sendYtCmd('pauseVideo');
@@ -1152,7 +1240,11 @@ export default function App() {
       setIsPlaying(true);
 
       if (track.source === 'local') {
-        try { await invoke('resume_track'); } catch {}
+        if (onlineAudioRef.current && onlineAudioRef.current.src && onlineAudioRef.current.src.length > 0) {
+          onlineAudioRef.current.play().catch(console.error);
+        } else {
+          try { await invoke('resume_track'); } catch {}
+        }
       } else if (track.source === 'youtube') {
         sendYtCmd('playVideo');
       } else if (track.source === 'soundcloud') {
@@ -1237,6 +1329,9 @@ export default function App() {
     }
 
     if (currentTrack?.source === 'local') {
+      if (onlineAudioRef.current && onlineAudioRef.current.src) {
+        onlineAudioRef.current.currentTime = secs;
+      }
       try { await invoke('seek_track', { positionSecs: Math.floor(secs) }); } catch {}
     } else if (currentTrack?.source === 'youtube') {
       sendYtCmd('seekTo', [secs, true]);
@@ -2110,6 +2205,9 @@ export default function App() {
         }}
         onDownload={handleDownloadTrack}
         isDownloading={currentTrack ? downloadingTrackIds.has(currentTrack.id) : false}
+        sleepTimerMinutes={sleepTimerMinutes}
+        sleepTimerRemainingSecs={sleepTimerRemainingSecs}
+        onSetSleepTimer={handleSetSleepTimer}
         onToggleVisualizer={() => setShowVisualizer(p => !p)}
         showVisualizer={showVisualizer}
         themeMode={themeMode}

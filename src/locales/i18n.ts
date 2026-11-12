@@ -203,6 +203,20 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'download.changeFolder': 'Đổi thư mục',
     'download.openFolder': 'Mở thư mục',
 
+    // Sleep Timer
+    'timer.title': 'Hẹn giờ tắt nhạc',
+    'timer.subtitle': 'Tự động dừng phát nhạc sau thời gian đã định',
+    'timer.15m': '15 phút',
+    'timer.30m': '30 phút',
+    'timer.45m': '45 phút',
+    'timer.60m': '60 phút',
+    'timer.endOfTrack': 'Hết bài hát này',
+    'timer.turnOff': 'Tắt hẹn giờ',
+    'timer.setNotification': 'Đã hẹn giờ tắt nhạc sau {time}',
+    'timer.setEndNotification': 'Sẽ tắt nhạc khi phát xong bài này',
+    'timer.canceledNotification': 'Đã hủy hẹn giờ tắt nhạc',
+    'timer.timeoutNotification': '🌙 Đã đến giờ hẹn tắt nhạc. Chúc bạn ngủ ngon!',
+
     // Visualizer, Tables, Views
     'visualizer.playing': 'Đang phát',
     'visualizer.idle': 'Chờ phát',
@@ -456,6 +470,20 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'download.folderSettingDesc': 'Where downloaded tracks are stored so you can listen anytime without internet',
     'download.changeFolder': 'Change Folder',
     'download.openFolder': 'Open Folder',
+
+    // Sleep Timer
+    'timer.title': 'Sleep Timer',
+    'timer.subtitle': 'Automatically stops playback after a set time',
+    'timer.15m': '15 minutes',
+    'timer.30m': '30 minutes',
+    'timer.45m': '45 minutes',
+    'timer.60m': '60 minutes',
+    'timer.endOfTrack': 'End of this track',
+    'timer.turnOff': 'Turn off timer',
+    'timer.setNotification': 'Sleep timer set for {time}',
+    'timer.setEndNotification': 'Music will stop after current track',
+    'timer.canceledNotification': 'Sleep timer canceled',
+    'timer.timeoutNotification': '🌙 Sleep timer finished. Playback stopped. Good night!',
 
     // Visualizer, Tables, Views
     'visualizer.playing': 'Playing',
@@ -711,6 +739,20 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'download.changeFolder': 'フォルダ変更',
     'download.openFolder': 'フォルダを開く',
 
+    // Sleep Timer
+    'timer.title': 'スリープタイマー',
+    'timer.subtitle': '設定した時間後に自動的に音楽を停止します',
+    'timer.15m': '15分',
+    'timer.30m': '30分',
+    'timer.45m': '45分',
+    'timer.60m': '60分',
+    'timer.endOfTrack': 'この曲の終了時',
+    'timer.turnOff': 'タイマー解除',
+    'timer.setNotification': '{time}後に停止するよう設定しました',
+    'timer.setEndNotification': 'この曲の再生終了後に停止します',
+    'timer.canceledNotification': 'スリープタイマーを解除しました',
+    'timer.timeoutNotification': '🌙 スリープタイマーの時間になりました。おやすみなさい！',
+
     // Visualizer, Tables, Views
     'visualizer.playing': '再生中',
     'visualizer.idle': '待機中',
@@ -964,6 +1006,20 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'download.folderSettingDesc': '存储已下载歌曲的位置，供您在无网络时随时离线播放',
     'download.changeFolder': '更改文件夹',
     'download.openFolder': '打开文件夹',
+
+    // Sleep Timer
+    'timer.title': '睡眠定时器',
+    'timer.subtitle': '到达设定时间后自动停止音乐播放',
+    'timer.15m': '15分钟',
+    'timer.30m': '30分钟',
+    'timer.45m': '45分钟',
+    'timer.60m': '60分钟',
+    'timer.endOfTrack': '当前歌曲播完后',
+    'timer.turnOff': '关闭定时器',
+    'timer.setNotification': '已设置在 {time} 后停止播放',
+    'timer.setEndNotification': '当前歌曲播完后将自动停止',
+    'timer.canceledNotification': '已取消定时关闭',
+    'timer.timeoutNotification': '🌙 定时器时间已到，已停止播放。祝您晚安！',
 
     // Visualizer, Tables, Views
     'visualizer.playing': '正在播放',

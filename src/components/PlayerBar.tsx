@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat,
   Volume2, VolumeX, Heart, Music, Sparkles, FolderPlus, Radio,
-  Download, Check, Loader2
+  Download, Check, Loader2, Moon, Clock
 } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { Track } from '../types';
@@ -38,6 +38,9 @@ interface PlayerBarProps {
   onCycleRecommendMode?: () => void;
   autoRecommend?: boolean;
   onToggleAutoRecommend?: () => void;
+  sleepTimerMinutes?: number | null;
+  sleepTimerRemainingSecs?: number | null;
+  onSetSleepTimer?: (minutes: number | null) => void;
   language?: LanguageCode;
 }
 
@@ -52,11 +55,23 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   onCycleRecommendMode,
   autoRecommend = true,
   onToggleAutoRecommend,
+  sleepTimerMinutes = null,
+  sleepTimerRemainingSecs = null,
+  onSetSleepTimer,
   language = 'vi',
 }) => {
   const [prevVolume, setPrevVolume] = useState(volume || 0.8);
   const [isDragging, setIsDragging] = useState(false);
   const [dragValue, setDragValue] = useState(0);
+  const [showTimerMenu, setShowTimerMenu] = useState(false);
+
+  const formatTimerRemaining = () => {
+    if (sleepTimerMinutes === 0) return getTranslation(language, 'timer.endOfTrack');
+    if (sleepTimerRemainingSecs === null || sleepTimerRemainingSecs <= 0) return '';
+    const m = Math.floor(sleepTimerRemainingSecs / 60);
+    const s = sleepTimerRemainingSecs % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
   // Time formatter with strict clamp against YouTube live unix timestamps (>86400s)
   const formatTime = (secs: number) => {
@@ -515,6 +530,102 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
 
       {/* Right: Volume + Utils */}
       <div className="flex items-center justify-end gap-3.5 w-1/4 min-w-[220px]">
+        {/* Sleep Timer Toggle & Menu */}
+        {onSetSleepTimer && (
+          <div className="relative">
+            <button
+              onClick={() => setShowTimerMenu(p => !p)}
+              title={getTranslation(language, 'timer.title')}
+              style={sleepTimerMinutes !== null ? {
+                color: accentColor,
+                backgroundColor: `${accentColor}18`,
+                borderColor: `${accentColor}50`,
+                boxShadow: `0 0 10px ${accentColor}30`,
+              } : undefined}
+              className={`p-1.5 rounded-md transition-all cursor-pointer border flex items-center gap-1.5 ${
+                sleepTimerMinutes !== null
+                  ? ''
+                  : 'text-[#666] hover:text-white border-transparent'
+              }`}
+            >
+              <Moon className="w-4 h-4" />
+              {sleepTimerMinutes !== null && (
+                <span className="text-[10px] font-mono font-bold">
+                  {formatTimerRemaining()}
+                </span>
+              )}
+            </button>
+
+            {/* Popup Menu */}
+            {showTimerMenu && (
+              <div 
+                className="absolute bottom-12 right-0 w-52 p-2.5 rounded-xl bg-[#0c0c12] border border-[#22222e] shadow-2xl z-50 select-none"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#1c1c28]">
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5 font-mono">
+                    <Moon className="w-3.5 h-3.5" style={{ color: accentColor }} />
+                    {getTranslation(language, 'timer.title')}
+                  </span>
+                  {sleepTimerMinutes !== null && (
+                    <span className="text-[10px] font-mono font-bold" style={{ color: accentColor }}>
+                      {formatTimerRemaining()}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  {[15, 30, 45, 60].map((mins) => {
+                    const isSelected = sleepTimerMinutes === mins;
+                    return (
+                      <button
+                        key={mins}
+                        onClick={() => {
+                          onSetSleepTimer(mins);
+                          setShowTimerMenu(false);
+                        }}
+                        className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-left flex items-center justify-between transition-colors cursor-pointer ${
+                          isSelected ? 'bg-white/10 text-white font-bold' : 'text-[#888] hover:text-white hover:bg-[#161622]'
+                        }`}
+                      >
+                        <span>{getTranslation(language, `timer.${mins}m` as any)}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5" style={{ color: accentColor }} />}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    onClick={() => {
+                      onSetSleepTimer(0);
+                      setShowTimerMenu(false);
+                    }}
+                    className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-left flex items-center justify-between transition-colors cursor-pointer ${
+                      sleepTimerMinutes === 0 ? 'bg-white/10 text-white font-bold' : 'text-[#888] hover:text-white hover:bg-[#161622]'
+                    }`}
+                  >
+                    <span>{getTranslation(language, 'timer.endOfTrack')}</span>
+                    {sleepTimerMinutes === 0 && <Check className="w-3.5 h-3.5" style={{ color: accentColor }} />}
+                  </button>
+
+                  {sleepTimerMinutes !== null && (
+                    <div className="pt-1.5 mt-1 border-t border-[#1c1c28]">
+                      <button
+                        onClick={() => {
+                          onSetSleepTimer(null);
+                          setShowTimerMenu(false);
+                        }}
+                        className="w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-400 hover:bg-red-500/10 text-left transition-colors cursor-pointer"
+                      >
+                        {getTranslation(language, 'timer.turnOff')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Visualizer Toggle */}
         <button
           onClick={onToggleVisualizer}
