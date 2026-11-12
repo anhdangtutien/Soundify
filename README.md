@@ -26,6 +26,13 @@
   <a href="#-hồ-sơ-tác-chiến-tiếng-việt">🇻🇳 Tiếng Việt</a>
 </p>
 
+### 🚀 TẢI VỀ CÀI ĐẶT NGAY // DIRECT DOWNLOADS (WINDOWS 10 & 11)
+
+| Định dạng / Format | Kích thước / Size | Liên kết tải trực tiếp / Direct Link |
+| :--- | :--- | :--- |
+| **Windows Setup (.exe)** <br> *(Khuyên dùng - Cài đặt tự động)* | `~3.79 MB` | [📥 **Tải Spytify_0.1.0_x64-setup.exe**](https://github.com/anhdangtutien/Spytify/raw/main/installers/Spytify_0.1.0_x64-setup.exe) |
+| **Windows Package (.msi)** <br> *(Bản đóng gói Windows MSI)* | `~5.06 MB` | [📥 **Tải Spytify_0.1.0_x64_en-US.msi**](https://github.com/anhdangtutien/Spytify/raw/main/installers/Spytify_0.1.0_x64_en-US.msi) |
+
 </div>
 
 ---
