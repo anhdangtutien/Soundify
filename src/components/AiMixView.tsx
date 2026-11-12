@@ -1,9 +1,9 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { 
-  Cpu, Sparkles, Play, Music, RefreshCw, Loader2, CheckCircle2, Sliders, Zap
+  Cpu, Sparkles, Play, Music, RefreshCw, Loader2, CheckCircle2, Sliders, Zap, Compass
 } from 'lucide-react';
-import { Track, User, RecommendationResult, TrainingReport } from '../types';
+import { Track, User, RecommendationResult, TrainingReport, SearchResult } from '../types';
 import { LanguageCode, getTranslation } from '../locales/i18n';
 import { getContrastTextColor } from '../utils/trackUtils';
 
@@ -17,6 +17,29 @@ interface AiMixViewProps {
   accentColor?: string;
   language?: LanguageCode;
 }
+
+const DEFAULT_GENRES = [
+  'V-Pop',
+  'EDM / Dance',
+  'K-Pop',
+  'US-UK Pop',
+  'Lo-Fi & Chill',
+  'Hip-Hop & Rap',
+  'Ballad & Acoustic',
+  'J-Pop / Anime',
+];
+
+const GENRE_SEARCH_QUERIES: Record<string, string> = {
+  'V-Pop': 'vpop thinh hanh official music video',
+  'EDM / Dance': 'festival edm electronic dance banger official audio',
+  'K-Pop': 'kpop viral hits official mv audio',
+  'US-UK Pop': 'global top pop hits official music video audio',
+  'Lo-Fi & Chill': 'lofi chill beats study relax official audio',
+  'Hip-Hop & Rap': 'viet rap hip hop trending official audio',
+  'Ballad & Acoustic': 'acoustic ballad nhe nhang tinh cam acoustic official',
+  'J-Pop / Anime': 'jpop anime viral opening official music video',
+  'Rock & Alternative': 'popular rock alternative hits official audio',
+};
 
 export const AiMixView: React.FC<AiMixViewProps> = ({
   currentUser,
@@ -34,6 +57,21 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
   const [recommendations, setRecommendations] = useState<RecommendationResult[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(false);
 
+  // Genre recommendations state
+  const [selectedGenre, setSelectedGenre] = useState<string>('V-Pop');
+  const [genreTracks, setGenreTracks] = useState<Track[]>([]);
+  const [loadingGenreTracks, setLoadingGenreTracks] = useState(false);
+
+  // Available genres based on AI report or defaults
+  const availableGenres = useMemo(() => {
+    if (report?.top_genres && report.top_genres.length > 0) {
+      // Merge AI top genres with default genres ensuring uniqueness
+      const set = new Set([...report.top_genres, ...DEFAULT_GENRES]);
+      return Array.from(set);
+    }
+    return DEFAULT_GENRES;
+  }, [report?.top_genres]);
+
   const fetchRecommendations = async () => {
     if (!currentUser || allTracks.length === 0) return;
     setLoadingRecs(true);
@@ -47,6 +85,49 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
       console.error(e);
     } finally {
       setLoadingRecs(false);
+    }
+  };
+
+  const loadGenreTracks = async (genre: string) => {
+    setLoadingGenreTracks(true);
+    try {
+      // 1. Filter matching local/cached tracks from allTracks
+      const gLower = genre.toLowerCase().split('/')[0].trim();
+      const localMatches = allTracks.filter(t => {
+        const text = `${t.title} ${t.artist} ${t.album || ''}`.toLowerCase();
+        return text.includes(gLower) || (gLower === 'v-pop' && (text.includes('vpop') || text.includes('sơn tùng') || text.includes('vũ')));
+      }).slice(0, 6);
+
+      // 2. Fetch online tracks for that genre
+      const query = GENRE_SEARCH_QUERIES[genre] || `${genre} popular hits official audio`;
+      const searchResults = await invoke<SearchResult[]>('search_online', {
+        query,
+        source: 'youtube',
+      });
+
+      const onlineTracks: Track[] = (searchResults || []).slice(0, 12).map((res, idx) => ({
+        id: `genre_${genre}_${idx}_${Date.now()}`,
+        title: res.title,
+        artist: res.artist,
+        album: res.album || genre,
+        duration_secs: res.duration_secs,
+        path_or_url: res.url_or_id,
+        cover_art: res.thumbnail,
+        source: res.source,
+      }));
+
+      // Combine and deduplicate
+      const combined = [...localMatches];
+      for (const ot of onlineTracks) {
+        if (!combined.some(t => t.title.toLowerCase() === ot.title.toLowerCase())) {
+          combined.push(ot);
+        }
+      }
+      setGenreTracks(combined);
+    } catch (err) {
+      console.error('Failed to load genre tracks:', err);
+    } finally {
+      setLoadingGenreTracks(false);
     }
   };
 
@@ -66,6 +147,9 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
       const rep = await invoke<TrainingReport>('ai_train_model', { userId: currentUser.id });
       setTrainingProgress(100);
       setReport(rep);
+      if (rep.top_genres && rep.top_genres.length > 0) {
+        setSelectedGenre(rep.top_genres[0]);
+      }
       await fetchRecommendations();
     } catch (e) {
       console.error(e);
@@ -81,6 +165,10 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
       fetchRecommendations();
     }
   }, [currentUser, allTracks.length]);
+
+  useEffect(() => {
+    loadGenreTracks(selectedGenre);
+  }, [selectedGenre]);
 
   return (
     <div className="flex-1 p-8 overflow-y-auto max-w-5xl mx-auto select-none">
@@ -181,7 +269,9 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
             </div>
             <div className="p-2.5 rounded-lg bg-[#101016] border border-[#1c1c24]">
               <span className="text-[10px] text-[#777] font-mono">{getTranslation(language, 'aimix.accuracy')}</span>
-              <p className="text-sm font-bold mt-0.5" style={{ color: accentColor }}>{(report.accuracy * 100).toFixed(1)}%</p>
+              <p className="text-sm font-bold mt-0.5" style={{ color: accentColor }}>
+                {(report.accuracy > 1 ? report.accuracy : report.accuracy * 100).toFixed(1)}%
+              </p>
             </div>
             <div className="p-2.5 rounded-lg bg-[#101016] border border-[#1c1c24]">
               <span className="text-[10px] text-[#777] font-mono">{getTranslation(language, 'aimix.epochs')}</span>
@@ -191,7 +281,7 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
             </div>
             <div className="p-2.5 rounded-lg bg-[#101016] border border-[#1c1c24]">
               <span className="text-[10px] text-[#777] font-mono">{getTranslation(language, 'aimix.topGenres')}</span>
-              <p className="text-sm font-bold text-white mt-0.5 truncate">
+              <p className="text-sm font-bold text-white mt-0.5 truncate" title={report.top_genres?.join(', ')}>
                 {report.top_genres?.join(', ') || getTranslation(language, 'aimix.diverse')}
               </p>
             </div>
@@ -199,7 +289,146 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
         </div>
       )}
 
-      {/* Recommendations List */}
+      {/* ─── GENRE-BASED RECOMMENDATIONS (Đề xuất theo thể loại hay nghe) ─── */}
+      <div className="mb-8 p-5 rounded-2xl bg-[#0a0a0e] border border-[#181822] shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Compass className="w-4 h-4" style={{ color: accentColor }} />
+              <h3 className="text-sm font-bold text-white tracking-wide">
+                {getTranslation(language, 'aimix.genreSectionTitle')}
+              </h3>
+              <span 
+                className="text-[9px] font-mono uppercase px-2 py-0.5 rounded border"
+                style={{
+                  color: accentColor,
+                  backgroundColor: `${accentColor}12`,
+                  borderColor: `${accentColor}25`,
+                }}
+              >
+                AI Curated
+              </span>
+            </div>
+            <p className="text-xs text-[#777] mt-1">
+              {getTranslation(language, 'aimix.genreSectionSubtitle')}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {genreTracks.length > 0 && (
+              <button
+                onClick={() => onPlayTrack(genreTracks[0])}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all hover:opacity-90 active:scale-95 cursor-pointer"
+                style={{
+                  backgroundColor: `${accentColor}20`,
+                  color: accentColor,
+                  border: `1px solid ${accentColor}40`,
+                }}
+              >
+                <Play className="w-3 h-3 fill-current" />
+                <span>{getTranslation(language, 'aimix.playGenreAll')}</span>
+              </button>
+            )}
+            <button
+              onClick={() => loadGenreTracks(selectedGenre)}
+              disabled={loadingGenreTracks}
+              className="p-1.5 rounded-lg bg-[#14141c] hover:bg-[#1c1c28] text-[#888] hover:text-white transition-all cursor-pointer border border-[#22222e]"
+              title={getTranslation(language, 'aimix.refresh')}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingGenreTracks ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Genre Selector Chips */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none mb-4">
+          {availableGenres.map((genre, idx) => {
+            const isSelected = selectedGenre === genre;
+            return (
+              <button
+                key={genre}
+                onClick={() => setSelectedGenre(genre)}
+                className="px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer border"
+                style={
+                  isSelected
+                    ? {
+                        backgroundColor: accentColor,
+                        color: getContrastTextColor(accentColor),
+                        borderColor: accentColor,
+                        boxShadow: `0 0 10px ${accentColor}35`,
+                      }
+                    : {
+                        backgroundColor: '#121218',
+                        color: '#9e9ea7',
+                        borderColor: '#1e1e28',
+                      }
+                }
+              >
+                {idx === 0 && <span className="text-[10px]">⭐</span>}
+                <span>{genre}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tracks List for Selected Genre */}
+        {loadingGenreTracks ? (
+          <div className="flex flex-col items-center justify-center py-10 text-[#666] gap-2">
+            <Loader2 className="w-5 h-5 animate-spin" style={{ color: accentColor }} />
+            <p className="text-xs">{getTranslation(language, 'aimix.loadingGenre')}</p>
+          </div>
+        ) : genreTracks.length === 0 ? (
+          <div className="text-center py-8 text-[#666]">
+            <p className="text-xs">{getTranslation(language, 'aimix.noGenreTracks')}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            {genreTracks.map((track) => {
+              const mins = Math.floor(track.duration_secs / 60);
+              const secs = (track.duration_secs % 60).toString().padStart(2, '0');
+              const durStr = track.duration_secs > 0 ? `${mins}:${secs}` : '';
+
+              return (
+                <div
+                  key={track.id}
+                  onClick={() => onPlayTrack(track)}
+                  className="p-2.5 rounded-xl bg-[#0e0e13] hover:bg-[#15151e] border border-[#1a1a24] hover:border-[#2a2a38] transition-all flex items-center justify-between gap-3 cursor-pointer group shadow-sm"
+                >
+                  <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
+                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#161620] flex-shrink-0 relative">
+                      {track.cover_art ? (
+                        <img src={track.cover_art} alt={track.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[#555]">
+                          <Music className="w-4 h-4" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Play className="w-4 h-4 fill-current text-white" />
+                      </div>
+                    </div>
+                    <div className="overflow-hidden min-w-0">
+                      <p className="text-xs font-semibold text-white truncate group-hover:text-cyan-300 transition-colors" title={track.title}>
+                        {track.title}
+                      </p>
+                      <p className="text-[11px] text-[#8e8e9f] truncate">{track.artist}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {durStr && <span className="text-[10px] text-[#555] font-mono">{durStr}</span>}
+                    <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#181822] text-[#888] border border-[#22222e]">
+                      {track.source === 'youtube' ? 'YT Stream' : track.source === 'soundcloud' ? 'SoundCloud' : track.source === 'audius' ? 'Audius' : 'Local'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Recommendations List (General AI Mix) */}
       <div>
         <div className="flex items-center justify-between mb-3 border-b border-[#161620] pb-2">
           <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
@@ -262,7 +491,7 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
                       borderColor: `${accentColor}30`,
                     }}
                   >
-                    {Math.round(rec.match_score * 100)}% Match
+                    {Math.round(rec.match_score > 1 ? rec.match_score : rec.match_score * 100)}% Match
                   </span>
                 </div>
               </div>

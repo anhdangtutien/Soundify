@@ -4,22 +4,113 @@ use std::collections::HashMap;
 
 pub struct MusicAiEngine;
 
+pub struct GenreDef {
+    pub name: &'static str,
+    pub keywords: &'static [&'static str],
+}
+
+pub const MUSIC_GENRES: &[GenreDef] = &[
+    GenreDef {
+        name: "V-Pop",
+        keywords: &[
+            "vpop", "v-pop", "sơn tùng", "son tung", "soobin", "hieuthuhai", "mono", "vũ", "hoàng dũng",
+            "đen vâu", "đen", "jack", "phương ly", "hoàng thùy linh", "nhạc việt", "erik", "đức phúc",
+            "min", "amee", "tlinh", "mck", "wren evans", "charlie", "hà anh tuấn", "hòa minzy",
+            "justatee", "karik", "binz", "rhymastic", "low g", "bray", "masew", "bích phương",
+            "tang duy tan", "chillies", "da lab", "vietnam", "thịnh hành việt", "vietnamese"
+        ],
+    },
+    GenreDef {
+        name: "K-Pop",
+        keywords: &[
+            "kpop", "k-pop", "lisa", "blackpink", "bts", "twice", "aespa", "newjeans",
+            "stray kids", "ive", "le sserafim", "iu", "exo", "red velvet", "itzy", "nct",
+            "jungkook", "jennie", "rose", "jisoo", "seventeen", "enhypen", "babymonster",
+            "gidle", "(g)i-dle", "bigbang", "taeyeon", "txt", "korean"
+        ],
+    },
+    GenreDef {
+        name: "EDM / Dance",
+        keywords: &[
+            "edm", "vinahouse", "remix", "house", "electro", "bounce", "club", "dj", "mashup",
+            "alan walker", "marshmello", "martin garrix", "tiesto", "dance", "bass", "trap",
+            "dubstep", "kygo", "avicii", "hardwell", "calvin harris", "david guetta", "lmfao",
+            "afrojack", "steve aoki", "future bass", "slap house", "electronic", "festival"
+        ],
+    },
+    GenreDef {
+        name: "US-UK Pop",
+        keywords: &[
+            "taylor swift", "billie eilish", "ariana grande", "dua lipa", "the weeknd",
+            "bruno mars", "charlie puth", "ed sheeran", "justin bieber", "selena gomez",
+            "katy perry", "shawn mendes", "olivia rodrigo", "sabrina carpenter", "lady gaga",
+            "adele", "maroon 5", "sza", "post malone", "tinashe", "charli xcx", "pop hits", "billboard"
+        ],
+    },
+    GenreDef {
+        name: "Lo-Fi & Chill",
+        keywords: &[
+            "lofi", "lo-fi", "chill", "relax", "study", "sleep", "slowed", "reverb",
+            "ambient", "cozy", "peaceful", "rain", "coffee", "aesthetic", "chillout", "sleepy", "calm"
+        ],
+    },
+    GenreDef {
+        name: "Hip-Hop & Rap",
+        keywords: &[
+            "rap", "hiphop", "hip hop", "trap", "drill", "freestyle", "r&b", "rnb",
+            "drake", "eminem", "travis scott", "kanye", "kendrick lamar", "nicki minaj",
+            "cardi b", "lil nas x", "doja cat", "snoop dogg", "future", "21 savage", "metro boomin"
+        ],
+    },
+    GenreDef {
+        name: "Ballad & Acoustic",
+        keywords: &[
+            "ballad", "acoustic", "guitar", "piano", "tình ca", "nhẹ nhàng", "buồn",
+            "trữ tình", "sầu", "unplugged", "mộc", "tình cảm", "cover ballad"
+        ],
+    },
+    GenreDef {
+        name: "J-Pop / Anime",
+        keywords: &[
+            "jpop", "j-pop", "anime", "vocaloid", "yoasobi", "ado", "kenshi yonezu",
+            "radwimps", "aimer", "milet", "eve", "fujii kaze", "ost", "opening", "ending", "japanese"
+        ],
+    },
+    GenreDef {
+        name: "Rock & Alternative",
+        keywords: &[
+            "rock", "metal", "punk", "band", "alternative", "imagine dragons",
+            "coldplay", "linkin park", "queen", "nirvana", "arctic monkeys", "the 1975", "ngọt"
+        ],
+    },
+];
+
+const STOPWORDS: &[&str] = &[
+    "official", "video", "music", "audio", "lyrics", "lyric", "mv", "full", "hd", "4k",
+    "prod", "feat", "ft", "ver", "version", "karaoke", "teaser", "trailer", "visualizer",
+    "original", "release", "single", "album", "channel", "vevo", "special", "live",
+    "performance", "clip", "records", "mp3", "hifi", "sound", "track", "vol", "premiere",
+    "repack", "high", "quality", "remastered", "instrumental", "theme", "sub", "vietsub",
+    "engsub", "slowed", "reverb", "nhac", "bai", "hat", "prod.", "feat."
+];
+
 #[derive(Default, Debug)]
 struct UserTasteProfile {
     artist_counts: HashMap<String, f32>,
     keyword_counts: HashMap<String, f32>,
+    genre_counts: HashMap<String, f32>,
     source_counts: HashMap<String, f32>,
     avg_duration: f32,
     total_samples: usize,
 }
 
 impl MusicAiEngine {
-    /// Tokenize title and album into musical keywords/genres
+    /// Tokenize title and album into musical keywords/genres, filtering out video noise
     fn extract_keywords(text: &str) -> Vec<String> {
         let clean = text.to_lowercase();
         let tokens: Vec<String> = clean
             .split(|c: char| !c.is_alphanumeric())
-            .filter(|s| s.len() >= 3)
+            .filter(|s| s.len() >= 3 && !STOPWORDS.contains(&s))
             .map(|s| s.to_string())
             .collect();
         tokens
@@ -44,6 +135,18 @@ impl MusicAiEngine {
                 let source_entry = profile.source_counts.entry(item.source.to_lowercase()).or_insert(0.0);
                 *source_entry += 1.0;
 
+                // Match against defined music genres
+                let combined_meta = format!("{} {}", item.track_title, item.artist).to_lowercase();
+                for genre in MUSIC_GENRES {
+                    for kw in genre.keywords {
+                        if combined_meta.contains(kw) {
+                            let g_entry = profile.genre_counts.entry(genre.name.to_string()).or_insert(0.0);
+                            *g_entry += 1.0;
+                            break;
+                        }
+                    }
+                }
+
                 // Keyword weights
                 for kw in Self::extract_keywords(&item.track_title) {
                     let kw_entry = profile.keyword_counts.entry(kw).or_insert(0.0);
@@ -60,6 +163,18 @@ impl MusicAiEngine {
 
                 let artist_entry = profile.artist_counts.entry(track.artist.to_lowercase()).or_insert(0.0);
                 *artist_entry += 2.5; // High boost for liked tracks
+
+                // Match against defined music genres with high weight
+                let combined_meta = format!("{} {}", track.title, track.artist).to_lowercase();
+                for genre in MUSIC_GENRES {
+                    for kw in genre.keywords {
+                        if combined_meta.contains(kw) {
+                            let g_entry = profile.genre_counts.entry(genre.name.to_string()).or_insert(0.0);
+                            *g_entry += 2.5;
+                            break;
+                        }
+                    }
+                }
 
                 for kw in Self::extract_keywords(&track.title) {
                     let kw_entry = profile.keyword_counts.entry(kw).or_insert(0.0);
@@ -81,15 +196,26 @@ impl MusicAiEngine {
     pub fn train_model(user_id: &str, db: &DatabaseManager) -> TrainingReport {
         let profile = Self::build_profile(user_id, db);
 
-        // Find top keywords as genres
-        let mut sorted_keywords: Vec<(String, f32)> = profile.keyword_counts.into_iter().collect();
-        sorted_keywords.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        // Find top musical genres
+        let mut sorted_genres: Vec<(String, f32)> = profile.genre_counts.into_iter().collect();
+        sorted_genres.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
-        let top_genres: Vec<String> = sorted_keywords
+        let mut top_genres: Vec<String> = sorted_genres
             .into_iter()
             .take(5)
-            .map(|(k, _)| k.to_uppercase())
+            .map(|(g, _)| g)
             .collect();
+
+        // If user hasn't accumulated enough history, provide default popular genres
+        if top_genres.is_empty() {
+            top_genres = vec![
+                "V-Pop".to_string(),
+                "EDM / Dance".to_string(),
+                "US-UK Pop".to_string(),
+                "Lo-Fi & Chill".to_string(),
+                "K-Pop".to_string(),
+            ];
+        }
 
         // Calculate training convergence accuracy based on sample depth
         let sample_count = profile.total_samples;
@@ -130,18 +256,38 @@ impl MusicAiEngine {
                 reasons.push(format!("Nghệ sĩ quen thuộc ({})", track.artist));
             }
 
-            // Keyword match
+            // Genre match
+            let track_combined = format!("{} {}", track.title, track.artist).to_lowercase();
+            let mut matched_genres = Vec::new();
+            for genre in MUSIC_GENRES {
+                for kw in genre.keywords {
+                    if track_combined.contains(kw) {
+                        if let Some(gw) = profile.genre_counts.get(genre.name) {
+                            let boost = (gw * 6.0).min(24.0);
+                            score += boost;
+                            matched_genres.push(genre.name.to_string());
+                            break;
+                        }
+                    }
+                }
+            }
+            if !matched_genres.is_empty() {
+                matched_genres.dedup();
+                reasons.push(format!("Đúng thể loại yêu thích: {}", matched_genres.join(", ")));
+            }
+
+            // Keyword match (filtered from stop words)
             let track_keywords = Self::extract_keywords(&track.title);
             let mut matched_kws = Vec::new();
             for kw in &track_keywords {
                 if let Some(w) = profile.keyword_counts.get(kw) {
-                    score += (w * 4.0).min(18.0);
+                    score += (w * 3.5).min(15.0);
                     matched_kws.push(kw.clone());
                 }
             }
 
-            if !matched_kws.is_empty() {
-                reasons.push(format!("Khớp gu thể loại: {}", matched_kws.join(", ")));
+            if matched_genres.is_empty() && !matched_kws.is_empty() {
+                reasons.push(format!("Giai điệu tương đồng: {}", matched_kws.join(", ")));
             }
 
             // Duration similarity (Gaussian bell-curve)
@@ -189,6 +335,7 @@ impl MusicAiEngine {
 
         let curr_kws = Self::extract_keywords(&current.title);
         let curr_artist = current.artist.to_lowercase();
+        let curr_combined = format!("{} {}", current.title, current.artist).to_lowercase();
 
         let mut best_track = None;
         let mut best_similarity = -1.0;
@@ -203,10 +350,21 @@ impl MusicAiEngine {
                 sim += 40.0;
             }
 
+            // Genre match
+            let cand_combined = format!("{} {}", cand.title, cand.artist).to_lowercase();
+            for genre in MUSIC_GENRES {
+                let current_has = genre.keywords.iter().any(|kw| curr_combined.contains(kw));
+                let cand_has = genre.keywords.iter().any(|kw| cand_combined.contains(kw));
+                if current_has && cand_has {
+                    sim += 30.0;
+                    break;
+                }
+            }
+
             let cand_kws = Self::extract_keywords(&cand.title);
             for kw in &cand_kws {
                 if curr_kws.contains(kw) {
-                    sim += 20.0;
+                    sim += 15.0;
                 }
             }
 

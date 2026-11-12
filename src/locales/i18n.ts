@@ -184,6 +184,12 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'aimix.refresh': 'Làm mới',
     'aimix.noRecs': 'Chưa có bài hát phù hợp trong thư viện để đề xuất.',
     'aimix.noRecsHint': 'Hãy nghe thêm nhạc để AI ghi nhận gu âm nhạc của bạn.',
+    'aimix.genreSectionTitle': 'Đề xuất theo thể loại hay nghe',
+    'aimix.genreSectionSubtitle': 'Khám phá các bài hát thịnh hành và phù hợp nhất theo từng phong cách âm nhạc yêu thích của bạn',
+    'aimix.playGenreAll': 'Phát thể loại này',
+    'aimix.loadingGenre': 'Đang tìm kiếm bài hát theo thể loại...',
+    'aimix.noGenreTracks': 'Chưa tìm thấy bài hát phù hợp cho thể loại này.',
+    'aimix.genreTracksCount': '{count} bài hát thịnh hành',
 
     // Visualizer, Tables, Views
     'visualizer.playing': 'Đang phát',
@@ -420,6 +426,12 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'aimix.refresh': 'Refresh',
     'aimix.noRecs': 'Not enough tracks in library to generate recommendations.',
     'aimix.noRecsHint': 'Listen to more tracks to help AI learn your musical preferences.',
+    'aimix.genreSectionTitle': 'Genre-Based Recommendations',
+    'aimix.genreSectionSubtitle': 'Discover trending and top-matched tracks tailored to your most-played music genres',
+    'aimix.playGenreAll': 'Play This Genre',
+    'aimix.loadingGenre': 'Finding tracks for this genre...',
+    'aimix.noGenreTracks': 'No matching tracks found for this genre.',
+    'aimix.genreTracksCount': '{count} trending tracks',
 
     // Visualizer, Tables, Views
     'visualizer.playing': 'Playing',
@@ -656,6 +668,12 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'aimix.refresh': '更新',
     'aimix.noRecs': '推薦可能な楽曲がまだライブラリにありません。',
     'aimix.noRecsHint': 'もっと音楽を聴くと、AIが好みを学習します。',
+    'aimix.genreSectionTitle': 'よく聴くジャンル別のおすすめ',
+    'aimix.genreSectionSubtitle': 'お気に入りの音楽スタイルに合わせて、最新で最適な楽曲を見つけましょう',
+    'aimix.playGenreAll': 'このジャンルを再生',
+    'aimix.loadingGenre': 'このジャンルの楽曲を検索中...',
+    'aimix.noGenreTracks': 'このジャンルに一致する曲は見つかりませんでした。',
+    'aimix.genreTracksCount': '{count} 曲のトレンド楽曲',
 
     // Visualizer, Tables, Views
     'visualizer.playing': '再生中',
@@ -892,6 +910,12 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'aimix.refresh': '刷新',
     'aimix.noRecs': '本地曲库中尚无可用于推荐的契合歌曲。',
     'aimix.noRecsHint': '多听听喜欢的歌曲，AI 就能更精准地捕捉你的品味。',
+    'aimix.genreSectionTitle': '按常听流派推荐',
+    'aimix.genreSectionSubtitle': '探索针对您喜爱的音乐流派量身定制的最新、最契合的歌曲',
+    'aimix.playGenreAll': '播放此流派',
+    'aimix.loadingGenre': '正在搜索该流派的歌曲...',
+    'aimix.noGenreTracks': '未找到符合该流派的歌曲。',
+    'aimix.genreTracksCount': '{count} 首热门歌曲',
 
     // Visualizer, Tables, Views
     'visualizer.playing': '正在播放',
