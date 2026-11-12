@@ -122,38 +122,85 @@ async fn get_related_tracks(title: String, artist: String) -> Result<Vec<SearchR
     let clean_artist = artist.trim();
     let clean_title = title.trim();
 
-    // 1. Search for similar songs on YouTube
-    let mut results = sources::youtube::search_youtube(&format!("{} songs similar to {}", clean_artist, clean_title)).await.unwrap_or_default();
-    
-    // 2. Supplement with artist top official audio tracks
-    if results.len() < 8 {
-        if let Ok(extra) = sources::youtube::search_youtube(&format!("{} official audio", clean_artist)).await {
-            results.extend(extra);
+    // 1. Fetch concurrently from ALL 3 SOURCES: YouTube, SoundCloud, and Audius
+    let yt_query = format!("{} songs similar to {}", clean_artist, clean_title);
+    let sc_query = format!("{} {}", clean_artist, clean_title);
+    let audius_query = format!("{} chill", clean_artist);
+
+    let (yt_res, sc_res, audius_res) = tokio::join!(
+        sources::youtube::search_youtube(&yt_query),
+        sources::soundcloud::search_soundcloud(&sc_query),
+        sources::audius::search_audius(&audius_query)
+    );
+
+    let mut combined: Vec<SearchResult> = Vec::new();
+
+    // YouTube results
+    if let Ok(mut yt) = yt_res {
+        if yt.is_empty() {
+            if let Ok(extra) = sources::youtube::search_youtube(&format!("{} official audio", clean_artist)).await {
+                yt = extra;
+            }
+        }
+        combined.extend(yt);
+    }
+
+    // SoundCloud results (remixes, indie gems)
+    if let Ok(sc) = sc_res {
+        combined.extend(sc);
+    }
+
+    // Audius results (320kbps Lossless decentralized)
+    if let Ok(audius) = audius_res {
+        combined.extend(audius);
+    }
+
+    // 2. Strict Duration and Keyword Filter:
+    // - Eliminate 1-hour / 2-hour long compilations, podcasts, non-stop mixes
+    // - Strongly prioritize tracks under 10 minutes (<= 600s)
+    let title_lower = clean_title.to_lowercase();
+    let long_indicators = [
+        "1 hour", "1hour", "1 hr", "2 hour", "2hour", "3 hour", "10 hour",
+        "full album", "compilation", "mixtape", "nonstop", "continuous mix",
+        "podcast", "livestream", "24/7", "trực tiếp"
+    ];
+
+    combined.retain(|r| {
+        let t = r.title.to_lowercase();
+
+        // Filter out same title
+        if t == title_lower || t.contains(&title_lower) || title_lower.contains(&t) {
+            return false;
+        }
+
+        // Filter out audio longer than 10 minutes (600 seconds)
+        if r.duration_secs > 600 {
+            return false;
+        }
+
+        // Filter out titles with 1-hour/compilation keywords
+        if long_indicators.iter().any(|&k| t.contains(k)) {
+            return false;
+        }
+
+        true
+    });
+
+    // 3. Shuffle & interleave all 3 sources randomly
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let seed = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(42) as usize;
+
+    if combined.len() > 1 {
+        for i in (1..combined.len()).rev() {
+            let j = (seed.wrapping_add(i * 7919)) % (i + 1);
+            combined.swap(i, j);
         }
     }
 
-    // 3. Fallbacks
-    if results.is_empty() {
-        let query = format!("{} hits playlist", clean_artist);
-        results = sources::youtube::search_youtube(&query).await.unwrap_or_default();
-    }
-    if results.is_empty() {
-        let audius_query = format!("{} chill", clean_artist);
-        results = sources::audius::search_audius(&audius_query).await.unwrap_or_default();
-    }
-    if results.is_empty() {
-        let sc_query = format!("{} mix", clean_artist);
-        results = sources::soundcloud::search_soundcloud(&sc_query).await.unwrap_or_default();
-    }
-
-    // Filter out track with exact same title as the currently playing track
-    let title_lower = clean_title.to_lowercase();
-    results.retain(|r| {
-        let t = r.title.to_lowercase();
-        !t.contains(&title_lower) && !title_lower.contains(&t)
-    });
-
-    Ok(results)
+    Ok(combined)
 }
 
 // ─── DATABASE & AUTH COMMANDS ────────────────────────────────────────────────

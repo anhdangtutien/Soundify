@@ -245,9 +245,9 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
               onClick={onCycleRecommendMode || onToggleAutoRecommend}
               title={
                 recommendMode === 'fresh'
-                  ? '🌟 Đề xuất: Khám phá bài MỚI từ YouTube (Chưa nghe bao giờ). Bấm để chuyển sang Pha trộn (Mix)'
+                  ? '🌟 Đề xuất: Khám phá bài MỚI (< 10p) ngẫu nhiên từ YouTube, SoundCloud & Audius. Bấm để chuyển sang Pha trộn (Mix)'
                   : recommendMode === 'mix'
-                  ? '🎵 Đề xuất: Pha trộn Smart Mix (Trộn bài quen thuộc & bài mới). Bấm để Tắt'
+                  ? '🎵 Đề xuất: Pha trộn Smart Mix (< 10p, trộn bài quen thuộc & bài mới). Bấm để Tắt'
                   : '⏹ Đề xuất: Đang TẮT (Chỉ phát tuần tự danh sách). Bấm để Bật Khám phá mới'
               }
               className={`px-2 py-1 rounded-lg transition-all cursor-pointer relative flex items-center gap-1.5 border font-mono text-[10px] font-bold ${

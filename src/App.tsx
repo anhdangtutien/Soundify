@@ -350,10 +350,10 @@ export default function App() {
     if (recommendModeRef.current !== 'off' && cur) {
       const mode = recommendModeRef.current;
 
-      // 4A. CHẾ ĐỘ 'fresh': 100% ƯU TIÊN BÀI MỚI TỪ YOUTUBE MÀ NGƯỜI DÙNG CHƯA TỪNG NGHE
+      // 4A. CHẾ ĐỘ 'fresh': 100% ƯU TIÊN BÀI MỚI NGẪU NHIÊN TỪ YOUTUBE, SOUNDCLOUD & AUDIUS (< 10 PHÚT)
       if (mode === 'fresh') {
         try {
-          showNotification(`🌟 Đang tìm bài MỚI cùng phong cách với ${cur.artist} trên YouTube...`);
+          showNotification(`🌟 Đang tìm bài MỚI (< 10p) từ YouTube, SoundCloud & Audius...`);
           const related = await invoke<SearchResult[]>('get_related_tracks', {
             title: cur.title,
             artist: cur.artist,
@@ -363,8 +363,9 @@ export default function App() {
             const listened = listenedHistoryTitlesRef.current;
             const curTitleNorm = cur.title.trim().toLowerCase();
 
-            // Filter out tracks already heard in history or currently in playlist
+            // Filter out tracks already heard, and strictly eliminate tracks > 10 mins (600s)
             const unlistened = related.filter(r => {
+              if (r.duration_secs && r.duration_secs > 600) return false;
               const rTitle = r.title.trim().toLowerCase();
               const rId = r.url_or_id.toLowerCase();
               if (rTitle === curTitleNorm || rTitle.includes(curTitleNorm) || curTitleNorm.includes(rTitle)) return false;
@@ -373,17 +374,17 @@ export default function App() {
               return true;
             });
 
-            // Pick the first completely fresh unheard song from YouTube
+            // Pick the first completely fresh unheard song under 10 minutes
             const candidate = unlistened.length > 0 ? unlistened[0] : (
-              related.find(r => r.title.trim().toLowerCase() !== curTitleNorm) || related[0]
+              related.find(r => r.title.trim().toLowerCase() !== curTitleNorm && (!r.duration_secs || r.duration_secs <= 600)) || related[0]
             );
 
             if (candidate) {
               const newTrack: Track = {
-                id: `yt_fresh_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                id: `${candidate.source}_fresh_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
                 title: candidate.title,
                 artist: candidate.artist,
-                album: candidate.album || 'YouTube Discovery',
+                album: candidate.album || 'Multi-Source Discovery',
                 duration_secs: candidate.duration_secs || 210,
                 path_or_url: candidate.url_or_id,
                 cover_art: candidate.thumbnail,
@@ -392,16 +393,17 @@ export default function App() {
 
               setTracks(prev => deduplicateTracks([...prev, newTrack]));
               playTrackInternal(newTrack);
-              showNotification(`🌟 Khám phá bài mới: ${newTrack.title} - ${newTrack.artist}`);
+              const srcLabel = newTrack.source === 'soundcloud' ? 'SoundCloud' : newTrack.source === 'audius' ? 'Audius 320K' : 'YouTube';
+              showNotification(`🌟 Khám phá mới [${srcLabel}]: ${newTrack.title} - ${newTrack.artist}`);
               return;
             }
           }
         } catch (err) {
-          console.error('Error discovering fresh track from YouTube:', err);
+          console.error('Error discovering fresh track:', err);
         }
       }
 
-      // 4B. CHẾ ĐỘ 'mix': PHA TRỘN GIỮA BÀI QUEN THUỘC TRONG THƯ VIỆN & BÀI MỚI
+      // 4B. CHẾ ĐỘ 'mix': PHA TRỘN GIỮA BÀI QUEN THUỘC TRONG THƯ VIỆN & BÀI MỚI (< 10 PHÚT)
       if (mode === 'mix') {
         // If we have multiple tracks in playlist, chance to pick from library via AI Smart DJ
         if (all.length > 1 && Math.random() > 0.35) {
@@ -420,7 +422,7 @@ export default function App() {
           }
         }
 
-        // Fetch YouTube related
+        // Fetch related from YouTube, SoundCloud, Audius
         try {
           const related = await invoke<SearchResult[]>('get_related_tracks', {
             title: cur.title,
@@ -429,11 +431,14 @@ export default function App() {
 
           if (related && related.length > 0) {
             const curTitleNorm = cur.title.trim().toLowerCase();
-            const candidates = related.filter(r => r.title.trim().toLowerCase() !== curTitleNorm);
+            const candidates = related.filter(r => 
+              r.title.trim().toLowerCase() !== curTitleNorm && 
+              (!r.duration_secs || r.duration_secs <= 600)
+            );
             const pick = candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : related[0];
 
             const newTrack: Track = {
-              id: `mix_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+              id: `${pick.source}_mix_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
               title: pick.title,
               artist: pick.artist,
               album: pick.album || 'Smart Mix',
@@ -445,7 +450,8 @@ export default function App() {
 
             setTracks(prev => deduplicateTracks([...prev, newTrack]));
             playTrackInternal(newTrack);
-            showNotification(`🎵 Đề xuất Mix: ${newTrack.title} - ${newTrack.artist}`);
+            const srcLabel = newTrack.source === 'soundcloud' ? 'SoundCloud' : newTrack.source === 'audius' ? 'Audius 320K' : 'YouTube';
+            showNotification(`🎵 Đề xuất Mix [${srcLabel}]: ${newTrack.title} - ${newTrack.artist}`);
             return;
           }
         } catch (err) {
