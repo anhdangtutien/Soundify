@@ -29,6 +29,8 @@ interface PlayerBarProps {
   showVisualizer: boolean;
   accentColor?: string;
   themeMode?: 'dark' | 'light';
+  recommendMode?: 'fresh' | 'mix' | 'off';
+  onCycleRecommendMode?: () => void;
   autoRecommend?: boolean;
   onToggleAutoRecommend?: () => void;
 }
@@ -40,6 +42,8 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   onToggleFavorite, onAddToAlbum, onToggleVisualizer, showVisualizer,
   accentColor = '#ff2a55',
   themeMode = 'dark',
+  recommendMode = 'fresh',
+  onCycleRecommendMode,
   autoRecommend = true,
   onToggleAutoRecommend,
 }) => {
@@ -236,36 +240,53 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           </button>
 
           {/* AI Auto-Recommend Next Track (Endless Radio) */}
-          {onToggleAutoRecommend && (
+          {(onCycleRecommendMode || onToggleAutoRecommend) && (
             <button
-              onClick={onToggleAutoRecommend}
+              onClick={onCycleRecommendMode || onToggleAutoRecommend}
               title={
-                autoRecommend
-                  ? 'Chế độ Đề xuất nhạc tiếp theo: ĐANG BẬT (Tự động tìm và phát bài cùng gu khi hết bài)'
-                  : 'Chế độ Đề xuất nhạc tiếp theo: ĐANG TẮT (Bấm để bật tự động đề xuất)'
+                recommendMode === 'fresh'
+                  ? '🌟 Đề xuất: Khám phá bài MỚI từ YouTube (Chưa nghe bao giờ). Bấm để chuyển sang Pha trộn (Mix)'
+                  : recommendMode === 'mix'
+                  ? '🎵 Đề xuất: Pha trộn Smart Mix (Trộn bài quen thuộc & bài mới). Bấm để Tắt'
+                  : '⏹ Đề xuất: Đang TẮT (Chỉ phát tuần tự danh sách). Bấm để Bật Khám phá mới'
               }
-              className={`p-1.5 rounded-lg transition-all cursor-pointer relative flex items-center justify-center ${
-                autoRecommend
-                  ? 'bg-white/10 text-white shadow-sm'
-                  : 'text-[#666] hover:text-white'
+              className={`px-2 py-1 rounded-lg transition-all cursor-pointer relative flex items-center gap-1.5 border font-mono text-[10px] font-bold ${
+                recommendMode === 'fresh'
+                  ? 'shadow-sm'
+                  : recommendMode === 'mix'
+                  ? 'shadow-sm'
+                  : 'text-[#666] hover:text-white border-transparent'
               }`}
               style={{
-                color: autoRecommend ? accentColor : undefined,
-                borderColor: autoRecommend ? `${accentColor}40` : 'transparent',
+                color: recommendMode !== 'off' ? accentColor : undefined,
+                backgroundColor: recommendMode === 'fresh' ? `${accentColor}20` : recommendMode === 'mix' ? `${accentColor}10` : 'transparent',
+                borderColor: recommendMode !== 'off' ? `${accentColor}40` : 'transparent',
               }}
             >
-              <Radio className="w-3.5 h-3.5" />
-              {autoRecommend && (
-                <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                  <span 
-                    className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                    style={{ backgroundColor: accentColor }}
-                  />
-                  <span 
-                    className="relative inline-flex rounded-full h-2 w-2"
-                    style={{ backgroundColor: accentColor }}
-                  />
-                </span>
+              {recommendMode === 'fresh' ? (
+                <>
+                  <Radio className="w-3.5 h-3.5" />
+                  <span className="leading-none">MỚI</span>
+                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                    <span 
+                      className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                      style={{ backgroundColor: accentColor }}
+                    />
+                    <span 
+                      className="relative inline-flex rounded-full h-2 w-2"
+                      style={{ backgroundColor: accentColor }}
+                    />
+                  </span>
+                </>
+              ) : recommendMode === 'mix' ? (
+                <>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span className="leading-none">MIX</span>
+                </>
+              ) : (
+                <>
+                  <Radio className="w-3.5 h-3.5 opacity-50" />
+                </>
               )}
             </button>
           )}

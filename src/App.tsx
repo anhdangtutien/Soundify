@@ -30,8 +30,8 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [smartDjEnabled, setSmartDjEnabled] = useState(true);
-  const [autoRecommend, setAutoRecommend] = useState<boolean>(() => {
-    return localStorage.getItem('spytify_auto_recommend') !== 'false';
+  const [recommendMode, setRecommendMode] = useState<'fresh' | 'mix' | 'off'>(() => {
+    return (localStorage.getItem('spytify_recommend_mode') as 'fresh' | 'mix' | 'off') || 'fresh';
   });
   const [repeatMode, setRepeatMode] = useState<'all' | 'one' | 'off'>('all'); // default: auto-play next
   const [isShuffle, setIsShuffle] = useState(false);
@@ -201,10 +201,13 @@ export default function App() {
   const displayedTracksRef = useRef<Track[]>([]);
   const currentUserRef = useRef<User | null>(null);
   const repeatModeRef = useRef<'all' | 'one' | 'off'>('all');
-  const autoRecommendRef = useRef(autoRecommend);
+  const recommendModeRef = useRef<'fresh' | 'mix' | 'off'>('fresh');
   const isShuffleRef = useRef(false);
   const playStartTimestampRef = useRef<number | null>(null);
   const accumulatedTimeRef = useRef<number>(0);
+
+  // Set of all track titles & IDs already listened to (persisted from SQLite & session)
+  const listenedHistoryTitlesRef = useRef<Set<string>>(new Set());
 
   // Keep refs in sync
   useEffect(() => { currentTrackRef.current = currentTrack; }, [currentTrack]);
@@ -212,10 +215,26 @@ export default function App() {
   useEffect(() => { tracksRef.current = tracks; }, [tracks]);
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
   useEffect(() => { repeatModeRef.current = repeatMode; }, [repeatMode]);
-  useEffect(() => { autoRecommendRef.current = autoRecommend; }, [autoRecommend]);
+  useEffect(() => { recommendModeRef.current = recommendMode; }, [recommendMode]);
   useEffect(() => { isShuffleRef.current = isShuffle; }, [isShuffle]);
 
-  // â”€â”€â”€ RESTORE USER SESSION FROM SQLITE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Load history from SQLite to seed listenedHistoryTitlesRef
+  useEffect(() => {
+    const targetUserId = currentUser?.id || 'guest_spy';
+    invoke<any[]>('db_get_history', { userId: targetUserId, limit: 300 })
+      .then(hist => {
+        if (hist && Array.isArray(hist)) {
+          hist.forEach(h => {
+            if (h.track_title) listenedHistoryTitlesRef.current.add(h.track_title.trim().toLowerCase());
+            if (h.track_id) listenedHistoryTitlesRef.current.add(h.track_id.toLowerCase());
+            if (h.path_or_url) listenedHistoryTitlesRef.current.add(h.path_or_url.toLowerCase());
+          });
+        }
+      })
+      .catch(() => {});
+  }, [currentUser]);
+
+  // ─── RESTORE USER SESSION FROM SQLITE ──────────────────────────────────────
   useEffect(() => {
     const savedUserId = localStorage.getItem('soundify_active_user_id');
     if (savedUserId) {
@@ -281,15 +300,22 @@ export default function App() {
     setCurrentView('library');
   };
 
-  const handleToggleAutoRecommend = () => {
-    const next = !autoRecommend;
-    setAutoRecommend(next);
-    localStorage.setItem('spytify_auto_recommend', String(next));
-    showNotification(
-      next
-        ? '📻 Đã bật Chế độ Đề xuất nhạc tiếp theo (Tự động phát bài cùng phong cách khi hết bài)'
-        : '⏹ Đã tắt Chế độ Đề xuất nhạc (Phát tuần tự theo danh sách)'
-    );
+  const handleCycleRecommendMode = () => {
+    setRecommendMode(prev => {
+      let next: 'fresh' | 'mix' | 'off';
+      if (prev === 'fresh') next = 'mix';
+      else if (prev === 'mix') next = 'off';
+      else next = 'fresh';
+      localStorage.setItem('spytify_recommend_mode', next);
+      if (next === 'fresh') {
+        showNotification('🌟 Chế độ Khám phá YouTube MỚI (Tự động tìm bài CHƯA TỪNG NGHE)');
+      } else if (next === 'mix') {
+        showNotification('🎵 Chế độ Pha trộn Smart Mix (Nghe lại bài quen thuộc + bài mới)');
+      } else {
+        showNotification('⏹ Đã tắt Chế độ Đề xuất (Phát tuần tự danh sách)');
+      }
+      return next;
+    });
   };
 
   // ─── AUTO-PLAY NEXT TRACK & AUTO-RECOMMEND ENGINE ──────────────────────────
@@ -304,14 +330,14 @@ export default function App() {
       return;
     }
 
-    // 2. Repeat off and NOT in auto-recommend mode
-    if (repeatModeRef.current === 'off' && !autoRecommendRef.current) {
+    // 2. Repeat off and NOT in recommendation mode
+    if (repeatModeRef.current === 'off' && recommendModeRef.current === 'off') {
       setIsPlaying(false);
       return;
     }
 
     // 3. Shuffle mode within playlist
-    if (isShuffleRef.current && all.length > 1) {
+    if (isShuffleRef.current && all.length > 1 && recommendModeRef.current === 'off') {
       const remaining = all.filter(t => t.id !== cur?.id);
       const randomTrack = remaining[Math.floor(Math.random() * remaining.length)];
       if (randomTrack) {
@@ -320,58 +346,110 @@ export default function App() {
       }
     }
 
-    // 4. CHẾ ĐỘ ĐỀ XUẤT NHẠC TIẾP THEO (SMART AUTO-RECOMMEND MODE)
-    if (autoRecommendRef.current && cur) {
-      // If we have multiple tracks in current queue, prioritize AI Smart DJ matching
-      if (all.length > 1) {
-        try {
-          const nextAiTrack = await invoke<Track | null>('ai_smart_dj_next', {
-            currentTrack: cur,
-            candidates: all,
-          });
-          if (nextAiTrack && nextAiTrack.id !== cur.id) {
-            playTrackInternal(nextAiTrack);
-            showNotification(`📻 Đề xuất bài tiếp theo: ${nextAiTrack.title}`);
-            return;
-          }
-        } catch (e) {
-          console.error('AI Smart DJ error:', e);
-        }
-      }
+    // 4. CHẾ ĐỘ ĐỀ XUẤT NHẠC TIẾP THEO (FRESH DISCOVERY vs SMART MIX)
+    if (recommendModeRef.current !== 'off' && cur) {
+      const mode = recommendModeRef.current;
 
-      // If at end of queue or single track: automatically fetch online related songs!
-      const idx = all.findIndex(t => t.id === cur.id);
-      const isAtEnd = idx === all.length - 1 || all.length <= 1;
-
-      if (isAtEnd) {
+      // 4A. CHẾ ĐỘ 'fresh': 100% ƯU TIÊN BÀI MỚI TỪ YOUTUBE MÀ NGƯỜI DÙNG CHƯA TỪNG NGHE
+      if (mode === 'fresh') {
         try {
-          showNotification(`📻 Đang tìm bài hát cùng phong cách với ${cur.artist}...`);
+          showNotification(`🌟 Đang tìm bài MỚI cùng phong cách với ${cur.artist} trên YouTube...`);
           const related = await invoke<SearchResult[]>('get_related_tracks', {
             title: cur.title,
             artist: cur.artist,
           });
 
           if (related && related.length > 0) {
-            const newTracks: Track[] = related.map((r, i) => ({
-              id: `radio_${Date.now()}_${i}`,
-              title: r.title,
-              artist: r.artist,
-              album: r.album || 'Radio Discovery',
-              duration_secs: r.duration_secs || 210,
-              path_or_url: r.url_or_id,
-              cover_art: r.thumbnail,
-              source: r.source,
-            }));
+            const listened = listenedHistoryTitlesRef.current;
+            const curTitleNorm = cur.title.trim().toLowerCase();
 
-            // Deduplicate and append to playlist
-            setTracks(prev => deduplicateTracks([...prev, ...newTracks]));
-            const toPlay = newTracks[0];
-            playTrackInternal(toPlay);
-            showNotification(`📻 Đề xuất bài tiếp theo: ${toPlay.title} - ${toPlay.artist}`);
+            // Filter out tracks already heard in history or currently in playlist
+            const unlistened = related.filter(r => {
+              const rTitle = r.title.trim().toLowerCase();
+              const rId = r.url_or_id.toLowerCase();
+              if (rTitle === curTitleNorm || rTitle.includes(curTitleNorm) || curTitleNorm.includes(rTitle)) return false;
+              if (listened.has(rTitle) || listened.has(rId)) return false;
+              if (all.some(t => t.id.toLowerCase() === rId || t.title.trim().toLowerCase() === rTitle)) return false;
+              return true;
+            });
+
+            // Pick the first completely fresh unheard song from YouTube
+            const candidate = unlistened.length > 0 ? unlistened[0] : (
+              related.find(r => r.title.trim().toLowerCase() !== curTitleNorm) || related[0]
+            );
+
+            if (candidate) {
+              const newTrack: Track = {
+                id: `yt_fresh_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                title: candidate.title,
+                artist: candidate.artist,
+                album: candidate.album || 'YouTube Discovery',
+                duration_secs: candidate.duration_secs || 210,
+                path_or_url: candidate.url_or_id,
+                cover_art: candidate.thumbnail,
+                source: candidate.source,
+              };
+
+              setTracks(prev => deduplicateTracks([...prev, newTrack]));
+              playTrackInternal(newTrack);
+              showNotification(`🌟 Khám phá bài mới: ${newTrack.title} - ${newTrack.artist}`);
+              return;
+            }
+          }
+        } catch (err) {
+          console.error('Error discovering fresh track from YouTube:', err);
+        }
+      }
+
+      // 4B. CHẾ ĐỘ 'mix': PHA TRỘN GIỮA BÀI QUEN THUỘC TRONG THƯ VIỆN & BÀI MỚI
+      if (mode === 'mix') {
+        // If we have multiple tracks in playlist, chance to pick from library via AI Smart DJ
+        if (all.length > 1 && Math.random() > 0.35) {
+          try {
+            const nextAiTrack = await invoke<Track | null>('ai_smart_dj_next', {
+              currentTrack: cur,
+              candidates: all,
+            });
+            if (nextAiTrack && nextAiTrack.id !== cur.id) {
+              playTrackInternal(nextAiTrack);
+              showNotification(`🎵 Pha trộn: ${nextAiTrack.title}`);
+              return;
+            }
+          } catch (e) {
+            console.error('AI Smart DJ error:', e);
+          }
+        }
+
+        // Fetch YouTube related
+        try {
+          const related = await invoke<SearchResult[]>('get_related_tracks', {
+            title: cur.title,
+            artist: cur.artist,
+          });
+
+          if (related && related.length > 0) {
+            const curTitleNorm = cur.title.trim().toLowerCase();
+            const candidates = related.filter(r => r.title.trim().toLowerCase() !== curTitleNorm);
+            const pick = candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : related[0];
+
+            const newTrack: Track = {
+              id: `mix_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+              title: pick.title,
+              artist: pick.artist,
+              album: pick.album || 'Smart Mix',
+              duration_secs: pick.duration_secs || 210,
+              path_or_url: pick.url_or_id,
+              cover_art: pick.thumbnail,
+              source: pick.source,
+            };
+
+            setTracks(prev => deduplicateTracks([...prev, newTrack]));
+            playTrackInternal(newTrack);
+            showNotification(`🎵 Đề xuất Mix: ${newTrack.title} - ${newTrack.artist}`);
             return;
           }
         } catch (err) {
-          console.error('Error fetching auto-discovery related tracks:', err);
+          console.error(err);
         }
       }
     }
@@ -385,7 +463,7 @@ export default function App() {
     const idx = all.findIndex(t => t.id === cur.id);
     const nextTrack = all[(idx + 1) % all.length];
     playTrackInternal(nextTrack);
-  }, [autoRecommend]);
+  }, [recommendMode]);
 
   // â”€â”€â”€ WALL-CLOCK TIME TICKER (IMMUNE TO BACKGROUND TAB THROTTLING) â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
@@ -617,6 +695,10 @@ export default function App() {
     if (currentUserRef.current) {
       invoke('db_add_history', { userId: currentUserRef.current.id, track }).catch(console.error);
     }
+    // Record into in-memory listened set to prevent repeating in 'fresh' mode
+    if (track.title) listenedHistoryTitlesRef.current.add(track.title.trim().toLowerCase());
+    if (track.id) listenedHistoryTitlesRef.current.add(track.id.toLowerCase());
+    if (track.path_or_url) listenedHistoryTitlesRef.current.add(track.path_or_url.toLowerCase());
 
     if (track.source === 'local') {
       // Completely stop YouTube & reset video
@@ -1263,8 +1345,8 @@ export default function App() {
         onToggleVisualizer={() => setShowVisualizer(p => !p)}
         showVisualizer={showVisualizer}
         themeMode={themeMode}
-        autoRecommend={autoRecommend}
-        onToggleAutoRecommend={handleToggleAutoRecommend}
+        recommendMode={recommendMode}
+        onCycleRecommendMode={handleCycleRecommendMode}
       />
     </div>
   );

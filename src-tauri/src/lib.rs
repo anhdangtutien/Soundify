@@ -119,19 +119,40 @@ async fn get_trending_hits(category: String) -> Result<Vec<SearchResult>, String
 
 #[tauri::command]
 async fn get_related_tracks(title: String, artist: String) -> Result<Vec<SearchResult>, String> {
-    let query = format!("{} hits playlist", artist);
-    let mut results = sources::youtube::search_youtube(&query).await.unwrap_or_default();
+    let clean_artist = artist.trim();
+    let clean_title = title.trim();
+
+    // 1. Search for similar songs on YouTube
+    let mut results = sources::youtube::search_youtube(&format!("{} songs similar to {}", clean_artist, clean_title)).await.unwrap_or_default();
+    
+    // 2. Supplement with artist top official audio tracks
+    if results.len() < 8 {
+        if let Ok(extra) = sources::youtube::search_youtube(&format!("{} official audio", clean_artist)).await {
+            results.extend(extra);
+        }
+    }
+
+    // 3. Fallbacks
     if results.is_empty() {
-        let audius_query = format!("{} chill", artist);
+        let query = format!("{} hits playlist", clean_artist);
+        results = sources::youtube::search_youtube(&query).await.unwrap_or_default();
+    }
+    if results.is_empty() {
+        let audius_query = format!("{} chill", clean_artist);
         results = sources::audius::search_audius(&audius_query).await.unwrap_or_default();
     }
     if results.is_empty() {
-        let sc_query = format!("{} mix", artist);
+        let sc_query = format!("{} mix", clean_artist);
         results = sources::soundcloud::search_soundcloud(&sc_query).await.unwrap_or_default();
     }
-    // Filter out track with exact same title
-    let title_lower = title.to_lowercase();
-    results.retain(|r| !r.title.to_lowercase().contains(&title_lower));
+
+    // Filter out track with exact same title as the currently playing track
+    let title_lower = clean_title.to_lowercase();
+    results.retain(|r| {
+        let t = r.title.to_lowercase();
+        !t.contains(&title_lower) && !title_lower.contains(&t)
+    });
+
     Ok(results)
 }
 
