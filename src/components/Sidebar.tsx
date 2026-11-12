@@ -16,6 +16,7 @@ interface SidebarProps {
   currentUser: User | null;
   onOpenAuth: () => void;
   accentColor?: string;
+  themeMode?: 'dark' | 'light';
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -28,6 +29,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentUser,
   onOpenAuth,
   accentColor = '#ff2a55',
+  themeMode = 'dark',
 }) => {
   const navItem = (
     view: ViewType,
@@ -169,7 +171,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
               <div className="truncate">
                 <p className="text-xs font-semibold text-white truncate">{currentUser.display_name}</p>
-                <p className="text-[10px] truncate font-mono" style={{ color: accentColor }}>
+                <p 
+                  className="text-[10px] truncate font-mono" 
+                  style={{ 
+                    color: (themeMode === 'light' && (accentColor === '#FFFFFF' || accentColor === '#FFE600' || accentColor === '#00E5FF' || accentColor === '#00FF66')) 
+                      ? '#64748b' 
+                      : accentColor 
+                  }}
+                >
                   @{currentUser.username}
                 </p>
               </div>

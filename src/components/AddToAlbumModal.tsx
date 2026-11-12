@@ -11,6 +11,8 @@ interface AddToAlbumModalProps {
   onCreateAlbum: (title: string, description: string) => UserAlbum;
 }
 
+const normalizeStr = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
 export const AddToAlbumModal: React.FC<AddToAlbumModalProps> = ({
   isOpen,
   onClose,
@@ -25,7 +27,24 @@ export const AddToAlbumModal: React.FC<AddToAlbumModalProps> = ({
 
   if (!isOpen || !trackToAdd) return null;
 
+  const isTrackInAlbum = (album: UserAlbum, track: Track) => {
+    return (album.tracks || []).some(t => 
+      t.id === track.id || 
+      normalizeStr(t.title) === normalizeStr(track.title)
+    );
+  };
+
   const handleSelectAlbum = (albumId: string) => {
+    const targetAlbum = albums.find(a => a.id === albumId);
+    if (targetAlbum && isTrackInAlbum(targetAlbum, trackToAdd)) {
+      setAddedAlbumId(albumId);
+      setTimeout(() => {
+        setAddedAlbumId(null);
+        onClose();
+      }, 500);
+      return;
+    }
+
     onAddTrackToAlbum(albumId, trackToAdd);
     setAddedAlbumId(albumId);
     setTimeout(() => {
@@ -109,7 +128,7 @@ export const AddToAlbumModal: React.FC<AddToAlbumModalProps> = ({
                 <p className="text-[11px] text-[#666] text-center py-4">Bạn chưa có album nào. Hãy tạo mới ở trên!</p>
               ) : (
                 albums.map((a) => {
-                  const alreadyIn = a.tracks.some(t => t.id === trackToAdd.id);
+                  const alreadyIn = isTrackInAlbum(a, trackToAdd);
                   const isJustAdded = addedAlbumId === a.id;
 
                   return (

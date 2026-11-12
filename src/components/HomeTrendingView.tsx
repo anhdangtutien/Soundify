@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { SearchResult, Track } from '../types';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
+import { getContrastTextColor } from '../utils/trackUtils';
 
 interface HomeTrendingViewProps {
   onPlaySearchResult: (result: SearchResult) => void;
@@ -257,7 +258,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
               onClick={() => onPlaySearchResult(featured)}
               style={{
                 backgroundColor: accentColor,
-                color: accentColor === '#FFFFFF' ? '#000000' : '#FFFFFF',
+                color: getContrastTextColor(accentColor),
                 boxShadow: `0 0 16px ${accentColor}40`
               }}
               className="px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 hover:scale-105 active:scale-95"

@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { UserAlbum, Track, User } from '../types';
+import { UserAlbum, Track, HistoryItem } from '../types';
 
 // Default Supabase credentials (Can be overridden by user in Profile settings or .env)
 const DEFAULT_URL = import.meta.env.VITE_SUPABASE_URL || 'https://example-spytify.supabase.co';
@@ -55,13 +55,14 @@ export function isSupabaseConfigured(): boolean {
 export interface CloudUserData {
   albums: UserAlbum[];
   favorites: Track[];
+  history?: HistoryItem[];
   avatar?: string;
   accentColor?: string;
   themeMode?: 'dark' | 'light';
 }
 
 /**
- * Pushes local data (albums, favorites, avatar, settings) to Supabase Cloud
+ * Pushes local data (albums, favorites, history, avatar, settings) to Supabase Cloud
  */
 export async function cloudSyncPush(userId: string, data: Partial<CloudUserData>): Promise<boolean> {
   const client = getSupabaseClient();
@@ -110,6 +111,41 @@ export async function cloudSyncPush(userId: string, data: Partial<CloudUserData>
       }
     }
 
+    // 4. Sync History (Top 30 most recent tracks with cover_art & path_or_url)
+    if (data.history && data.history.length > 0) {
+      const histRows = data.history.slice(0, 30).map((h, i) => {
+        let coverArt = (h as any).cover_art || null;
+        let pathOrUrl = h.path_or_url || h.track_id;
+        let fullTrack: any = null;
+
+        if (h.track_json) {
+          try {
+            fullTrack = typeof h.track_json === 'string' ? JSON.parse(h.track_json) : h.track_json;
+            coverArt = coverArt || fullTrack.cover_art;
+            pathOrUrl = pathOrUrl || fullTrack.path_or_url;
+          } catch {}
+        }
+
+        return {
+          id: `${userId}_hist_${h.track_id}_${i}`,
+          user_id: userId,
+          track_id: h.track_id,
+          track_title: h.track_title,
+          artist: h.artist,
+          source: h.source,
+          duration_secs: h.duration_secs,
+          path_or_url: pathOrUrl,
+          cover_art: coverArt,
+          track_json: fullTrack || h.track_json,
+          listened_at: h.listened_at || new Date().toISOString(),
+        };
+      });
+
+      if (histRows.length > 0) {
+        await client.from('spytify_history').upsert(histRows, { onConflict: 'id' });
+      }
+    }
+
     return true;
   } catch (err) {
     console.error('Supabase cloud push failed:', err);
@@ -118,22 +154,24 @@ export async function cloudSyncPush(userId: string, data: Partial<CloudUserData>
 }
 
 /**
- * Pulls all user data (albums, favorites, avatar, settings) from Supabase Cloud
+ * Pulls all user data (albums, favorites, history, avatar, settings) from Supabase Cloud
  */
 export async function cloudSyncPull(userId: string): Promise<CloudUserData | null> {
   const client = getSupabaseClient();
   if (!client || !userId) return null;
 
   try {
-    const [profileRes, albumsRes, favsRes] = await Promise.all([
+    const [profileRes, albumsRes, favsRes, histRes] = await Promise.all([
       client.from('spytify_profiles').select('*').eq('id', userId).maybeSingle(),
       client.from('spytify_albums').select('*').eq('user_id', userId),
       client.from('spytify_favorites').select('*').eq('user_id', userId),
+      client.from('spytify_history').select('*').eq('user_id', userId).order('listened_at', { ascending: false }).limit(30),
     ]);
 
     const result: CloudUserData = {
       albums: [],
       favorites: [],
+      history: [],
     };
 
     if (profileRes.data) {
@@ -154,6 +192,22 @@ export async function cloudSyncPull(userId: string): Promise<CloudUserData | nul
 
     if (favsRes.data) {
       result.favorites = favsRes.data.map((row: any) => row.track_json as Track).filter(Boolean);
+    }
+
+    if (histRes.data) {
+      result.history = histRes.data.map((row: any) => ({
+        id: row.id,
+        user_id: row.user_id,
+        track_id: row.track_id,
+        track_title: row.track_title,
+        artist: row.artist,
+        source: row.source,
+        duration_secs: row.duration_secs,
+        path_or_url: row.path_or_url,
+        cover_art: row.cover_art,
+        track_json: row.track_json ? (typeof row.track_json === 'string' ? row.track_json : JSON.stringify(row.track_json)) : undefined,
+        listened_at: row.listened_at,
+      }));
     }
 
     return result;

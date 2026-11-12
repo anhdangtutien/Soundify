@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Plus, Disc, Play, Trash2, Music, ArrowLeft, Clock3, FolderPlus, 
   Sparkles, Layers, Check, X
 } from 'lucide-react';
 import { Track, UserAlbum } from '../types';
 import { TrackTable } from './TrackTable';
+import { deduplicateTracks } from '../utils/trackUtils';
 
 interface AlbumsViewProps {
   albums: UserAlbum[];
@@ -39,6 +40,9 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
   const [newDesc, setNewDesc] = useState('');
 
   const selectedAlbum = albums.find(a => a.id === selectedAlbumId);
+  const cleanAlbumTracks = useMemo(() => {
+    return selectedAlbum ? deduplicateTracks(selectedAlbum.tracks || []) : [];
+  }, [selectedAlbum]);
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,17 +166,17 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                 <p className="text-xs text-[#8e8e9f] max-w-xl">{selectedAlbum.description}</p>
               )}
               <div className="text-xs text-[#666] font-mono flex items-center justify-center sm:justify-start gap-3 pt-1">
-                <span>{selectedAlbum.tracks.length} bài hát</span>
+                <span>{cleanAlbumTracks.length} bài hát</span>
                 <span>•</span>
-                <span>{formatTotalTime(selectedAlbum.tracks)}</span>
+                <span>{formatTotalTime(cleanAlbumTracks)}</span>
                 <span>•</span>
                 <span>Tạo lúc {new Date(selectedAlbum.created_at).toLocaleDateString()}</span>
               </div>
 
               <div className="pt-3 flex items-center justify-center sm:justify-start gap-3">
                 <button
-                  onClick={() => onPlayAlbum(selectedAlbum)}
-                  disabled={selectedAlbum.tracks.length === 0}
+                  onClick={() => onPlayAlbum({ ...selectedAlbum, tracks: cleanAlbumTracks })}
+                  disabled={cleanAlbumTracks.length === 0}
                   className="px-5 py-2.5 rounded-xl bg-white hover:bg-[#ff2a55] hover:text-white text-black font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shadow-md disabled:opacity-40"
                 >
                   <Play className="w-4 h-4 fill-current ml-0.5" />
@@ -198,10 +202,10 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
           <div>
             <h2 className="text-xs font-bold text-white uppercase tracking-wider font-mono mb-3 flex items-center gap-2">
               <Music className="w-3.5 h-3.5 text-[#ff2a55]" />
-              Danh sách bài hát trong Album ({selectedAlbum.tracks.length})
+              Danh sách bài hát trong Album ({cleanAlbumTracks.length})
             </h2>
 
-            {selectedAlbum.tracks.length === 0 ? (
+            {cleanAlbumTracks.length === 0 ? (
               <div className="text-center py-12 bg-[#08080a] border border-[#161620] rounded-2xl p-6">
                 <Disc className="w-10 h-10 text-[#444] mx-auto mb-2" />
                 <p className="text-xs font-bold text-white">Album chưa có bài hát nào</p>
@@ -211,7 +215,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
               </div>
             ) : (
               <div className="space-y-1">
-                {selectedAlbum.tracks.map((track, idx) => (
+                {cleanAlbumTracks.map((track, idx) => (
                   <div
                     key={track.id}
                     className="p-2.5 rounded-xl bg-[#09090c] hover:bg-[#121218] border border-[#161620] flex items-center justify-between gap-3 group transition-colors"

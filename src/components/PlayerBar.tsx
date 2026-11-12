@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { Track } from '../types';
+import { getContrastTextColor } from '../utils/trackUtils';
 
 interface PlayerBarProps {
   currentTrack: Track | null;
@@ -144,8 +145,12 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
               )}
             </div>
             <div className="flex flex-col overflow-hidden pr-2 flex-1 min-w-0">
-              <span className="text-xs font-bold text-white tracking-tight truncate">{currentTrack.title}</span>
-              <span className="text-[11px] text-[#8e8e9f] truncate mt-0.5">{currentTrack.artist}</span>
+              <span className="text-xs font-bold tracking-tight truncate" style={{ color: themeMode === 'light' ? '#0f172a' : '#ffffff' }}>
+                {currentTrack.title}
+              </span>
+              <span className="text-[11px] truncate mt-0.5" style={{ color: themeMode === 'light' ? '#64748b' : '#8e8e9f' }}>
+                {currentTrack.artist}
+              </span>
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
               <button
@@ -200,7 +205,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
             title={isPlaying ? 'Tạm dừng (Space)' : 'Phát nhạc (Space)'}
             style={{
               backgroundColor: currentTrack ? accentColor : (themeMode === 'light' ? '#e2e8f0' : '#1c1c24'),
-              color: currentTrack ? (accentColor === '#FFFFFF' ? '#000000' : '#FFFFFF') : (themeMode === 'light' ? '#64748b' : '#64748b'),
+              color: currentTrack ? getContrastTextColor(accentColor) : (themeMode === 'light' ? '#64748b' : '#64748b'),
               boxShadow: currentTrack ? `0 0 16px ${accentColor}50` : (themeMode === 'light' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'),
               borderColor: currentTrack ? 'transparent' : (themeMode === 'light' ? '#cbd5e1' : '#2a2a38'),
             }}
@@ -230,43 +235,69 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
         {/* Seekbar Area — Adapts to Live Stream, Buffering, or Regular Track */}
         {isLive ? (
           <div className="w-full flex items-center gap-3 text-xs font-mono">
-            <span className="w-10 text-right text-[var(--accent-color, #ff2a55)] font-semibold">{formatTime(safeCurrentTime)}</span>
-            <div className="relative flex-1 h-[4px] bg-[#161620] rounded-full overflow-hidden flex items-center">
-              <div className="h-full w-full bg-gradient-to-r from-[var(--accent-color, #ff2a55)] via-white to-[var(--accent-color, #ff2a55)] rounded-full animate-pulse opacity-90" />
+            <span className="w-10 text-right font-semibold" style={{ color: accentColor }}>{formatTime(safeCurrentTime)}</span>
+            <div 
+              className="relative flex-1 h-[4px] rounded-full overflow-hidden flex items-center border border-black/5"
+              style={{ backgroundColor: themeMode === 'light' ? '#cbd5e1' : '#1f1f28' }}
+            >
+              <div 
+                className="h-full w-full rounded-full animate-pulse opacity-90" 
+                style={{ background: `linear-gradient(to right, ${accentColor}, #ffffff, ${accentColor})` }}
+              />
             </div>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-[var(--accent-color, #ff2a55)]/15 border border-[var(--accent-color, #ff2a55)]/40 text-[var(--accent-color, #ff2a55)] font-bold text-[9px] uppercase tracking-wider flex-shrink-0">
+            <div 
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded font-bold text-[9px] uppercase tracking-wider flex-shrink-0 border"
+              style={{ 
+                backgroundColor: `${accentColor}20`, 
+                borderColor: `${accentColor}50`, 
+                color: accentColor 
+              }}
+            >
               <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-color, #ff2a55)] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--accent-color, #ff2a55)]"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: accentColor }}></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ backgroundColor: accentColor }}></span>
               </span>
               <span>Trực tiếp</span>
             </div>
           </div>
         ) : isBuffering ? (
-          <div className="w-full flex items-center gap-3 text-[11px] text-[#666] font-mono">
-            <span className="w-9 text-right text-white">{formatTime(safeCurrentTime)}</span>
-            <div className="relative flex-1 h-[3px] bg-[#161620] rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-[var(--accent-color, #ff2a55)] to-white rounded-full animate-pulse w-full opacity-60" />
+          <div className="w-full flex items-center gap-3 text-[11px] font-mono">
+            <span className="w-9 text-right font-bold" style={{ color: themeMode === 'light' ? '#0f172a' : '#ffffff' }}>
+              {formatTime(safeCurrentTime)}
+            </span>
+            <div 
+              className="relative flex-1 h-[4px] rounded-full overflow-hidden border border-black/5"
+              style={{ backgroundColor: themeMode === 'light' ? '#cbd5e1' : '#1f1f28' }}
+            >
+              <div 
+                className="h-full rounded-full animate-pulse w-full opacity-75" 
+                style={{ background: `linear-gradient(to right, ${accentColor}, #ffffff)` }}
+              />
             </div>
-            <span className="w-12 text-[#888] text-[10px] truncate">Đang tải...</span>
+            <span className="w-12 text-[10px] truncate" style={{ color: themeMode === 'light' ? '#64748b' : '#888899' }}>Đang tải...</span>
           </div>
         ) : (
-          <div className="w-full flex items-center gap-3 text-[11px] text-[#666] font-mono">
-            <span className="w-9 text-right text-white">{formatTime(displayTime)}</span>
+          <div className="w-full flex items-center gap-3 text-[11px] font-mono">
+            <span className="w-9 text-right font-bold text-xs" style={{ color: themeMode === 'light' ? '#0f172a' : '#ffffff' }}>
+              {formatTime(displayTime)}
+            </span>
             <div className="relative flex-1 flex items-center group h-4 cursor-pointer">
               {/* Background track */}
-              <div className="absolute w-full h-[3px] bg-[#161620] rounded-full group-hover:h-[4px] transition-all overflow-hidden">
+              <div 
+                className="absolute w-full h-[4px] rounded-full group-hover:h-[6px] transition-all overflow-hidden border border-black/5"
+                style={{ backgroundColor: themeMode === 'light' ? '#cbd5e1' : '#1f1f28' }}
+              >
                 {/* Progress fill */}
                 <div
-                  className="h-full bg-white group-hover:bg-[var(--accent-color, #ff2a55)] transition-all rounded-full"
-                  style={{ width: `${progressPercent}%` }}
+                  className="h-full transition-all rounded-full"
+                  style={{ width: `${progressPercent}%`, backgroundColor: accentColor }}
                 />
               </div>
 
               {/* Thumb handle on hover */}
               <div
-                className="absolute w-2.5 h-2.5 bg-white rounded-full border border-[var(--accent-color, #ff2a55)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none -translate-x-1/2 shadow-[0_0_8px_var(--accent-color, #ff2a55)]"
-                style={{ left: `${progressPercent}%` }}
+                className="absolute w-3 h-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none -translate-x-1/2 shadow-md border-2 border-white"
+                style={{ left: `${progressPercent}%`, backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }}
               />
 
               {/* Range input */}
@@ -292,7 +323,9 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                 className="absolute w-full opacity-0 h-full cursor-pointer z-10"
               />
             </div>
-            <span className="w-9 text-[#8e8e9f]">{formatTime(effectiveDuration)}</span>
+            <span className="w-9 font-mono text-xs" style={{ color: themeMode === 'light' ? '#64748b' : '#8e8e9f' }}>
+              {formatTime(effectiveDuration)}
+            </span>
           </div>
         )}
       </div>
@@ -321,8 +354,14 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
             {volume === 0 ? <VolumeX className="w-4 h-4 text-[var(--accent-color, #ff2a55)]" /> : <Volume2 className="w-4 h-4" />}
           </button>
           <div className="relative flex items-center w-20 h-4 group cursor-pointer">
-            <div className="absolute w-full h-[3px] bg-[#161620] rounded-full group-hover:h-[4px] transition-all">
-              <div className="h-full bg-white group-hover:bg-[var(--accent-color, #ff2a55)] transition-colors rounded-full" style={{ width: `${volume * 100}%` }} />
+            <div 
+              className="absolute w-full h-[4px] rounded-full group-hover:h-[6px] transition-all overflow-hidden border border-black/5"
+              style={{ backgroundColor: themeMode === 'light' ? '#cbd5e1' : '#1f1f28' }}
+            >
+              <div 
+                className="h-full transition-colors rounded-full" 
+                style={{ width: `${volume * 100}%`, backgroundColor: accentColor }} 
+              />
             </div>
             <input
               type="range" min={0} max={1} step={0.01} value={volume}

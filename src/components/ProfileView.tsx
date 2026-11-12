@@ -184,6 +184,27 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         }
       }
 
+      if (cloudData && cloudData.history && cloudData.history.length > 0) {
+        // Insert remote history into local SQLite if missing
+        for (const h of cloudData.history) {
+          let trk: any = h.track_json ? (typeof h.track_json === 'string' ? JSON.parse(h.track_json) : h.track_json) : null;
+          if (!trk) {
+            trk = {
+              id: h.track_id,
+              title: h.track_title,
+              artist: h.artist,
+              album: 'History Track',
+              duration_secs: h.duration_secs,
+              path_or_url: h.path_or_url || h.track_id,
+              cover_art: h.cover_art,
+              source: h.source || 'youtube',
+            };
+          }
+          invoke('db_add_history', { userId: currentUser.id, track: trk }).catch(console.error);
+        }
+        setHistory(cloudData.history);
+      }
+
       // 2. Push current local state to Cloud
       const storedAlbums = localStorage.getItem('spytify_user_albums');
       const localAlbums = storedAlbums ? JSON.parse(storedAlbums) : [];
@@ -192,6 +213,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         avatar: currentUser.avatar || '',
         accentColor: accentColor,
         themeMode: themeMode,
+        history: history.slice(0, 30),
       });
 
       setCloudStatusMsg('Đồng bộ Cloud thành công 100%!');
@@ -219,7 +241,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       if (data.themeMode && data.themeMode !== themeMode) {
         onToggleThemeMode();
       }
-      alert('Đã khôi phục hồ sơ và Album Spytify thành công từ tệp sao lưu!');
+      if (data.history && Array.isArray(data.history) && currentUser) {
+        for (const h of data.history) {
+          let trk: any = h.track_json ? (typeof h.track_json === 'string' ? JSON.parse(h.track_json) : h.track_json) : null;
+          if (!trk) {
+            trk = {
+              id: h.track_id,
+              title: h.track_title,
+              artist: h.artist,
+              album: 'History Track',
+              duration_secs: h.duration_secs,
+              path_or_url: h.path_or_url || h.track_id,
+              cover_art: h.cover_art,
+              source: h.source || 'youtube',
+            };
+          }
+          invoke('db_add_history', { userId: currentUser.id, track: trk }).catch(console.error);
+        }
+      }
+      alert('Đã khôi phục hồ sơ, Lịch sử nghe và Album Spytify thành công từ tệp sao lưu!');
       window.location.reload();
     } catch (err) {
       alert('Tệp sao lưu không hợp lệ hoặc sai định dạng JSON: ' + err);
@@ -240,7 +280,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         accentColor: accentColor,
         themeMode: themeMode,
         albums: albumsData,
-        history: history,
+        history: history.slice(0, 30),
       };
 
       const jsonStr = JSON.stringify(backupData, null, 2);
@@ -806,53 +846,71 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <div className="text-center py-8 text-[#555] text-xs">Chưa có lịch sử phát nhạc.</div>
           ) : (
             <div className="space-y-1">
-              {history.map((h, i) => (
-                <div
-                  key={i}
-                  onClick={() => {
-                    if (h.track_json) {
-                      try {
-                        const parsed = JSON.parse(h.track_json);
-                        onPlayTrack(parsed);
-                        return;
-                      } catch {}
-                    }
+              {history
+                .filter((h, index, self) => 
+                  index === self.findIndex(t => 
+                    (t.track_id && t.track_id === h.track_id) || 
+                    (t.track_title && t.track_title.trim().toLowerCase() === h.track_title.trim().toLowerCase())
+                  )
+                )
+                .slice(0, 30)
+                .map((h, i) => {
+                  let trackObj: any = null;
+                  if (h.track_json) {
+                    try { trackObj = typeof h.track_json === 'string' ? JSON.parse(h.track_json) : h.track_json; } catch {}
+                  }
+                  const coverArt = trackObj?.cover_art || (h as any).cover_art;
+                  let pathOrUrl = trackObj?.path_or_url || h.path_or_url || h.track_id;
+                  if (h.source === 'youtube' && pathOrUrl.startsWith('yt_')) {
+                    pathOrUrl = pathOrUrl.replace('yt_', '');
+                  }
 
-                    let pathOrUrl = h.path_or_url || h.track_id;
-                    if (h.source === 'youtube') {
-                      let vid = pathOrUrl;
-                      if (vid.startsWith('yt_')) vid = vid.replace('yt_', '');
-                      pathOrUrl = vid;
-                    }
-
-                    onPlayTrack({
-                      id: h.track_id,
-                      title: h.track_title,
-                      artist: h.artist,
-                      album: 'History Track',
-                      duration_secs: h.duration_secs,
-                      path_or_url: pathOrUrl,
-                      source: (h.source as any) || 'youtube',
-                    });
-                  }}
-                  className="flex items-center justify-between p-2.5 rounded-lg bg-[#09090c] hover:bg-[#121218] border border-[#161620] cursor-pointer group"
-                >
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <div className="w-9 h-9 rounded bg-[#14141c] flex items-center justify-center text-[#555] overflow-hidden flex-shrink-0">
-                      <Music className="w-4 h-4" style={{ color: accentColor }} />
+                  return (
+                    <div
+                      key={i}
+                      onClick={() => {
+                        if (trackObj) {
+                          onPlayTrack(trackObj);
+                          return;
+                        }
+                        onPlayTrack({
+                          id: h.track_id,
+                          title: h.track_title,
+                          artist: h.artist,
+                          album: 'History Track',
+                          duration_secs: h.duration_secs,
+                          path_or_url: pathOrUrl,
+                          cover_art: coverArt,
+                          source: (h.source as any) || 'youtube',
+                        });
+                      }}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-[#09090c] hover:bg-[#121218] border border-[#161620] cursor-pointer group transition-all"
+                    >
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        {coverArt ? (
+                          <img 
+                            src={coverArt} 
+                            alt={h.track_title} 
+                            className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-white/10 shadow-sm"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-[#14141c] flex items-center justify-center text-[#555] overflow-hidden flex-shrink-0 border border-white/10">
+                            <Music className="w-4 h-4" style={{ color: accentColor }} />
+                          </div>
+                        )}
+                        <div className="overflow-hidden">
+                          <p className="text-xs font-semibold text-white truncate group-hover:text-white transition-colors">
+                            {h.track_title}
+                          </p>
+                          <p className="text-[11px] text-[#777] truncate font-mono mt-0.5">{h.artist} • <span className="uppercase text-[10px] text-zinc-400">{h.source}</span></p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-[#555] font-mono flex-shrink-0">
+                        {h.listened_at ? new Date(h.listened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                      </span>
                     </div>
-                    <div className="overflow-hidden">
-                      <p className="text-xs font-semibold text-white truncate group-hover:text-white transition-colors">
-                        {h.track_title}
-                      </p>
-                      <p className="text-[11px] text-[#777] truncate">{h.artist}</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] text-[#555] font-mono flex-shrink-0">
-                    {h.listened_at ? new Date(h.listened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                  </span>
-                </div>
-              ))}
+                  );
+                })}
             </div>
           )}
         </div>

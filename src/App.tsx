@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { Sidebar } from './components/Sidebar';
@@ -14,6 +14,7 @@ import { AlbumsView } from './components/AlbumsView';
 import { AddToAlbumModal } from './components/AddToAlbumModal';
 import { SplashScreen } from './components/SplashScreen';
 import { cloudSyncPull, cloudSyncPush, isSupabaseConfigured } from './services/supabase';
+import { deduplicateTracks } from './utils/trackUtils';
 import { Track, PlaybackStatus, SearchResult, ViewType, User, UserAlbum } from './types';
 import { FolderPlus, Disc, CheckCircle2, Tv, X, Radio, ArrowUpRight, LogIn, Sun, Moon } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon } from './components/Icons';
@@ -87,7 +88,14 @@ export default function App() {
   const [albums, setAlbums] = useState<UserAlbum[]>(() => {
     try {
       const stored = localStorage.getItem('spytify_user_albums');
-      return stored ? JSON.parse(stored) : [];
+      if (stored) {
+        const parsed: UserAlbum[] = JSON.parse(stored);
+        return parsed.map(alb => ({
+          ...alb,
+          tracks: deduplicateTracks(alb.tracks || [])
+        }));
+      }
+      return [];
     } catch {
       return [];
     }
@@ -125,18 +133,27 @@ export default function App() {
   };
 
   const handleAddTrackToAlbum = (albumId: string, track: Track) => {
+    let wasAlreadyPresent = false;
     setAlbums(prev => {
       const updated = prev.map(a => {
         if (a.id === albumId) {
-          if (a.tracks.some(t => t.id === track.id)) return a;
-          return { ...a, tracks: [...a.tracks, track] };
+          const normTitle = track.title.trim().toLowerCase();
+          if (a.tracks.some(t => t.id === track.id || t.title.trim().toLowerCase() === normTitle)) {
+            wasAlreadyPresent = true;
+            return a;
+          }
+          return { ...a, tracks: deduplicateTracks([...a.tracks, track]) };
         }
         return a;
       });
       localStorage.setItem('spytify_user_albums', JSON.stringify(updated));
       return updated;
     });
-    showNotification('Đã thêm bài hát vào album!');
+    if (wasAlreadyPresent) {
+      showNotification('Bài hát đã có trong album này!');
+    } else {
+      showNotification('Đã thêm bài hát vào album!');
+    }
   };
 
   const handleRemoveTrackFromAlbum = (albumId: string, trackId: string) => {
@@ -214,9 +231,7 @@ export default function App() {
       setFavorites(new Set(dbFavs.map(t => t.id)));
       // Merge favorite tracks into current track list
       setTracks(prev => {
-        const existingIds = new Set(prev.map(t => t.id));
-        const newTracks = dbFavs.filter(t => !existingIds.has(t.id));
-        return [...newTracks, ...prev];
+        return deduplicateTracks([...dbFavs, ...prev]);
       });
     } catch (e) {
       console.error(e);
@@ -818,8 +833,7 @@ export default function App() {
         const scanned = await invoke<Track[]>('scan_music_folder', { folderPath: selected });
         const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
         setTracks(prev => {
-          const existing = new Set(prev.map(t => t.path_or_url));
-          return [...prev, ...scanned.filter(t => !existing.has(t.path_or_url))];
+          return deduplicateTracks([...prev, ...scanned]);
         });
         setCurrentView('local');
         showNotification(`⚡ Quét xong ${scanned.length} bài (${elapsed}s)`);
@@ -843,16 +857,19 @@ export default function App() {
     playTrackInternal(track);
   };
 
-  const displayedTracks = tracks.filter(t => {
-    switch (currentView) {
-      case 'local': return t.source === 'local';
-      case 'youtube': return t.source === 'youtube';
-      case 'soundcloud': return t.source === 'soundcloud';
-      case 'audius': return t.source === 'audius';
-      case 'favorites': return favorites.has(t.id);
-      default: return true;
-    }
-  });
+  const displayedTracks = useMemo(() => {
+    const filtered = tracks.filter(t => {
+      switch (currentView) {
+        case 'local': return t.source === 'local';
+        case 'youtube': return t.source === 'youtube';
+        case 'soundcloud': return t.source === 'soundcloud';
+        case 'audius': return t.source === 'audius';
+        case 'favorites': return favorites.has(t.id);
+        default: return true;
+      }
+    });
+    return deduplicateTracks(filtered);
+  }, [tracks, currentView, favorites]);
 
   displayedTracksRef.current = displayedTracks;
   const localCount = tracks.filter(t => t.source === 'local').length;
@@ -956,6 +973,7 @@ export default function App() {
           currentUser={currentUser}
           onOpenAuth={() => setIsAuthModalOpen(true)}
           accentColor={accentColor}
+          themeMode={themeMode}
         />
 
         <main className="flex-1 flex flex-col overflow-hidden bg-[#000000]">

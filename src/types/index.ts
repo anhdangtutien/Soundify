@@ -54,6 +54,7 @@ export interface HistoryItem {
   duration_secs: number;
   listened_at: string;
   path_or_url?: string;
+  cover_art?: string | null;
   track_json?: string;
 }
 
