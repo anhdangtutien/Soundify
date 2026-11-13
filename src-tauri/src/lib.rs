@@ -21,6 +21,10 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager, State, WindowEvent,
 };
+use std::collections::HashMap;
+use std::sync::Mutex;
+
+static RELATED_CACHE: Mutex<Option<HashMap<String, Vec<SearchResult>>>> = Mutex::new(None);
 
 #[cfg(target_os = "windows")]
 mod win_mem {
@@ -418,6 +422,18 @@ async fn get_related_tracks(title: String, artist: String) -> Result<Vec<SearchR
     let core_title = extract_core_song_title(clean_title, clean_artist);
     let core_lower = core_title.to_lowercase();
 
+    // 0. Instant in-memory cache check (0ms response)
+    let cache_key = format!("{}::{}", clean_artist.to_lowercase(), core_lower);
+    if let Ok(guard) = RELATED_CACHE.lock() {
+        if let Some(map) = guard.as_ref() {
+            if let Some(cached) = map.get(&cache_key) {
+                if !cached.is_empty() {
+                    return Ok(cached.clone());
+                }
+            }
+        }
+    }
+
     // 1. Fetch diverse related music:
     // Focus strongly on the actual song's genre and artist, avoiding obscure cover channel names
     let has_valid_artist = !clean_artist.is_empty() 
@@ -438,8 +454,6 @@ async fn get_related_tracks(title: String, artist: String) -> Result<Vec<SearchR
         format!("{} similar music hits playlist", core_title)
     };
 
-    let yt_query3 = format!("songs like {} playlist official audio", core_title);
-
     let sc_query = if has_valid_artist {
         format!("{} {} remix hits", clean_artist, core_title)
     } else {
@@ -452,22 +466,22 @@ async fn get_related_tracks(title: String, artist: String) -> Result<Vec<SearchR
         core_title.clone()
     };
 
-    let (yt_res1, yt_res2, yt_res3, sc_res, audius_res) = tokio::join!(
-        sources::youtube::search_youtube(&yt_query1),
-        sources::youtube::search_youtube(&yt_query2),
-        sources::youtube::search_youtube(&yt_query3),
-        sources::soundcloud::search_soundcloud(&sc_query),
-        sources::audius::search_audius(&audius_query)
-    );
+    // Fast-path: YouTube is our fastest and most accurate provider (~200ms).
+    // Secondary sources (SoundCloud, Audius) get a strict 1000ms timeout so they never delay responsiveness.
+    let yt_fut1 = sources::youtube::search_youtube(&yt_query1);
+    let yt_fut2 = sources::youtube::search_youtube(&yt_query2);
+    let sc_fut = tokio::time::timeout(tokio::time::Duration::from_millis(1000), sources::soundcloud::search_soundcloud(&sc_query));
+    let audius_fut = tokio::time::timeout(tokio::time::Duration::from_millis(1000), sources::audius::search_audius(&audius_query));
+
+    let (yt_res1, yt_res2, sc_res, audius_res) = tokio::join!(yt_fut1, yt_fut2, sc_fut, audius_fut);
 
     let mut combined: Vec<SearchResult> = Vec::new();
 
     // YouTube recommendations first (highest relevance to active genre & artist)
     if let Ok(yt1) = yt_res1 { combined.extend(yt1); }
     if let Ok(yt2) = yt_res2 { combined.extend(yt2); }
-    if let Ok(yt3) = yt_res3 { combined.extend(yt3); }
-    if let Ok(sc) = sc_res { combined.extend(sc); }
-    if let Ok(audius) = audius_res { combined.extend(audius); }
+    if let Ok(Ok(sc)) = sc_res { combined.extend(sc); }
+    if let Ok(Ok(audius)) = audius_res { combined.extend(audius); }
 
     // 2. Strict Duration and Same-Song Filter:
     // - Eliminate tracks that are just other versions/remixes of the SAME song (e.g. "Closer")
@@ -534,6 +548,14 @@ async fn get_related_tracks(title: String, artist: String) -> Result<Vec<SearchR
         }
     }
     prioritized.extend(unique);
+
+    if let Ok(mut guard) = RELATED_CACHE.lock() {
+        let map = guard.get_or_insert_with(HashMap::new);
+        if map.len() > 100 {
+            map.clear();
+        }
+        map.insert(cache_key, prioritized.clone());
+    }
 
     Ok(prioritized)
 }

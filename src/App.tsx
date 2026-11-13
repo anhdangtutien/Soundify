@@ -21,6 +21,7 @@ import { Track, PlaybackStatus, SearchResult, ViewType, User, UserAlbum, Recomme
 import { FolderPlus, Disc, CheckCircle2, Tv, X, Radio, ArrowUpRight, LogIn, Sun, Moon, Music, Play, Globe, Languages, ChevronDown, ChevronUp, EyeOff, Sparkles } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './components/Icons';
 import { LanguageCode, SUPPORTED_LANGUAGES, getTranslation } from './locales/i18n';
+import spytifyLogo from './assets/spytify-logo.png';
 
 export default function App() {
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -2665,16 +2666,20 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 </button>
               </div>
 
-              {/* Startup-style Breathing Glow Box & Analyzing Text */}
+              {/* Spy Logo Breathing Glow Box & Analyzing Text */}
               <div className="flex flex-col items-center justify-center py-2.5 select-none">
                 <div
                   style={{
                     animation: 'spytifyPopupPulse 1.2s ease-in-out infinite',
                     filter: `drop-shadow(0 4px 16px ${accentColor}80)`,
                   }}
-                  className="w-11 h-11 rounded-2xl flex items-center justify-center bg-[#151520] border border-[#2a2a3e]"
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center bg-[#151520] border border-[#2a2a3e] p-2"
                 >
-                  <Sparkles className="w-5 h-5 fill-current" style={{ color: accentColor }} />
+                  <img
+                    src={spytifyLogo}
+                    alt="Spytify"
+                    className="w-full h-full object-contain"
+                  />
                 </div>
                 <p className="mt-2 text-xs font-semibold text-white animate-pulse">
                   {getTranslation(language, 'popup.findingRelated')}

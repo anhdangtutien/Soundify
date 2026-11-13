@@ -89,11 +89,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   useEffect(() => {
     const t1 = setTimeout(() => {
       setFadeout(true);
-    }, 950);
+    }, 400);
 
     const t2 = setTimeout(() => {
       onFinish();
-    }, 1250);
+    }, 650);
 
     return () => {
       clearTimeout(t1);
