@@ -32,7 +32,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "dmg", "app"],
+    "targets": "all",
     "macOS": {
       "frameworks": [],
       "minimumSystemVersion": "10.15"
