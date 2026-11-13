@@ -44,19 +44,54 @@ export default function App() {
   const [downloadFolder, setDownloadFolder] = useState<string>(() => {
     return localStorage.getItem('spytify_download_folder') || '';
   });
+  const [localFolder, setLocalFolder] = useState<string>(() => {
+    return localStorage.getItem('spytify_local_folder') || '';
+  });
   const [downloadingTrackIds, setDownloadingTrackIds] = useState<Set<string>>(new Set());
 
+  // Automatically scan & load saved local music folder and download directory on startup
   useEffect(() => {
-    if (!downloadFolder) {
-      invoke<string>('get_default_download_directory')
-        .then(dir => {
-          if (dir) {
-            setDownloadFolder(dir);
-            localStorage.setItem('spytify_download_folder', dir);
+    const initLocalMusic = async () => {
+      try {
+        let dlFolder = downloadFolder;
+        if (!dlFolder) {
+          dlFolder = await invoke<string>('get_default_download_directory');
+          if (dlFolder) {
+            setDownloadFolder(dlFolder);
+            localStorage.setItem('spytify_download_folder', dlFolder);
           }
-        })
-        .catch(console.error);
-    }
+        }
+
+        const foldersToScan = new Set<string>();
+        const savedLocal = localStorage.getItem('spytify_local_folder');
+        if (savedLocal && savedLocal.trim()) {
+          foldersToScan.add(savedLocal.trim());
+        }
+        if (dlFolder && dlFolder.trim()) {
+          foldersToScan.add(dlFolder.trim());
+        }
+
+        const allScanned: Track[] = [];
+        for (const f of foldersToScan) {
+          try {
+            const list = await invoke<Track[]>('scan_music_folder', { folderPath: f });
+            if (list && list.length > 0) {
+              allScanned.push(...list);
+            }
+          } catch (e) {
+            console.warn(`Scan folder ${f} failed:`, e);
+          }
+        }
+
+        if (allScanned.length > 0) {
+          setTracks(prev => deduplicateTracks([...allScanned, ...prev]));
+        }
+      } catch (err) {
+        console.error('Failed to init local music on startup:', err);
+      }
+    };
+
+    initLocalMusic();
   }, []);
 
   const [accentColor, setAccentColor] = useState<string>(() => {
@@ -2064,10 +2099,12 @@ export default function App() {
       const selected = await open({ directory: true, multiple: false, title: getTranslation(language, 'header.selectFolder') });
       if (selected && typeof selected === 'string') {
         const t0 = performance.now();
+        setLocalFolder(selected);
+        localStorage.setItem('spytify_local_folder', selected);
         const scanned = await invoke<Track[]>('scan_music_folder', { folderPath: selected });
         const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
         setTracks(prev => {
-          return deduplicateTracks([...prev, ...scanned]);
+          return deduplicateTracks([...scanned, ...prev]);
         });
         setCurrentView('local');
         showNotification(getTranslation(language, 'toast.folderScanned', { count: scanned.length, time: elapsed }));
@@ -2155,6 +2192,12 @@ export default function App() {
         setDownloadFolder(selected);
         localStorage.setItem('spytify_download_folder', selected);
         showNotification(`📁 Đã đổi thư mục lưu nhạc: ${selected}`);
+        try {
+          const scanned = await invoke<Track[]>('scan_music_folder', { folderPath: selected });
+          if (scanned && scanned.length > 0) {
+            setTracks(prev => deduplicateTracks([...scanned, ...prev]));
+          }
+        } catch {}
       }
     } catch (e) {
       console.error(e);
