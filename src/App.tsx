@@ -2092,16 +2092,46 @@ export default function App() {
         targetDir: downloadFolder || null,
       });
 
-      // Add newly saved track to library state so it is instantly available under "Nhạc trên máy"
+      // Crucial fix: Mark the online track as downloaded in-place so its row in the current table remains intact,
+      // and prepend savedTrack so it's instantly visible under "Nhạc trên máy" without breaking track tables!
       setTracks(prev => {
-        const filtered = prev.filter(t => t.id !== track.id && t.id !== savedTrack.id);
-        return [savedTrack, ...filtered];
+        const updated = prev.map(t => {
+          if (
+            t.id === track.id ||
+            (t.path_or_url && t.path_or_url === track.path_or_url) ||
+            (t.title.trim().toLowerCase() === track.title.trim().toLowerCase() &&
+             t.artist.trim().toLowerCase() === track.artist.trim().toLowerCase())
+          ) {
+            return { ...t, is_downloaded: true };
+          }
+          return t;
+        });
+
+        const hasSaved = updated.some(t => t.id === savedTrack.id || (t.path_or_url && t.path_or_url === savedTrack.path_or_url));
+        return hasSaved ? updated : [savedTrack, ...updated];
       });
 
-      // If this was the playing track, smoothly point currentTrack to local file
-      if (currentTrackRef.current?.id === track.id) {
-        currentTrackRef.current = savedTrack;
-        setCurrentTrack(savedTrack);
+      // If the online track was in favorites, also add the savedTrack ID to favorites
+      if (favorites.has(track.id)) {
+        setFavorites(prev => new Set(prev).add(savedTrack.id));
+        invoke('db_add_favorite', { trackId: savedTrack.id }).catch(() => {});
+      }
+
+      // If this was the playing track, smoothly point currentTrack to local file without losing UI selection
+      if (
+        currentTrackRef.current?.id === track.id ||
+        (currentTrackRef.current?.path_or_url && currentTrackRef.current.path_or_url === track.path_or_url) ||
+        (currentTrackRef.current?.title.trim().toLowerCase() === track.title.trim().toLowerCase() &&
+         currentTrackRef.current?.artist.trim().toLowerCase() === track.artist.trim().toLowerCase())
+      ) {
+        const updatedCurrent: Track = {
+          ...currentTrackRef.current,
+          path_or_url: savedTrack.path_or_url,
+          source: 'local',
+          is_downloaded: true,
+        };
+        currentTrackRef.current = updatedCurrent;
+        setCurrentTrack(updatedCurrent);
       }
 
       showNotification(`✅ ${getTranslation(language, 'download.downloadSuccess', { title: savedTrack.title })}`);
@@ -2148,15 +2178,34 @@ export default function App() {
   };
 
   const handlePlaySearchResult = (result: SearchResult) => {
-    const track: Track = {
-      id: `online_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      title: result.title, artist: result.artist, album: result.album,
-      duration_secs: result.duration_secs, path_or_url: result.url_or_id,
-      cover_art: result.thumbnail, source: result.source,
+    const safeUrl = result.url_or_id.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const deterministicId = `${result.source}_${safeUrl}`;
+
+    // Prevent duplicate entries by reusing existing track if already in library
+    const existing = tracks.find(
+      t => t.id === deterministicId ||
+           (t.path_or_url && t.path_or_url === result.url_or_id) ||
+           (t.title.trim().toLowerCase() === result.title.trim().toLowerCase() &&
+            t.artist.trim().toLowerCase() === result.artist.trim().toLowerCase())
+    );
+
+    const track: Track = existing || {
+      id: deterministicId,
+      title: result.title,
+      artist: result.artist,
+      album: result.album,
+      duration_secs: result.duration_secs,
+      path_or_url: result.url_or_id,
+      cover_art: result.thumbnail,
+      source: result.source,
     };
+
     activeQueueContextRef.current = currentView;
     setActiveQueueContext(currentView);
-    setTracks(prev => [track, ...prev.filter(t => t.id !== track.id)]);
+    setTracks(prev => {
+      const filtered = prev.filter(t => t.id !== track.id && t.path_or_url !== track.path_or_url);
+      return [track, ...filtered];
+    });
     playTrackInternal(track);
   };
 

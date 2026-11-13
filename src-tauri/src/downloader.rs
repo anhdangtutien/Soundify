@@ -3,7 +3,8 @@ use crate::scanner;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::Command as SyncCommand;
+use tokio::process::Command as AsyncCommand;
 
 pub struct Downloader;
 
@@ -49,7 +50,7 @@ impl Downloader {
             return Some(pf_node);
         }
         // 3. Check system PATH
-        if let Ok(output) = Command::new("where").arg("node").output() {
+        if let Ok(output) = SyncCommand::new("where").arg("node").output() {
             if output.status.success() {
                 let s = String::from_utf8_lossy(&output.stdout);
                 if let Some(line) = s.lines().next() {
@@ -77,7 +78,7 @@ impl Downloader {
             return Some(local_bin);
         }
         // 3. Check system PATH
-        if let Ok(output) = Command::new("where").arg("yt-dlp").output() {
+        if let Ok(output) = SyncCommand::new("where").arg("yt-dlp").output() {
             if output.status.success() {
                 let s = String::from_utf8_lossy(&output.stdout);
                 if let Some(line) = s.lines().next() {
@@ -106,7 +107,9 @@ impl Downloader {
 
         let download_url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
         let client = reqwest::Client::builder()
-            .user_agent("Mozilla/5.0 Spytify Downloader")
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            .timeout(std::time::Duration::from_secs(45))
+            .connect_timeout(std::time::Duration::from_secs(10))
             .build()
             .map_err(|e| e.to_string())?;
 
@@ -125,6 +128,47 @@ impl Downloader {
         file.flush().map_err(|e| format!("Lỗi hoàn tất: {}", e))?;
 
         Ok(dest)
+    }
+
+    fn find_downloaded_file(target_dir: &Path, base_filename: &str) -> Option<PathBuf> {
+        let candidates = [
+            target_dir.join(format!("{}.m4a", base_filename)),
+            target_dir.join(format!("{}.mp3", base_filename)),
+            target_dir.join(format!("{}.webm", base_filename)),
+            target_dir.join(format!("{}.opus", base_filename)),
+            target_dir.join(format!("{}.aac", base_filename)),
+            target_dir.join(format!("{}.flac", base_filename)),
+        ];
+
+        if let Some(dest) = candidates.into_iter().find(|p| p.exists()) {
+            return Some(dest);
+        }
+
+        // Fallback: check any recently created audio file in target_dir within 60 seconds
+        if let Ok(entries) = fs::read_dir(target_dir) {
+            let now = std::time::SystemTime::now();
+            let mut recent_files: Vec<(PathBuf, std::time::Duration)> = Vec::new();
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+                if ["m4a", "mp3", "webm", "opus", "aac", "flac"].contains(&ext.as_str()) {
+                    if let Ok(meta) = entry.metadata() {
+                        if let Ok(modified) = meta.modified() {
+                            if let Ok(elapsed) = now.duration_since(modified) {
+                                if elapsed.as_secs() < 60 {
+                                    recent_files.push((path, elapsed));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            recent_files.sort_by_key(|(_, elapsed)| *elapsed);
+            if let Some((most_recent, _)) = recent_files.first() {
+                return Some(most_recent.clone());
+            }
+        }
+        None
     }
 
     pub async fn download(track: &Track, custom_target_dir: Option<String>) -> Result<Track, String> {
@@ -175,7 +219,7 @@ impl Downloader {
                     }
                 }
 
-                // Fallback Path 2: yt-dlp binary
+                // Fallback Path 2: yt-dlp binary with strict non-blocking async execution & timeout
                 let ytdlp = Self::ensure_ytdlp_available().await?;
 
                 let yt_url = format!("https://www.youtube.com/watch?v={}", video_id);
@@ -186,6 +230,10 @@ impl Downloader {
                     "-f".to_string(), "ba[ext=m4a]/ba[ext=mp3]/ba".to_string(),
                     "--no-playlist".to_string(),
                     "--max-filesize".to_string(), "60M".to_string(),
+                    "--socket-timeout".to_string(), "10".to_string(),
+                    "--retries".to_string(), "3".to_string(),
+                    "--no-warnings".to_string(),
+                    "--no-cache-dir".to_string(),
                     "-o".to_string(), out_template_str.clone(),
                 ];
 
@@ -196,26 +244,24 @@ impl Downloader {
 
                 args.push(yt_url);
 
-                let mut cmd = Command::new(&ytdlp);
+                let mut cmd = AsyncCommand::new(&ytdlp);
                 cmd.args(&args);
+                cmd.stdin(std::process::Stdio::null());
 
                 #[cfg(target_os = "windows")]
                 {
-                    use std::os::windows::process::CommandExt;
                     cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
                 }
 
-                let output = cmd.output().map_err(|e| format!("Lỗi khởi chạy tải: {}", e))?;
+                let output_res = tokio::time::timeout(std::time::Duration::from_secs(45), cmd.output()).await;
+                let output = match output_res {
+                    Ok(Ok(out)) => out,
+                    Ok(Err(e)) => return Err(format!("Lỗi chạy tiến trình tải: {}", e)),
+                    Err(_) => return Err("Quá thời gian tải nhạc (Timeout 45s). Vui lòng thử lại.".to_string()),
+                };
 
-                // Locate the downloaded file (could be .m4a, .webm, or .mp3)
-                let candidates = [
-                    target_dir.join(format!("{}.m4a", base_filename)),
-                    target_dir.join(format!("{}.mp3", base_filename)),
-                    target_dir.join(format!("{}.webm", base_filename)),
-                    target_dir.join(format!("{}.opus", base_filename)),
-                ];
-
-                if let Some(dest_file) = candidates.into_iter().find(|p| p.exists()) {
+                // Locate the downloaded file
+                if let Some(dest_file) = Self::find_downloaded_file(&target_dir, &base_filename) {
                     return Self::make_local_track(&dest_file, track);
                 }
 
@@ -235,34 +281,34 @@ impl Downloader {
                     let out_template = target_dir.join(format!("{}.%(ext)s", base_filename));
                     let out_template_str = out_template.to_string_lossy().to_string();
 
-                    let mut cmd = Command::new(&ytdlp);
+                    let mut cmd = AsyncCommand::new(&ytdlp);
                     cmd.args(&[
                         "-f", "ba[ext=m4a]/ba[ext=mp3]/ba",
                         "--no-playlist",
+                        "--socket-timeout", "10",
+                        "--retries", "3",
+                        "--no-warnings",
+                        "--no-cache-dir",
                         "-o", &out_template_str,
                         &track.path_or_url,
                     ]);
+                    cmd.stdin(std::process::Stdio::null());
 
                     #[cfg(target_os = "windows")]
                     {
-                        use std::os::windows::process::CommandExt;
-                        cmd.creation_flags(0x08000000);
+                        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
                     }
 
-                    let output = cmd.output().map_err(|e| format!("Lỗi tải SoundCloud: {}", e))?;
-                    let candidates = [
-                        target_dir.join(format!("{}.m4a", base_filename)),
-                        target_dir.join(format!("{}.mp3", base_filename)),
-                        target_dir.join(format!("{}.webm", base_filename)),
-                        target_dir.join(format!("{}.opus", base_filename)),
-                    ];
-                    if let Some(dest_file) = candidates.into_iter().find(|p| p.exists()) {
-                        return Self::make_local_track(&dest_file, track);
-                    }
-                    if !output.status.success() {
-                        let stderr = String::from_utf8_lossy(&output.stderr);
-                        let err_line = stderr.lines().find(|l| l.contains("ERROR:")).unwrap_or("Lỗi tải SoundCloud");
-                        return Err(err_line.to_string());
+                    let output_res = tokio::time::timeout(std::time::Duration::from_secs(45), cmd.output()).await;
+                    if let Ok(Ok(out)) = output_res {
+                        if let Some(dest_file) = Self::find_downloaded_file(&target_dir, &base_filename) {
+                            return Self::make_local_track(&dest_file, track);
+                        }
+                        if !out.status.success() {
+                            let stderr = String::from_utf8_lossy(&out.stderr);
+                            let err_line = stderr.lines().find(|l| l.contains("ERROR:")).unwrap_or("Lỗi tải SoundCloud");
+                            return Err(err_line.to_string());
+                        }
                     }
                 }
 
@@ -284,19 +330,27 @@ impl Downloader {
 
     async fn download_http_stream(url: &str, dest_path: &Path) -> Result<(), String> {
         let client = reqwest::Client::builder()
-            .user_agent("Mozilla/5.0 Spytify Audio Downloader")
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            .timeout(std::time::Duration::from_secs(35))
+            .connect_timeout(std::time::Duration::from_secs(10))
             .build()
             .map_err(|e| e.to_string())?;
 
-        let mut res = client.get(url).send().await.map_err(|e| format!("Lỗi kết nối tải: {}", e))?;
+        let res = client
+            .get(url)
+            .header("Origin", "https://www.youtube.com")
+            .header("Referer", "https://www.youtube.com/")
+            .send()
+            .await
+            .map_err(|e| format!("Lỗi kết nối tải: {}", e))?;
+
         if !res.status().is_success() {
             return Err(format!("Lỗi server HTTP: {}", res.status()));
         }
 
+        let bytes = res.bytes().await.map_err(|e| format!("Lỗi tải dữ liệu: {}", e))?;
         let mut file = File::create(dest_path).map_err(|e| format!("Không tạo được file: {}", e))?;
-        while let Some(chunk) = res.chunk().await.map_err(|e| format!("Lỗi tải dữ liệu: {}", e))? {
-            file.write_all(&chunk).map_err(|e| format!("Lỗi ghi đĩa: {}", e))?;
-        }
+        file.write_all(&bytes).map_err(|e| format!("Lỗi ghi đĩa: {}", e))?;
         file.flush().map_err(|e| format!("Lỗi hoàn tất ghi file: {}", e))?;
         Ok(())
     }

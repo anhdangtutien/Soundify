@@ -10,6 +10,7 @@ export interface Track {
   cover_art?: string | null;
   source: TrackSource;
   file_size_bytes?: number | null;
+  is_downloaded?: boolean;
 }
 
 export interface PlaybackStatus {

@@ -520,16 +520,22 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
     try {
       const results = await invoke<SearchResult[]>('get_trending_hits', { category });
       if (results && results.length > 0) {
-        // For lofi, keep curated top lofi live streams & hits at the top, followed by live YouTube search results
-        const combined = category === 'lofi' ? [...curated] : [...results];
-        const secondary = category === 'lofi' ? results : curated;
-        secondary.forEach(item => {
+        // Pool curated tracks and live results, then strictly deduplicate by ID and normalized title
+        const pool = category === 'lofi' ? [...curated, ...results] : [...results, ...curated];
+        const unique: SearchResult[] = [];
+        for (const item of pool) {
           const itemTitleNorm = item.title.trim().toLowerCase();
-          if (!combined.some(c => c.url_or_id === item.url_or_id || c.title.trim().toLowerCase() === itemTitleNorm)) {
-            combined.push(item);
+          const exists = unique.some(
+            u => u.url_or_id === item.url_or_id ||
+                 u.title.trim().toLowerCase() === itemTitleNorm ||
+                 (u.title.trim().toLowerCase().startsWith(itemTitleNorm.slice(0, 18)) &&
+                  u.artist.trim().toLowerCase() === item.artist.trim().toLowerCase())
+          );
+          if (!exists) {
+            unique.push(item);
           }
-        });
-        setTrendingTracks(combined);
+        }
+        setTrendingTracks(unique);
       }
     } catch (err) {
       console.error('Failed to fetch trending hits:', err);

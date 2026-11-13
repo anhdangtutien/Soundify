@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Clock3, Heart, Music, HardDrive, FolderPlus, Download, Loader2 } from 'lucide-react';
+import { Play, Pause, Clock3, Heart, Music, HardDrive, FolderPlus, Download, Loader2, Check } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { Track } from '../types';
 import { optimizeThumbnailUrl, handleImageError } from '../utils/trackUtils';
@@ -164,7 +164,14 @@ export const TrackTable: React.FC<TrackTableProps> = ({
         {topPadding > 0 && <div style={{ height: `${topPadding}px` }} aria-hidden="true" />}
         {visibleTracks.map((track, i) => {
           const idx = isVirtual ? startIndex + i : i;
-          const isSelected = currentTrack?.id === track.id;
+          const isSelected = Boolean(
+            currentTrack && (
+              currentTrack.id === track.id ||
+              (currentTrack.path_or_url && currentTrack.path_or_url === track.path_or_url) ||
+              (currentTrack.title.trim().toLowerCase() === track.title.trim().toLowerCase() &&
+               currentTrack.artist.trim().toLowerCase() === track.artist.trim().toLowerCase())
+            )
+          );
           const isFav = favorites.has(track.id);
 
           return (
@@ -258,7 +265,7 @@ export const TrackTable: React.FC<TrackTableProps> = ({
 
               {/* Col 5: Duration & Like & Add to Album */}
               <div className="flex items-center justify-end gap-2 text-[11px] pr-1 font-mono text-[#666]">
-                {track.source !== 'local' && onDownloadTrack && (
+                {track.source !== 'local' && !track.is_downloaded && onDownloadTrack ? (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -282,7 +289,14 @@ export const TrackTable: React.FC<TrackTableProps> = ({
                       <Download className="w-3.5 h-3.5" />
                     )}
                   </button>
-                )}
+                ) : (track.is_downloaded || track.source === 'local') ? (
+                  <span
+                    title={getTranslation(language, 'download.downloaded')}
+                    className="p-1 text-emerald-400 flex items-center justify-center"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                  </span>
+                ) : null}
 
                 {onAddToAlbum && (
                   <button

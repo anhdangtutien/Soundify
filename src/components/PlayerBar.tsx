@@ -248,16 +248,16 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
               {onDownload && (
                 <button
                   onClick={() => onDownload(currentTrack)}
-                  disabled={isDownloading}
+                  disabled={isDownloading || currentTrack.source === 'local' || Boolean(currentTrack.is_downloaded)}
                   title={
-                    currentTrack.source === 'local'
+                    currentTrack.source === 'local' || currentTrack.is_downloaded
                       ? getTranslation(language, 'download.downloaded')
                       : isDownloading
                       ? getTranslation(language, 'download.downloading')
                       : getTranslation(language, 'download.downloadBtn')
                   }
                   className={`p-1.5 rounded-full transition-all cursor-pointer ${
-                    currentTrack.source === 'local'
+                    currentTrack.source === 'local' || currentTrack.is_downloaded
                       ? 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20'
                       : isDownloading
                       ? 'text-[var(--accent-color, #ff2a55)] animate-pulse'
@@ -266,7 +266,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                 >
                   {isDownloading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : currentTrack.source === 'local' ? (
+                  ) : (currentTrack.source === 'local' || currentTrack.is_downloaded) ? (
                     <Check className="w-4 h-4" />
                   ) : (
                     <Download className="w-4 h-4" />

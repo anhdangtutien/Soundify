@@ -288,19 +288,21 @@ fn filter_actual_songs(results: Vec<SearchResult>) -> Vec<SearchResult> {
         "2 hour", "3 hour", "podcast", "livestream", "24/7", "trực tiếp", "karaoke", "beat chuẩn"
     ];
 
-    results
-        .into_iter()
-        .filter(|r| {
-            let t = r.title.to_lowercase();
-            if banned_keywords.iter().any(|&k| t.contains(k)) {
-                return false;
-            }
-            if r.duration_secs < 60 || r.duration_secs > 480 {
-                return false;
-            }
-            true
-        })
-        .collect()
+    let mut unique: Vec<SearchResult> = Vec::new();
+    for r in results {
+        let t = r.title.to_lowercase();
+        if banned_keywords.iter().any(|&k| t.contains(k)) {
+            continue;
+        }
+        if r.duration_secs < 60 || r.duration_secs > 480 {
+            continue;
+        }
+        let t_norm = r.title.trim().to_lowercase();
+        if !unique.iter().any(|u| u.url_or_id == r.url_or_id || u.title.trim().to_lowercase() == t_norm) {
+            unique.push(r);
+        }
+    }
+    unique
 }
 
 #[tauri::command]
