@@ -131,8 +131,7 @@ export default function App() {
 
   const [language, setLanguage] = useState<LanguageCode>(() => {
     const saved = localStorage.getItem('spytify_language') as LanguageCode;
-    const valid: LanguageCode[] = ['vi', 'en-US', 'ja', 'zh-CN'];
-    return valid.includes(saved) ? saved : 'vi';
+    return SUPPORTED_LANGUAGES.some(l => l.code === saved) ? saved : 'vi';
   });
 
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
