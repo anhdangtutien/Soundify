@@ -3,6 +3,7 @@ use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use lofty::config::WriteOptions;
 use lofty::file::{AudioFile, TaggedFileExt};
+use lofty::picture::{MimeType, Picture, PictureType};
 use lofty::probe::Probe;
 use lofty::tag::{Accessor, Tag, TagExt};
 use rayon::prelude::*;
@@ -90,6 +91,35 @@ pub fn extract_track_info(file_path: &Path) -> Option<Track> {
                 }
             }
 
+            // Fallback for cover art if not embedded in audio tags: check companion image files in folder
+            if cover_art.is_none() {
+                if let Some(parent) = file_path.parent() {
+                    let candidates = [
+                        file_path.with_extension("jpg"),
+                        file_path.with_extension("jpeg"),
+                        file_path.with_extension("png"),
+                        parent.join("cover.jpg"),
+                        parent.join("cover.png"),
+                        parent.join("folder.jpg"),
+                    ];
+                    for c in &candidates {
+                        if c.exists() && c.is_file() {
+                            if let Ok(data) = fs::read(c) {
+                                if !data.is_empty() && data.len() <= 5 * 1024 * 1024 {
+                                    let mime = if c.extension().map(|e| e == "png").unwrap_or(false) {
+                                        "image/png"
+                                    } else {
+                                        "image/jpeg"
+                                    };
+                                    cover_art = Some(format!("data:{};base64,{}", mime, BASE64.encode(&data)));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Fallback: If artist is unknown, missing, or generic ("Unknown Artist", "Local File", etc.), parse from filename
             let is_artist_generic = artist == "Unknown Artist" || artist == "Local File" || artist.trim().is_empty();
             let is_title_generic = title == "Unknown Track" || title == filename || title.trim().is_empty();
@@ -101,7 +131,7 @@ pub fn extract_track_info(file_path: &Path) -> Option<Track> {
                     title = parsed_title;
                 }
                 // Save resolved metadata to file tags so future scans & external music players recognize it
-                let _ = write_metadata(file_path, &title, &artist, &album);
+                let _ = write_metadata(file_path, &title, &artist, &album, None);
             }
 
             if album == "Unknown Album" || album.trim().is_empty() {
@@ -124,7 +154,7 @@ pub fn extract_track_info(file_path: &Path) -> Option<Track> {
             // Fallback for audio files without valid tags
             let (parsed_artist, parsed_title) = parse_artist_title_from_filename(&filename);
             let album = "Spytify Library".to_string();
-            let _ = write_metadata(file_path, &parsed_title, &parsed_artist, &album);
+            let _ = write_metadata(file_path, &parsed_title, &parsed_artist, &album, None);
 
             Some(Track {
                 id,
@@ -254,7 +284,13 @@ fn md5_hash(input: &str) -> u64 {
     hash
 }
 
-pub fn write_metadata(file_path: &Path, title: &str, artist: &str, album: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn write_metadata(
+    file_path: &Path,
+    title: &str,
+    artist: &str,
+    album: &str,
+    cover_art_bytes: Option<(&[u8], &str)>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let probe = Probe::open(file_path)?;
     let mut tagged_file = probe.read()?;
 
@@ -274,6 +310,24 @@ pub fn write_metadata(file_path: &Path, title: &str, artist: &str, album: &str) 
     tag.set_title(title.to_string());
     tag.set_artist(artist.to_string());
     tag.set_album(album.to_string());
+
+    if let Some((bytes, mime_str)) = cover_art_bytes {
+        if !bytes.is_empty() {
+            let mime = if mime_str.contains("png") {
+                MimeType::Png
+            } else {
+                MimeType::Jpeg
+            };
+            let pic = Picture::new_unchecked(
+                PictureType::CoverFront,
+                Some(mime),
+                None,
+                bytes.to_vec(),
+            );
+            tag.push_picture(pic);
+        }
+    }
+
     let _ = tag.save_to_path(file_path, WriteOptions::default());
     Ok(())
 }

@@ -1,5 +1,7 @@
 use crate::models::{Track, TrackSource};
 use crate::scanner;
+use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -275,12 +277,15 @@ impl Downloader {
             format!("{} - {}", safe_artist, safe_title)
         };
 
+        let cover_data = Self::fetch_cover_art_bytes(track.cover_art.as_deref()).await;
+        let cover_ref = cover_data.as_ref().map(|(b, m)| (b.as_slice(), m.as_str()));
+
         match track.source {
             TrackSource::Audius => {
                 // Audius provides direct 320kbps MP3 stream URL
                 let dest_file = target_dir.join(format!("{}.mp3", base_filename));
                 Self::download_http_stream(&track.path_or_url, &dest_file).await?;
-                Self::make_local_track(&dest_file, track)
+                Self::make_local_track(&dest_file, track, cover_ref)
             }
             TrackSource::YouTube => {
                 let video_id = if track.path_or_url.contains("v=") {
@@ -304,7 +309,7 @@ impl Downloader {
                         if Self::download_http_stream(&stream_url, &dest_m4a).await.is_ok()
                             && dest_m4a.exists()
                         {
-                            return Self::make_local_track(&dest_m4a, track);
+                            return Self::make_local_track(&dest_m4a, track, cover_ref);
                         }
                     }
                 }
@@ -352,7 +357,7 @@ impl Downloader {
 
                 // Locate the downloaded file
                 if let Some(dest_file) = Self::find_downloaded_file(&target_dir, &base_filename) {
-                    return Self::make_local_track(&dest_file, track);
+                    return Self::make_local_track(&dest_file, track, cover_ref);
                 }
 
                 if !output.status.success() {
@@ -392,7 +397,7 @@ impl Downloader {
                     let output_res = tokio::time::timeout(std::time::Duration::from_secs(45), cmd.output()).await;
                     if let Ok(Ok(out)) = output_res {
                         if let Some(dest_file) = Self::find_downloaded_file(&target_dir, &base_filename) {
-                            return Self::make_local_track(&dest_file, track);
+                            return Self::make_local_track(&dest_file, track, cover_ref);
                         }
                         if !out.status.success() {
                             let stderr = String::from_utf8_lossy(&out.stderr);
@@ -406,7 +411,7 @@ impl Downloader {
                 if track.path_or_url.starts_with("http") {
                     let dest_file = target_dir.join(format!("{}.mp3", base_filename));
                     Self::download_http_stream(&track.path_or_url, &dest_file).await?;
-                    Self::make_local_track(&dest_file, track)
+                    Self::make_local_track(&dest_file, track, cover_ref)
                 } else {
                     Err("Không thể xác định luồng âm thanh SoundCloud để tải.".to_string())
                 }
@@ -445,7 +450,62 @@ impl Downloader {
         Ok(())
     }
 
-    fn make_local_track(file_path: &Path, original_track: &Track) -> Result<Track, String> {
+    async fn fetch_cover_art_bytes(cover_art_opt: Option<&str>) -> Option<(Vec<u8>, String)> {
+        let cover_str = cover_art_opt?.trim();
+        if cover_str.is_empty() {
+            return None;
+        }
+
+        // 1. Data URL (data:image/jpeg;base64,...)
+        if cover_str.starts_with("data:") {
+            if let Some(comma_pos) = cover_str.find(',') {
+                let header = &cover_str[..comma_pos];
+                let data = &cover_str[comma_pos + 1..];
+                let mime = if header.contains("png") {
+                    "image/png"
+                } else {
+                    "image/jpeg"
+                };
+                if let Ok(bytes) = BASE64.decode(data) {
+                    if !bytes.is_empty() {
+                        return Some((bytes, mime.to_string()));
+                    }
+                }
+            }
+            return None;
+        }
+
+        // 2. HTTP/HTTPS URL (with 8s timeout and 5MB limit)
+        if cover_str.starts_with("http://") || cover_str.starts_with("https://") {
+            let client = reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(8))
+                .build()
+                .ok()?;
+            if let Ok(res) = client.get(cover_str).send().await {
+                if res.status().is_success() {
+                    let content_type = res
+                        .headers()
+                        .get("content-type")
+                        .and_then(|v| v.to_str().ok())
+                        .unwrap_or("image/jpeg")
+                        .to_string();
+                    if let Ok(bytes) = res.bytes().await {
+                        if !bytes.is_empty() && bytes.len() <= 5 * 1024 * 1024 {
+                            return Some((bytes.to_vec(), content_type));
+                        }
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    fn make_local_track(
+        file_path: &Path,
+        original_track: &Track,
+        cover_art: Option<(&[u8], &str)>,
+    ) -> Result<Track, String> {
         let artist = if original_track.artist.is_empty() || original_track.artist == "Unknown Artist" {
             "Local Artist"
         } else {
@@ -462,8 +522,8 @@ impl Downloader {
             &original_track.album
         };
 
-        // Write tags directly into downloaded audio file on disk
-        let _ = scanner::write_metadata(file_path, title, artist, album);
+        // Write tags directly into downloaded audio file on disk, including embedded cover art
+        let _ = scanner::write_metadata(file_path, title, artist, album, cover_art);
 
         if let Some(mut local_track) = scanner::extract_track_info(file_path) {
             if local_track.artist == "Unknown Artist" || local_track.artist == "Local File" {
