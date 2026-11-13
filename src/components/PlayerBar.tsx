@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { Track } from '../types';
-import { getContrastTextColor, optimizeThumbnailUrl } from '../utils/trackUtils';
+import { getContrastTextColor, optimizeThumbnailUrl, handleImageError } from '../utils/trackUtils';
 import { LanguageCode, getTranslation } from '../locales/i18n';
 
 interface PlayerBarProps {
@@ -202,8 +202,10 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
             <div className="w-12 h-12 rounded-lg overflow-hidden bg-[#101014] flex-shrink-0 border border-[#202028] relative group shadow-sm">
               {currentTrack.cover_art ? (
                 <img
-                  src={optimizeThumbnailUrl(currentTrack.cover_art)}
+                  src={optimizeThumbnailUrl(currentTrack.cover_art, currentTrack.path_or_url || currentTrack.id)}
                   alt={currentTrack.title}
+                  referrerPolicy="no-referrer"
+                  onError={(e) => handleImageError(e, currentTrack.path_or_url || currentTrack.id)}
                   loading="lazy"
                   decoding="async"
                   className="w-full h-full object-cover"
@@ -350,7 +352,13 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                 <div className="flex items-center gap-2.5">
                   <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#161620] flex-shrink-0 border border-[#222]">
                     {upcomingTrack.cover_art ? (
-                      <img src={upcomingTrack.cover_art} alt={upcomingTrack.title} className="w-full h-full object-cover" />
+                      <img
+                        src={optimizeThumbnailUrl(upcomingTrack.cover_art, upcomingTrack.path_or_url || upcomingTrack.id)}
+                        alt={upcomingTrack.title}
+                        referrerPolicy="no-referrer"
+                        onError={(e) => handleImageError(e, upcomingTrack.path_or_url || upcomingTrack.id)}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#555]">
                         <Music className="w-4 h-4" />

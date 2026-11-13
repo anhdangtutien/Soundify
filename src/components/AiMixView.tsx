@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { Track, User, RecommendationResult, TrainingReport, SearchResult } from '../types';
 import { LanguageCode, getTranslation } from '../locales/i18n';
-import { getContrastTextColor } from '../utils/trackUtils';
+import { getContrastTextColor, optimizeThumbnailUrl, handleImageError } from '../utils/trackUtils';
 
 interface AiMixViewProps {
   currentUser: User | null;
@@ -400,7 +400,13 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
                   <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
                     <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#161620] flex-shrink-0 relative">
                       {track.cover_art ? (
-                        <img src={track.cover_art} alt={track.title} className="w-full h-full object-cover" />
+                        <img
+                          src={optimizeThumbnailUrl(track.cover_art, track.path_or_url || track.id)}
+                          alt={track.title}
+                          referrerPolicy="no-referrer"
+                          onError={(e) => handleImageError(e, track.path_or_url || track.id)}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-[#555]">
                           <Music className="w-4 h-4" />
@@ -473,7 +479,13 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
                 <div className="flex items-center gap-3 overflow-hidden">
                   <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#161620] flex-shrink-0 relative">
                     {rec.track.cover_art ? (
-                      <img src={rec.track.cover_art} alt={rec.track.title} className="w-full h-full object-cover" />
+                      <img
+                        src={optimizeThumbnailUrl(rec.track.cover_art, rec.track.path_or_url || rec.track.id)}
+                        alt={rec.track.title}
+                        referrerPolicy="no-referrer"
+                        onError={(e) => handleImageError(e, rec.track.path_or_url || rec.track.id)}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#555]">
                         <Music className="w-4 h-4" />

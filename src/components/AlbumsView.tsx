@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { Track, UserAlbum } from '../types';
 import { TrackTable } from './TrackTable';
-import { deduplicateTracks, getContrastTextColor } from '../utils/trackUtils';
+import { deduplicateTracks, getContrastTextColor, optimizeThumbnailUrl, handleImageError } from '../utils/trackUtils';
 import { LanguageCode, getTranslation } from '../locales/i18n';
 
 interface AlbumsViewProps {
@@ -170,8 +170,10 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
             <div className="w-36 h-36 rounded-2xl overflow-hidden bg-[#14141c] border border-[#262632] flex-shrink-0 flex items-center justify-center relative shadow-lg">
               {selectedAlbum.tracks.length > 0 && selectedAlbum.tracks[0].cover_art ? (
                 <img
-                  src={selectedAlbum.tracks[0].cover_art}
+                  src={optimizeThumbnailUrl(selectedAlbum.tracks[0].cover_art, selectedAlbum.tracks[0].path_or_url || selectedAlbum.tracks[0].id)}
                   alt={selectedAlbum.title}
+                  referrerPolicy="no-referrer"
+                  onError={(e) => handleImageError(e, selectedAlbum.tracks[0].path_or_url || selectedAlbum.tracks[0].id)}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -265,7 +267,13 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                       </span>
                       <div className="w-9 h-9 rounded-lg overflow-hidden bg-[#161620] flex-shrink-0 relative">
                         {track.cover_art ? (
-                          <img src={track.cover_art} alt={track.title} className="w-full h-full object-cover" />
+                          <img
+                            src={optimizeThumbnailUrl(track.cover_art, track.path_or_url || track.id)}
+                            alt={track.title}
+                            referrerPolicy="no-referrer"
+                            onError={(e) => handleImageError(e, track.path_or_url || track.id)}
+                            className="w-full h-full object-cover"
+                          />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-[#555]">
                             <Music className="w-4 h-4" />
@@ -377,8 +385,10 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                     <div className="relative aspect-square w-full rounded-xl overflow-hidden mb-2.5 bg-[#14141c] border border-[#1e1e28]">
                       {coverArt ? (
                         <img
-                          src={coverArt}
+                          src={optimizeThumbnailUrl(coverArt, album.tracks[0]?.path_or_url || album.tracks[0]?.id)}
                           alt={album.title}
+                          referrerPolicy="no-referrer"
+                          onError={(e) => handleImageError(e, album.tracks[0]?.path_or_url || album.tracks[0]?.id)}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (

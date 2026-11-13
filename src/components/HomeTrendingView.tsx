@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { SearchResult, Track } from '../types';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
-import { getContrastTextColor, optimizeThumbnailUrl } from '../utils/trackUtils';
+import { getContrastTextColor, optimizeThumbnailUrl, handleImageError } from '../utils/trackUtils';
 import { LanguageCode, getTranslation } from '../locales/i18n';
 
 interface HomeTrendingViewProps {
@@ -653,8 +653,10 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
         >
           {featured.thumbnail ? (
             <img
-              src={featured.thumbnail}
+              src={optimizeThumbnailUrl(featured.thumbnail, featured.url_or_id)}
               alt={featured.title}
+              referrerPolicy="no-referrer"
+              onError={(e) => handleImageError(e, featured.url_or_id)}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
@@ -772,8 +774,10 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
                   <div className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-[#14141c] border border-[#222]">
                     {item.thumbnail ? (
                       <img
-                        src={optimizeThumbnailUrl(item.thumbnail)}
+                        src={optimizeThumbnailUrl(item.thumbnail, item.url_or_id)}
                         alt={item.title}
+                        referrerPolicy="no-referrer"
+                        onError={(e) => handleImageError(e, item.url_or_id)}
                         loading="lazy"
                         decoding="async"
                         className="w-full h-full object-cover"
@@ -879,7 +883,15 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
               >
                 <div className="relative aspect-square w-full rounded-lg overflow-hidden mb-2 bg-[#14141c]">
                   {item.thumbnail ? (
-                    <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <img
+                      src={optimizeThumbnailUrl(item.thumbnail, item.url_or_id)}
+                      alt={item.title}
+                      referrerPolicy="no-referrer"
+                      onError={(e) => handleImageError(e, item.url_or_id)}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-[#444]">
                       <Music className="w-6 h-6" />

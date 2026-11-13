@@ -15,10 +15,9 @@ import { HomeTrendingView } from './components/HomeTrendingView';
 import { AlbumsView } from './components/AlbumsView';
 import { AddToAlbumModal } from './components/AddToAlbumModal';
 import { SplashScreen } from './components/SplashScreen';
-import { RustFastUiView } from './components/RustFastUiView';
 import { cloudSyncPull, cloudSyncPush, isSupabaseConfigured } from './services/supabase';
-import { deduplicateTracks, optimizeThumbnailUrl } from './utils/trackUtils';
-import { Track, PlaybackStatus, SearchResult, ViewType, User, UserAlbum } from './types';
+import { deduplicateTracks, optimizeThumbnailUrl, handleImageError } from './utils/trackUtils';
+import { Track, PlaybackStatus, SearchResult, ViewType, User, UserAlbum, RecommendationResult } from './types';
 import { FolderPlus, Disc, CheckCircle2, Tv, X, Radio, ArrowUpRight, LogIn, Sun, Moon, Music, Play, Globe, Languages, ChevronDown, ChevronUp, EyeOff } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './components/Icons';
 import { LanguageCode, SUPPORTED_LANGUAGES, getTranslation } from './locales/i18n';
@@ -40,7 +39,6 @@ export default function App() {
   const [repeatMode, setRepeatMode] = useState<'all' | 'one' | 'off'>('all'); // default: auto-play next
   const [isShuffle, setIsShuffle] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
-  const [isRustUiMode, setIsRustUiMode] = useState(false);
 
   // Download & Offline Music Storage State
   const [downloadFolder, setDownloadFolder] = useState<string>(() => {
@@ -637,12 +635,141 @@ export default function App() {
       .catch(() => {});
   }, [currentUser]);
 
-  // Pre-fetch related tracks and alternatives when currentTrack changes
+  // Pre-fetch AI Mix recommendations on initial app startup (when !currentTrack),
+  // and switch to normal Next Track pre-fetching once a track starts playing
   useEffect(() => {
     if (!currentTrack) {
-      preloadedAlternativesRef.current = [];
-      preloadedNextTrackRef.current = null;
-      setPreloadedNextTrack(null);
+      const initialAiMixSeeds: Track[] = [
+        {
+          id: 'aimix_seed_1',
+          title: 'Die With A Smile',
+          artist: 'Lady Gaga & Bruno Mars',
+          album: 'AI Mix • Top Match',
+          duration_secs: 251,
+          path_or_url: 'kPa7bsKwL-c',
+          cover_art: 'https://i.ytimg.com/vi/kPa7bsKwL-c/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_2',
+          title: 'APT. (feat. Bruno Mars)',
+          artist: 'ROSÉ & Bruno Mars',
+          album: 'AI Mix • Viral Pick',
+          duration_secs: 173,
+          path_or_url: 'ekr2nIex040',
+          cover_art: 'https://i.ytimg.com/vi/ekr2nIex040/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_3',
+          title: 'Đừng Làm Trái Tim Anh Đau',
+          artist: 'Sơn Tùng M-TP',
+          album: 'AI Mix • V-Pop Hot',
+          duration_secs: 326,
+          path_or_url: 'abPmZCZZrFA',
+          cover_art: 'https://i.ytimg.com/vi/abPmZCZZrFA/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_4',
+          title: 'Birds of a Feather',
+          artist: 'Billie Eilish',
+          album: 'AI Mix • Chill Pop',
+          duration_secs: 196,
+          path_or_url: 'V9PVRfjEBTI',
+          cover_art: 'https://i.ytimg.com/vi/V9PVRfjEBTI/hqdefault.jpg',
+          source: 'youtube',
+        },
+      ];
+
+      // Immediately show AI Mix popup at 0ms on app startup
+      if (!preloadedNextTrackRef.current) {
+        preloadedNextTrackRef.current = initialAiMixSeeds[0];
+        setPreloadedNextTrack(initialAiMixSeeds[0]);
+        preloadedAlternativesRef.current = initialAiMixSeeds.slice(1, 4);
+      }
+      if (isNextTrackPopupEnabledRef.current && !isTrayModeRef.current) {
+        const topPick = preloadedNextTrackRef.current || initialAiMixSeeds[0];
+        const alts = preloadedAlternativesRef.current.length > 0
+          ? preloadedAlternativesRef.current.slice(0, 3)
+          : initialAiMixSeeds.slice(1, 4);
+        setNextTrackPopup({
+          title: topPick.title,
+          artist: topPick.artist,
+          thumbnail: topPick.cover_art || undefined,
+          source: topPick.source,
+          modeLabel: '✨ AI MIX • ĐỀ XUẤT CHO BẠN',
+          isCountdown: false,
+          alternatives: alts,
+        });
+      }
+
+      // Asynchronously refine initial popup with personalized on-device AI Mix & online discovery
+      const fetchInitialAiMix = async () => {
+        try {
+          const uid = currentUserRef.current?.id || 'guest_spy';
+          let aiPool: Track[] = [];
+
+          if (tracksRef.current.length > 0) {
+            try {
+              const aiRecs = await invoke<RecommendationResult[]>('ai_recommend_tracks', {
+                userId: uid,
+                candidates: tracksRef.current,
+              });
+              if (aiRecs && aiRecs.length > 0) {
+                aiPool.push(...aiRecs.map(r => r.track));
+              }
+            } catch {}
+          }
+
+          // Also fetch fresh online AI Mix recommendations based on user's top track or trending AI Mix
+          const seedTrack = aiPool[0] || tracksRef.current[0];
+          const related = seedTrack
+            ? await invoke<SearchResult[]>('get_related_tracks', {
+                title: seedTrack.title,
+                artist: seedTrack.artist,
+              })
+            : await invoke<SearchResult[]>('search_online', {
+                query: 'vpop usuk kpop viral hits official audio',
+                source: 'youtube',
+              });
+
+          if (related && related.length > 0) {
+            const onlineMapped: Track[] = related.slice(0, 6).map((r, idx) => ({
+              id: `aimix_online_${idx}_${Date.now()}`,
+              title: r.title,
+              artist: r.artist,
+              album: r.album || 'AI Mix Discovery',
+              duration_secs: r.duration_secs || 210,
+              path_or_url: r.url_or_id,
+              cover_art: r.thumbnail,
+              source: r.source,
+            }));
+            aiPool = deduplicateTracks([...onlineMapped, ...aiPool]);
+          }
+
+          if (!currentTrackRef.current && aiPool.length > 0) {
+            preloadedNextTrackRef.current = aiPool[0];
+            setPreloadedNextTrack(aiPool[0]);
+            preloadedAlternativesRef.current = aiPool.slice(1, 5);
+            if (isNextTrackPopupEnabledRef.current && !isTrayModeRef.current) {
+              setNextTrackPopup({
+                title: aiPool[0].title,
+                artist: aiPool[0].artist,
+                thumbnail: aiPool[0].cover_art || undefined,
+                source: aiPool[0].source,
+                modeLabel: '✨ AI MIX • ĐỀ XUẤT CHO BẠN',
+                isCountdown: false,
+                alternatives: aiPool.slice(1, 4),
+              });
+            }
+          }
+        } catch (e) {
+          console.warn('Initial AI Mix popup fetch error:', e);
+        }
+      };
+
+      fetchInitialAiMix();
       return;
     }
     endOfTrackPopupShownForRef.current = null;
@@ -828,9 +955,10 @@ export default function App() {
     return upcomingTrack || preloadedNextTrack;
   }, [recommendMode, preloadedNextTrack, upcomingTrack, currentTrack, isShuffle, activeQueueContext]);
 
-  // Keep Next Track Floating Popup 100% synchronized with effectiveUpcomingTrack
+  // Keep Next Track Floating Popup 100% synchronized with effectiveUpcomingTrack once playback has started
   useEffect(() => {
     if (!isNextTrackPopupEnabledRef.current || !effectiveUpcomingTrack) return;
+    if (!currentTrackRef.current) return;
     const allList = getEffectiveQueue();
     const cur = currentTrackRef.current;
     const useNew = shouldNextBeNewDiscovery();
@@ -2034,8 +2162,14 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-black text-[#a0a0a0] overflow-hidden select-none font-sans">
-      {/* Spy Cinematic Startup Screen */}
-      {!isTrayMode && showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+      {/* Spy Minimalist Discord-style Startup Screen */}
+      {!isTrayMode && showSplash && (
+        <SplashScreen
+          onFinish={() => setShowSplash(false)}
+          themeMode={themeMode}
+          accentColor={accentColor}
+        />
+      )}
 
       {/* ─── NEXT TRACK POPUP (SMOOTH PLAYBACK FLOATING WIDGET) ── */}
       {!isTrayMode && nextTrackPopup && isNextTrackPopupEnabled && (
@@ -2058,7 +2192,7 @@ export default function App() {
             <div className="flex items-center justify-between gap-2.5">
               <div className="flex items-center gap-2 overflow-hidden flex-1">
                 <span className="text-[10px] font-mono font-bold uppercase flex-shrink-0" style={{ color: accentColor }}>
-                  ⏭ {getTranslation(language, 'popup.nextTrack')}:
+                  {currentTrack ? `⏭ ${getTranslation(language, 'popup.nextTrack')}:` : '✨ AI MIX:'}
                 </span>
                 <span className="text-xs font-semibold text-white truncate" title={nextTrackPopup.title}>
                   {nextTrackPopup.title}
@@ -2067,7 +2201,7 @@ export default function App() {
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
                   onClick={() => {
-                    if (shouldNextBeNewDiscovery() && preloadedNextTrackRef.current) {
+                    if ((!currentTrack || shouldNextBeNewDiscovery()) && preloadedNextTrackRef.current) {
                       playTrackInternal(preloadedNextTrackRef.current);
                     } else {
                       handleUserNext();
@@ -2100,7 +2234,8 @@ export default function App() {
               <div className="flex items-center justify-between border-b border-[#1c1c28] pb-1.5">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: accentColor }}>
-                    <span className="animate-pulse">⏭</span> {getTranslation(language, 'popup.nextTrack')}
+                    <span className="animate-pulse">{currentTrack ? '⏭' : '✨'}</span>{' '}
+                    {currentTrack ? getTranslation(language, 'popup.nextTrack') : 'ĐỀ XUẤT AI MIX'}
                   </span>
                   {nextTrackPopup.isCountdown && typeof nextTrackPopup.remainingSecs === 'number' && (
                     <span 
@@ -2135,7 +2270,9 @@ export default function App() {
                   {nextTrackPopup.thumbnail ? (
                     <img 
                       src={optimizeThumbnailUrl(nextTrackPopup.thumbnail)} 
-                      alt={nextTrackPopup.title} 
+                      alt={nextTrackPopup.title}
+                      referrerPolicy="no-referrer"
+                      onError={(e) => handleImageError(e, nextTrackPopup.thumbnail)}
                       loading="lazy"
                       decoding="async"
                       className="w-full h-full object-cover" 
@@ -2159,7 +2296,7 @@ export default function App() {
                 </div>
                 <button
                   onClick={() => {
-                    if (shouldNextBeNewDiscovery() && preloadedNextTrackRef.current) {
+                    if ((!currentTrack || shouldNextBeNewDiscovery()) && preloadedNextTrackRef.current) {
                       playTrackInternal(preloadedNextTrackRef.current);
                     } else {
                       handleUserNext();
@@ -2195,8 +2332,10 @@ export default function App() {
                         <div className="w-7 h-7 rounded overflow-hidden bg-[#161620] flex-shrink-0 relative">
                           {alt.cover_art ? (
                             <img 
-                              src={optimizeThumbnailUrl(alt.cover_art)} 
-                              alt={alt.title} 
+                              src={optimizeThumbnailUrl(alt.cover_art, alt.path_or_url || alt.id)} 
+                              alt={alt.title}
+                              referrerPolicy="no-referrer"
+                              onError={(e) => handleImageError(e, alt.path_or_url || alt.id)}
                               loading="lazy"
                               decoding="async"
                               className="w-full h-full object-cover" 
@@ -2424,22 +2563,6 @@ export default function App() {
                 </button>
               )}
               <button
-                onClick={() => {
-                  // Stop heavy iframes when entering Rust Native UI mode
-                  sendYtCmd('stopVideo');
-                  setYtVideoId(null);
-                  setShowYoutubeVideo(false);
-                  sendScCmd('pause');
-                  setScTrackUrl(null);
-                  setIsRustUiMode(true);
-                  invoke('trim_memory').catch(() => {});
-                }}
-                className="px-3 py-1 bg-[#ff2a55]/15 hover:bg-[#ff2a55]/25 text-[#ff2a55] text-xs font-bold rounded-md border border-[#ff2a55]/40 transition-colors flex items-center gap-1.5 cursor-pointer"
-                title="Chuyển sang giao diện Rust UI (Blitz/Stylo) siêu tốc, giải phóng WebView DOM"
-              >
-                ⚡ Rust UI
-              </button>
-              <button
                 onClick={handleSelectFolder}
                 className="px-3 py-1 bg-[#121212] hover:bg-[#1c1c1c] text-white text-xs font-medium rounded-md border border-[#222] transition-colors flex items-center gap-1.5 cursor-pointer"
               >
@@ -2450,21 +2573,6 @@ export default function App() {
           </header>
 
           {/* Body Content */}
-          {isRustUiMode ? (
-            <div className="flex-1 overflow-hidden">
-              <RustFastUiView
-                userId={currentUser?.id}
-                localTracks={tracks.filter(t => t.source === 'local')}
-                onExitRustUi={() => setIsRustUiMode(false)}
-                onPlayTrackFromRust={(t) => {
-                  currentTrackRef.current = t;
-                  setCurrentTrack(t);
-                  isPlayingRef.current = true;
-                  setIsPlaying(true);
-                }}
-              />
-            </div>
-          ) : (
           <div className="flex-1 overflow-y-auto px-7 py-5">
             {showVisualizer && currentView !== 'profile' && currentView !== 'ai_mix' && <AudioVisualizer isPlaying={isPlaying} language={language} accentColor={accentColor} source={currentTrack?.source} />}
 
@@ -2740,7 +2848,6 @@ export default function App() {
               </div>
             )}
           </div>
-          )}
         </main>
       </div>
 

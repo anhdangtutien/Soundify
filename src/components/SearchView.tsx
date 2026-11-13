@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { Search, Loader2, Play, Music, Disc3, Sparkles, ArrowUpRight, X } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { SearchResult, Track } from '../types';
-import { getContrastTextColor, optimizeThumbnailUrl } from '../utils/trackUtils';
+import { getContrastTextColor, optimizeThumbnailUrl, handleImageError } from '../utils/trackUtils';
 import { LanguageCode, getTranslation } from '../locales/i18n';
 
 interface SearchViewProps {
@@ -325,12 +325,22 @@ export const SearchView: React.FC<SearchViewProps> = ({
                 className="flex items-center justify-between p-2 rounded-lg bg-[#0c0c10] hover:bg-[#14141a] border border-[#161620] cursor-pointer group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded bg-[#181820] flex items-center justify-center text-[#555]">
-                    <Music className="w-4 h-4" />
+                  <div className="w-9 h-9 rounded-lg overflow-hidden bg-[#181820] flex-shrink-0 flex items-center justify-center text-[#555] border border-[#222]">
+                    {t.cover_art ? (
+                      <img
+                        src={optimizeThumbnailUrl(t.cover_art, t.path_or_url || t.id)}
+                        alt={t.title}
+                        referrerPolicy="no-referrer"
+                        onError={(e) => handleImageError(e, t.path_or_url || t.id)}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Music className="w-4 h-4" />
+                    )}
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-white group-hover:text-[#ff2a55] transition-colors">{t.title}</p>
-                    <p className="text-[11px] text-[#777]">{t.artist}</p>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-white group-hover:text-[#ff2a55] transition-colors truncate">{t.title}</p>
+                    <p className="text-[11px] text-[#777] truncate">{t.artist}</p>
                   </div>
                 </div>
                 <Play className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -356,8 +366,10 @@ export const SearchView: React.FC<SearchViewProps> = ({
                 <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-[#16161e]">
                   {r.thumbnail ? (
                     <img
-                      src={optimizeThumbnailUrl(r.thumbnail)}
+                      src={optimizeThumbnailUrl(r.thumbnail, r.url_or_id)}
                       alt={r.title}
+                      referrerPolicy="no-referrer"
+                      onError={(e) => handleImageError(e, r.url_or_id)}
                       loading="lazy"
                       decoding="async"
                       className="w-full h-full object-cover"

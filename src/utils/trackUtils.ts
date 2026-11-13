@@ -1,4 +1,18 @@
+import React from 'react';
 import { Track } from '../types';
+
+export const DEFAULT_COVER_FALLBACK =
+  'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=60';
+
+function extractCleanYtId(raw?: string): string | null {
+  if (!raw) return null;
+  let s = raw.trim();
+  if (s.startsWith('yt_')) s = s.slice(3);
+  if (s.includes('v=')) s = s.split('v=')[1].split('&')[0];
+  if (s.includes('vi/')) s = s.split('vi/')[1].split('/')[0];
+  if (/^[a-zA-Z0-9_-]{11}$/.test(s)) return s;
+  return null;
+}
 
 /**
  * Deduplicates a list of tracks by ID and by Title (case-insensitive & trimmed)
@@ -16,18 +30,15 @@ export function deduplicateTracks(tracks: Track[]): Track[] {
     const rawTitle = (t.title || '').trim().toLowerCase();
     const rawArtist = (t.artist || '').trim().toLowerCase();
 
-    // Check ID duplicate
     if (rawId && seenIds.has(rawId)) {
       continue;
     }
 
-    // Check Title + Artist duplicate
     const titleKey = rawTitle ? `${rawTitle}___${rawArtist}` : '';
     if (titleKey && seenTitles.has(titleKey)) {
       continue;
     }
 
-    // Also check exact title alone if artist is generic or same
     if (rawTitle && seenTitles.has(rawTitle)) {
       continue;
     }
@@ -67,12 +78,42 @@ export function getContrastTextColor(hexColor?: string): '#000000' | '#ffffff' {
 
 /**
  * Optimizes thumbnail image URLs (e.g. YouTube maxresdefault -> mqdefault)
- * Drastically reduces memory and GPU texture footprint by up to 80-90%.
+ * and rewrites blocked googleusercontent URLs when a YouTube video ID is available.
  */
-export function optimizeThumbnailUrl(url: string | undefined): string {
-  if (!url) return '';
+export function optimizeThumbnailUrl(url: string | undefined, fallbackIdOrUrl?: string): string {
+  const cleanVid = extractCleanYtId(fallbackIdOrUrl) || extractCleanYtId(url);
+  if (!url || !url.trim()) {
+    return cleanVid ? `https://i.ytimg.com/vi/${cleanVid}/mqdefault.jpg` : DEFAULT_COVER_FALLBACK;
+  }
+  if (url.includes('googleusercontent.com') && cleanVid) {
+    return `https://i.ytimg.com/vi/${cleanVid}/mqdefault.jpg`;
+  }
   if (url.includes('i.ytimg.com') || url.includes('img.youtube.com')) {
     return url.replace('maxresdefault', 'mqdefault').replace('hqdefault', 'mqdefault');
   }
   return url;
+}
+
+/**
+ * Universal onError handler for <img> tags so broken thumbnail icons never appear.
+ */
+export function handleImageError(
+  e: React.SyntheticEvent<HTMLImageElement, Event>,
+  fallbackIdOrUrl?: string
+) {
+  const img = e.currentTarget;
+  const cleanVid = extractCleanYtId(fallbackIdOrUrl) || extractCleanYtId(img.src);
+
+  if (cleanVid) {
+    const hqUrl = `https://i.ytimg.com/vi/${cleanVid}/hqdefault.jpg`;
+    if (img.src !== hqUrl && !img.dataset.triedHq) {
+      img.dataset.triedHq = '1';
+      img.src = hqUrl;
+      return;
+    }
+  }
+
+  if (img.src !== DEFAULT_COVER_FALLBACK) {
+    img.src = DEFAULT_COVER_FALLBACK;
+  }
 }

@@ -191,17 +191,9 @@ fn parse_ytm_item(m: &Value) -> Option<SearchResult> {
         }
     }
 
-    let thumbnail = m
-        .pointer("/thumbnail/musicThumbnailRenderer/thumbnail/thumbnails")
-        .and_then(|v| v.as_array())
-        .and_then(|arr| arr.last())
-        .and_then(|t| t.get("url"))
-        .and_then(|v| v.as_str())
-        .map(|u| {
-            u.replace("=w120-h120", "=w300-h300")
-                .replace("=w60-h60", "=w300-h300")
-        })
-        .unwrap_or_else(|| format!("https://i.ytimg.com/vi/{}/hqdefault.jpg", video_id));
+    // Always use standard i.ytimg.com CDN thumbnail for YouTube Music videoId
+    // (avoids 403 Forbidden from yt3/lh3.googleusercontent.com cross-origin Referer checks)
+    let thumbnail = format!("https://i.ytimg.com/vi/{}/hqdefault.jpg", video_id);
 
     Some(SearchResult {
         title: title.to_string(),

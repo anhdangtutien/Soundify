@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Clock3, Heart, Music, HardDrive, FolderPlus, Download, Loader2 } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { Track } from '../types';
-import { optimizeThumbnailUrl } from '../utils/trackUtils';
+import { optimizeThumbnailUrl, handleImageError } from '../utils/trackUtils';
 import { LanguageCode, getTranslation } from '../locales/i18n';
 
 interface TrackTableProps {
@@ -216,8 +216,10 @@ export const TrackTable: React.FC<TrackTableProps> = ({
                 <div className="w-9 h-9 rounded bg-[#111] border border-[#1e1e24] flex-shrink-0 overflow-hidden relative">
                   {track.cover_art ? (
                     <img
-                      src={optimizeThumbnailUrl(track.cover_art)}
+                      src={optimizeThumbnailUrl(track.cover_art, track.path_or_url || track.id)}
                       alt={track.title}
+                      referrerPolicy="no-referrer"
+                      onError={(e) => handleImageError(e, track.path_or_url || track.id)}
                       loading="lazy"
                       decoding="async"
                       className="w-full h-full object-cover"
