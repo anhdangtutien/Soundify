@@ -10,18 +10,20 @@
 
 Trình phát nhạc Hi-Fi đa nguồn, giao diện tối giản phong cách Discord, siêu nhẹ và tối ưu bộ nhớ.
 
-[📥 **Tải bản cài đặt Windows (.exe)**](https://github.com/anhdangtutien/Spytify/raw/main/installers/Spytify_0.1.1_x64-setup.exe) • [🍏 **Bản cài đặt macOS (.dmg)**](#-hướng-dẫn-cài-đặt--chạy-từ-mã-nguồn) • [✨ **Tính năng nổi bật**](#-tính-năng-nổi-bật)
+[🚀 **Tải về trên GitHub Releases**](https://github.com/anhdangtutien/Spytify/releases) • [📥 **Bản cài Windows (.exe)**](https://github.com/anhdangtutien/Spytify/releases) • [🍏 **Bản cài macOS (.dmg)**](https://github.com/anhdangtutien/Spytify/releases) • [✨ **Tính năng nổi bật**](#-tính-năng-nổi-bật)
 
 </div>
 
 ---
 
-## 📥 Tải về cài đặt (Direct Download)
+## 📥 Tải về cài đặt (Direct Download via GitHub Releases)
 
-| Hệ điều hành | Định dạng | Dung lượng | Tải trực tiếp |
-| :--- | :--- | :--- | :--- |
-| **Windows 10 / 11** | `.exe` (NSIS Installer) | `~3.8 MB` | [📥 **Tải Spytify_0.1.1_x64-setup.exe**](https://github.com/anhdangtutien/Spytify/raw/main/installers/Spytify_0.1.1_x64-setup.exe) |
-| **macOS (Apple Silicon & Intel)** | `.dmg` / `.app` | `~15 MB` | [🍏 **Xem trong GitHub Releases / Actions**](https://github.com/anhdangtutien/Spytify/actions) |
+👉 **Truy cập trang Releases chính thức**: [https://github.com/anhdangtutien/Spytify/releases](https://github.com/anhdangtutien/Spytify/releases)
+
+| Hệ điều hành | Định dạng | Tải trực tiếp từ Releases |
+| :--- | :--- | :--- |
+| **Windows 10 / 11** | `.exe` (NSIS Installer) | [📥 **Tải Spytify cho Windows (.exe)**](https://github.com/anhdangtutien/Spytify/releases) |
+| **macOS (M1/M2/M3/M4 & Intel)** | `.dmg` (Universal Package) | [🍏 **Tải Spytify cho macOS (.dmg)**](https://github.com/anhdangtutien/Spytify/releases) |
 
 ---
 
@@ -88,6 +90,7 @@ CREATE TABLE IF NOT EXISTS public.spytify_profiles (
     avatar TEXT,
     accent_color TEXT DEFAULT '#FF2A55',
     theme_mode TEXT DEFAULT 'dark',
+    language TEXT DEFAULT 'vi',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
