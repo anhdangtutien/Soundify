@@ -247,6 +247,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         avatar: currentUser.avatar || '',
         accentColor: accentColor,
         themeMode: themeMode,
+        language: language,
         history: history.slice(0, 30),
       });
 

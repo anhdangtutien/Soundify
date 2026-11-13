@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS public.spytify_profiles (
     avatar TEXT,
     accent_color TEXT DEFAULT '#FF2A55',
     theme_mode TEXT DEFAULT 'dark',
+    language TEXT DEFAULT 'vi',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 

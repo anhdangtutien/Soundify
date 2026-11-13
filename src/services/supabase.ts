@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS public.spytify_profiles (
     avatar TEXT,
     accent_color TEXT DEFAULT '#FF2A55',
     theme_mode TEXT DEFAULT 'dark',
+    language TEXT DEFAULT 'vi',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
@@ -139,6 +140,7 @@ export interface CloudUserData {
   avatar?: string;
   accentColor?: string;
   themeMode?: 'dark' | 'light';
+  language?: string;
 }
 
 /**
@@ -150,12 +152,13 @@ export async function cloudSyncPush(userId: string, data: Partial<CloudUserData>
 
   try {
     // 1. Sync User Profile / Settings
-    if (data.avatar || data.accentColor || data.themeMode) {
+    if (data.avatar || data.accentColor || data.themeMode || data.language) {
       await client.from('spytify_profiles').upsert({
         id: userId,
         avatar: data.avatar,
         accent_color: data.accentColor,
         theme_mode: data.themeMode,
+        language: data.language,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
     }
@@ -258,6 +261,7 @@ export async function cloudSyncPull(userId: string): Promise<CloudUserData | nul
       result.avatar = profileRes.data.avatar || undefined;
       result.accentColor = profileRes.data.accent_color || undefined;
       result.themeMode = profileRes.data.theme_mode || undefined;
+      result.language = profileRes.data.language || undefined;
     }
 
     if (albumsRes.data) {

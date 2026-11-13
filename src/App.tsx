@@ -911,11 +911,31 @@ export default function App() {
               return merged;
             });
           }
+          if (cloudData.favorites && cloudData.favorites.length > 0) {
+            for (const t of cloudData.favorites) {
+              invoke('db_add_favorite', { trackId: t.id }).catch(() => {});
+            }
+            setFavorites(prev => {
+              const next = new Set(prev);
+              cloudData.favorites.forEach(t => next.add(t.id));
+              return next;
+            });
+            setTracks(prev => deduplicateTracks([...cloudData.favorites, ...prev]));
+          }
           if (cloudData.avatar && !user.avatar) {
             setCurrentUser(prev => prev ? { ...prev, avatar: cloudData.avatar } : null);
           }
           if (cloudData.accentColor) {
             handleUpdateAccentColor(cloudData.accentColor);
+          }
+          if (cloudData.themeMode && cloudData.themeMode !== themeMode) {
+            setThemeMode(cloudData.themeMode);
+            localStorage.setItem('spytify_theme_mode', cloudData.themeMode);
+          }
+          if (cloudData.language && cloudData.language !== language) {
+            const l = cloudData.language as LanguageCode;
+            setLanguage(l);
+            localStorage.setItem('spytify_language', l);
           }
           showNotification(`🟢 ${getTranslation(language, 'toast.cloudSynced')} @${user.username}`);
         }
