@@ -921,17 +921,6 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
   }
 };
 
-const getLanguageSearchQuery = (lang: LanguageCode): string => {
-  switch (lang) {
-    case 'ko': return 'kpop melon top 100 trending viral hits official mv audio';
-    case 'ja': return 'jpop billboard japan hot 100 official music video';
-    case 'zh-CN': return 'cpop trending hot hits official music video audio';
-    case 'en-US': return 'billboard hot 100 global pop viral hits official audio';
-    case 'vi':
-    default: return 'vpop thinh hanh trending hits official music video audio';
-  }
-};
-
   // Pre-fetch AI Mix recommendations on initial app startup (when !currentTrack)
   // or when language changes, and switch to normal Next Track pre-fetching once a track starts playing
   useEffect(() => {
@@ -958,73 +947,6 @@ const getLanguageSearchQuery = (lang: LanguageCode): string => {
         });
       }
 
-      // Asynchronously refine initial popup with personalized on-device AI Mix & online discovery for this language
-      const fetchInitialAiMix = async () => {
-        try {
-          const uid = currentUserRef.current?.id || 'guest_spy';
-          let aiPool: Track[] = [];
-
-          if (tracksRef.current.length > 0) {
-            try {
-              const aiRecs = await invoke<RecommendationResult[]>('ai_recommend_tracks', {
-                userId: uid,
-                candidates: tracksRef.current,
-              });
-              if (aiRecs && aiRecs.length > 0) {
-                aiPool.push(...aiRecs.map(r => r.track));
-              }
-            } catch {}
-          }
-
-          // Fetch fresh online AI Mix recommendations based on language
-          const seedTrack = aiPool[0] || tracksRef.current[0];
-          const query = getLanguageSearchQuery(language);
-          const related = seedTrack
-            ? await invoke<SearchResult[]>('get_related_tracks', {
-                title: seedTrack.title,
-                artist: seedTrack.artist,
-              })
-            : await invoke<SearchResult[]>('search_online', {
-                query,
-                source: 'youtube',
-              });
-
-          if (related && related.length > 0) {
-            const onlineMapped: Track[] = related.slice(0, 6).map((r, idx) => ({
-              id: `aimix_online_${idx}_${Date.now()}`,
-              title: r.title,
-              artist: r.artist,
-              album: r.album || 'AI Mix Discovery',
-              duration_secs: r.duration_secs || 210,
-              path_or_url: r.url_or_id,
-              cover_art: r.thumbnail,
-              source: r.source,
-            }));
-            aiPool = deduplicateTracks([...onlineMapped, ...aiPool]);
-          }
-
-          if (!currentTrackRef.current && aiPool.length > 0) {
-            preloadedNextTrackRef.current = aiPool[0];
-            setPreloadedNextTrack(aiPool[0]);
-            preloadedAlternativesRef.current = aiPool.slice(1, 5);
-            if (isNextTrackPopupEnabledRef.current && !isTrayModeRef.current) {
-              setNextTrackPopup({
-                title: aiPool[0].title,
-                artist: aiPool[0].artist,
-                thumbnail: aiPool[0].cover_art || undefined,
-                source: aiPool[0].source,
-                modeLabel: popupModeLabel,
-                isCountdown: false,
-                alternatives: aiPool.slice(1, 4),
-              });
-            }
-          }
-        } catch (e) {
-          console.warn('Initial AI Mix popup fetch error:', e);
-        }
-      };
-
-      fetchInitialAiMix();
       return;
     }
     endOfTrackPopupShownForRef.current = null;
