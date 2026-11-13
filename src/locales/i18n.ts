@@ -80,6 +80,7 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
 
     // Next Track Popup
     'popup.nextTrack': 'BÀI TIẾP THEO',
+    'popup.aiMixRecommend': 'ĐỀ XUẤT AI MIX',
     'popup.startsIn': 'Chuyển sau',
     'popup.sameGenre': '🎶 GỢI Ý CÙNG THỂ LOẠI KHÁC',
     'popup.clickToChoose': 'Bấm để chọn bài',
@@ -365,6 +366,7 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
 
     // Next Track Popup
     'popup.nextTrack': 'NEXT TRACK',
+    'popup.aiMixRecommend': 'AI MIX RECOMMENDATION',
     'popup.startsIn': 'Plays in',
     'popup.sameGenre': '🎶 OTHER RECOMMENDATIONS',
     'popup.clickToChoose': 'Click to choose track',
@@ -650,6 +652,7 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
 
     // Next Track Popup
     'popup.nextTrack': '次の曲',
+    'popup.aiMixRecommend': 'AIミックスのおすすめ',
     'popup.startsIn': '再生まであと',
     'popup.sameGenre': '🎶 その他の同ジャンル提案',
     'popup.clickToChoose': 'クリックして曲を選択',
@@ -935,6 +938,7 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
 
     // Next Track Popup
     'popup.nextTrack': '下一首歌曲',
+    'popup.aiMixRecommend': 'AI 混音个性推荐',
     'popup.startsIn': '将在',
     'popup.sameGenre': '🎶 类似风格其他推荐',
     'popup.clickToChoose': '点击选择播放',
@@ -1210,6 +1214,7 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'search.playNow': "지금 재생",
     'search.onlineResults': "온라인 검색 결과",
     'popup.nextTrack': "다음 트랙",
+    'popup.aiMixRecommend': "AI 믹스 맞춤 추천",
     'popup.startsIn': "재생 시작까지",
     'popup.sameGenre': "🎶 다른 추천 곡",
     'popup.clickToChoose': "곡을 클릭하여 선택",

@@ -383,7 +383,10 @@ fn extract_core_song_title(raw_title: &str, artist: &str) -> String {
         "(official", "[official", "(video", "[video", "(audio", "[audio",
         "(lyric", "[lyric", "(mv", "[mv", "(visualizer", "[visualizer",
         "(feat", "[feat", "(ft.", "[ft.", "(prod.", "[prod.", "official music video",
-        "official audio", "official video", "lyrics", "full audio", "hd", "4k"
+        "official audio", "official video", "lyrics", "full audio", "hd", "4k",
+        "(edit", "[edit", "(remix", "[remix", "(cover", "[cover",
+        "(slowed", "[slowed", "(sped up", "[sped up", "(tiktok", "[tiktok",
+        "(live", "[live", "(acoustic", "[acoustic"
     ];
 
     let mut lower = t.to_lowercase();
@@ -416,45 +419,53 @@ async fn get_related_tracks(title: String, artist: String) -> Result<Vec<SearchR
     let core_lower = core_title.to_lowercase();
 
     // 1. Fetch diverse related music:
-    // - Search 1: Other hits and popular songs by this artist / genre
-    // - Search 2: Songs from similar artists in the same style
-    // - Search 3: SoundCloud tracks in this genre
-    // - Search 4: Audius open hi-fi tracks
-    let yt_query1 = if !clean_artist.is_empty() && clean_artist.to_lowercase() != "unknown" {
-        format!("{} top hits official audio", clean_artist)
+    // Focus strongly on the actual song's genre and artist, avoiding obscure cover channel names
+    let has_valid_artist = !clean_artist.is_empty() 
+        && clean_artist.to_lowercase() != "unknown" 
+        && !clean_artist.to_lowercase().contains("topic")
+        && !clean_artist.to_lowercase().contains("vevo")
+        && !clean_artist.to_lowercase().contains("records");
+
+    let yt_query1 = if has_valid_artist {
+        format!("music like {} {} top hits official audio", clean_artist, core_title)
     } else {
-        format!("{} songs similar genre audio", core_title)
+        format!("songs like {} hits official audio", core_title)
     };
 
-    let yt_query2 = if !clean_artist.is_empty() && clean_artist.to_lowercase() != "unknown" {
-        format!("artists similar to {} music hits", clean_artist)
+    let yt_query2 = if has_valid_artist {
+        format!("{} top tracks official music video audio", clean_artist)
     } else {
-        format!("music like {} hits audio", core_title)
+        format!("{} similar music hits playlist", core_title)
     };
 
-    let sc_query = if !clean_artist.is_empty() && clean_artist.to_lowercase() != "unknown" {
-        format!("{} remix hits", clean_artist)
+    let yt_query3 = format!("songs like {} playlist official audio", core_title);
+
+    let sc_query = if has_valid_artist {
+        format!("{} {} remix hits", clean_artist, core_title)
     } else {
-        format!("{} remix", core_title)
+        format!("{} remix hits", core_title)
     };
 
-    let audius_query = if !clean_artist.is_empty() && clean_artist.to_lowercase() != "unknown" {
+    let audius_query = if has_valid_artist {
         clean_artist.to_string()
     } else {
-        "trending electronic pop".to_string()
+        core_title.clone()
     };
 
-    let (yt_res1, yt_res2, sc_res, audius_res) = tokio::join!(
+    let (yt_res1, yt_res2, yt_res3, sc_res, audius_res) = tokio::join!(
         sources::youtube::search_youtube(&yt_query1),
         sources::youtube::search_youtube(&yt_query2),
+        sources::youtube::search_youtube(&yt_query3),
         sources::soundcloud::search_soundcloud(&sc_query),
         sources::audius::search_audius(&audius_query)
     );
 
     let mut combined: Vec<SearchResult> = Vec::new();
 
+    // YouTube recommendations first (highest relevance to active genre & artist)
     if let Ok(yt1) = yt_res1 { combined.extend(yt1); }
     if let Ok(yt2) = yt_res2 { combined.extend(yt2); }
+    if let Ok(yt3) = yt_res3 { combined.extend(yt3); }
     if let Ok(sc) = sc_res { combined.extend(sc); }
     if let Ok(audius) = audius_res { combined.extend(audius); }
 
@@ -501,7 +512,15 @@ async fn get_related_tracks(title: String, artist: String) -> Result<Vec<SearchR
         }
     }
 
-    // 3. Shuffle results randomly
+    // 3. Keep highest-relevance hits first, gently shuffle remaining alternatives
+    let mut prioritized: Vec<SearchResult> = Vec::new();
+    if !unique.is_empty() {
+        prioritized.push(unique.remove(0));
+    }
+    if !unique.is_empty() {
+        prioritized.push(unique.remove(0));
+    }
+
     use std::time::{SystemTime, UNIX_EPOCH};
     let seed = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -514,8 +533,9 @@ async fn get_related_tracks(title: String, artist: String) -> Result<Vec<SearchR
             unique.swap(i, j);
         }
     }
+    prioritized.extend(unique);
 
-    Ok(unique)
+    Ok(prioritized)
 }
 
 // ─── DATABASE & AUTH COMMANDS ────────────────────────────────────────────────

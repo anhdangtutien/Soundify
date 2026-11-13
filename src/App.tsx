@@ -589,9 +589,9 @@ export default function App() {
     const useNewDiscovery = shouldNextBeNewDiscovery();
 
     const nextToUse = useNewDiscovery
-      ? (preloadedNextTrackRef.current || fallbackNext || cur)
-      : (fallbackNext || preloadedNextTrackRef.current || cur);
-    if (!nextToUse) return null;
+      ? (preloadedNextTrackRef.current || fallbackNext)
+      : (fallbackNext || preloadedNextTrackRef.current);
+    if (!nextToUse || (cur && nextToUse.id === cur.id)) return null;
 
     const altList = (useNewDiscovery && preloadedAlternativesRef.current.length > 0)
       ? preloadedAlternativesRef.current.slice(0, 3)
@@ -688,15 +688,6 @@ export default function App() {
       })
       .catch(() => {});
   }, [currentUser]);
-
-function shuffleList<T>(list: T[]): T[] {
-  const arr = [...list];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
 
 const getLanguageAiSeeds = (lang: LanguageCode): Track[] => {
   let pool: Track[] = [];
@@ -1063,13 +1054,13 @@ const getLanguageAiSeeds = (lang: LanguageCode): Track[] => {
       ];
       break;
   }
-  return shuffleList(pool);
+  return pool;
 };
 
 const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
   switch (lang) {
     case 'ko': return '✨ AI 믹스 • 당신을 위한 맞춤 추천';
-    case 'ja': return '✨ AI 믹스 • あなたへのおすすめ';
+    case 'ja': return '✨ AIミックス • あなたへのおすすめ';
     case 'zh-CN': return '✨ AI 混音 • 为你专属推荐';
     case 'en-US': return '✨ AI MIX • RECOMMENDED FOR YOU';
     case 'vi':
@@ -1160,7 +1151,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
     };
 
     fetchUpcoming();
-  }, [currentTrack, language]);
+  }, [currentTrack, !currentTrack ? language : undefined]);
 
   // ─── RESTORE USER SESSION FROM SQLITE ──────────────────────────────────────
   useEffect(() => {
@@ -2645,7 +2636,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: accentColor }}>
                     <span className="animate-pulse">{currentTrack ? '⏭' : '✨'}</span>{' '}
-                    {currentTrack ? getTranslation(language, 'popup.nextTrack') : 'ĐỀ XUẤT AI MIX'}
+                    {currentTrack ? getTranslation(language, 'popup.nextTrack') : getTranslation(language, 'popup.aiMixRecommend')}
                   </span>
                   {nextTrackPopup.isCountdown && typeof nextTrackPopup.remainingSecs === 'number' && (
                     <span 
