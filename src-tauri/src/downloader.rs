@@ -94,11 +94,12 @@ impl Downloader {
         }
         #[cfg(not(target_os = "windows"))]
         if let Ok(home) = std::env::var("HOME") {
-            let p = PathBuf::from(home).join(".local").join("bin").join("yt-dlp");
+            let home_path = PathBuf::from(&home);
+            let p = home_path.join(".local").join("bin").join("yt-dlp");
             if p.exists() {
                 return Some(p);
             }
-            let p2 = PathBuf::from(home).join(".spytify").join("bin").join("yt-dlp");
+            let p2 = home_path.join(".spytify").join("bin").join("yt-dlp");
             if p2.exists() {
                 return Some(p2);
             }
