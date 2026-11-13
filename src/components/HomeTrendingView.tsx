@@ -43,7 +43,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Billboard Hot 100 #1',
       duration_secs: 251,
       source: 'youtube',
-      url_or_id: 'kPa7bsKwL-8',
+      url_or_id: 'kPa7bsKwL-c',
       thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -79,7 +79,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: "Short n' Sweet",
       duration_secs: 157,
       source: 'youtube',
-      url_or_id: 'T62mPyXkwn8',
+      url_or_id: '-5GI38vWew8',
       thumbnail: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -124,7 +124,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Unheard',
       duration_secs: 251,
       source: 'youtube',
-      url_or_id: 'aEZ821z9Z8c',
+      url_or_id: 'IN-PeAZDi7g',
       thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=60',
     },
   ],
@@ -135,7 +135,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'J-Pop Global Phenomenon',
       duration_secs: 172,
       source: 'youtube',
-      url_or_id: 'mLW35YMz1eo',
+      url_or_id: 'lRDaREIDxEg',
       thumbnail: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -153,7 +153,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Armageddon - K-Pop Smash',
       duration_secs: 178,
       source: 'youtube',
-      url_or_id: 'phuiAIQAx40',
+      url_or_id: 'G8YNFjruzPk',
       thumbnail: 'https://images.unsplash.com/photo-1526478806334-5fd488fcaabc?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -171,7 +171,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'GOLDEN (Global Sensation)',
       duration_secs: 206,
       source: 'youtube',
-      url_or_id: 'UNo0TGZuv4w',
+      url_or_id: 'sn0viUbmUVU',
       thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -180,7 +180,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Viral J-Pop Anthem',
       duration_secs: 210,
       source: 'youtube',
-      url_or_id: 'kFCOg7p_b6k',
+      url_or_id: 'QbHBfxAOucI',
       thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -198,7 +198,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Solo Comeback 2024',
       duration_secs: 136,
       source: 'youtube',
-      url_or_id: 'bCO7V325zKk',
+      url_or_id: 'bB3-CUMERIU',
       thumbnail: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -207,7 +207,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Jujutsu Kaisen OP',
       duration_secs: 238,
       source: 'youtube',
-      url_or_id: 'fHzNLgm_kH8',
+      url_or_id: 'fhzKLBZJC3w',
       thumbnail: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -236,7 +236,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Loi Choi - The New V-Pop Wave',
       duration_secs: 174,
       source: 'youtube',
-      url_or_id: 'Vq9sX8j7mI4',
+      url_or_id: 'zepHPnUDROE',
       thumbnail: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -254,7 +254,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Giai Điệu Bắt Tai',
       duration_secs: 202,
       source: 'youtube',
-      url_or_id: 'eUf9N9d_x7k',
+      url_or_id: '7ig2lXjozdw',
       thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -263,7 +263,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Ai Cũng Phải Bắt Đầu Từ Đâu Đó',
       duration_secs: 215,
       source: 'youtube',
-      url_or_id: 'J4s8G3k2UeI',
+      url_or_id: 'i0nd3NPJ4MI',
       thumbnail: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -272,7 +272,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: "Cam'On - Vietnamese Soul",
       duration_secs: 236,
       source: 'youtube',
-      url_or_id: 'XWn1kFp1v64',
+      url_or_id: 'ZXNrz72k1ew',
       thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -281,7 +281,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'V-Pop Viral Sensation',
       duration_secs: 195,
       source: 'youtube',
-      url_or_id: 'a18k_H2eQeA',
+      url_or_id: 'GpmOn4RyzZI',
       thumbnail: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -290,7 +290,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Song Ca Nổi Bật',
       duration_secs: 204,
       source: 'youtube',
-      url_or_id: 'yL7F3R7G7t0',
+      url_or_id: 'KUx2Pod0KJ4',
       thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -299,7 +299,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Tình Ca Lãng Mạn',
       duration_secs: 210,
       source: 'youtube',
-      url_or_id: 'dM_1YkK6pFs',
+      url_or_id: 'rIXhXaQ8tiM',
       thumbnail: 'https://images.unsplash.com/photo-1526478806334-5fd488fcaabc?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -308,7 +308,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Đen Vâu Hit Collection',
       duration_secs: 260,
       source: 'youtube',
-      url_or_id: 'tmbPZgU_hI4',
+      url_or_id: 'ukHK1GVyr0I',
       thumbnail: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=500&auto=format&fit=crop&q=60',
     },
   ],
@@ -364,7 +364,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Falling Beats',
       duration_secs: 142,
       source: 'youtube',
-      url_or_id: 'Z6L43FUVCdI',
+      url_or_id: 'Ggddxkj8tU0',
       thumbnail: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -373,7 +373,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Life Collection',
       duration_secs: 150,
       source: 'youtube',
-      url_or_id: 'pDkM2Kx943o',
+      url_or_id: 'XWLQKNvCepM',
       thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -382,7 +382,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Rainy Days',
       duration_secs: 168,
       source: 'youtube',
-      url_or_id: 'gR30cRz-W7Y',
+      url_or_id: 'LkhPi6J5Xg0',
       thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -400,8 +400,8 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Vibes 2',
       duration_secs: 132,
       source: 'youtube',
-      url_or_id: '2f9sM6vM7gM',
-      thumbnail: 'https://i.ytimg.com/vi/2f9sM6vM7gM/hqdefault.jpg',
+      url_or_id: '6ustyT4Kx-g',
+      thumbnail: 'https://i.ytimg.com/vi/6ustyT4Kx-g/hqdefault.jpg',
     },
   ],
   all: [
@@ -411,7 +411,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Billboard Hot 100 #1',
       duration_secs: 251,
       source: 'youtube',
-      url_or_id: 'kPa7bsKwL-8',
+      url_or_id: 'kPa7bsKwL-c',
       thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -447,7 +447,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'J-Pop Global Phenomenon',
       duration_secs: 172,
       source: 'youtube',
-      url_or_id: 'mLW35YMz1eo',
+      url_or_id: 'lRDaREIDxEg',
       thumbnail: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -465,7 +465,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Loi Choi - The New V-Pop Wave',
       duration_secs: 174,
       source: 'youtube',
-      url_or_id: 'Vq9sX8j7mI4',
+      url_or_id: 'zepHPnUDROE',
       thumbnail: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=500&auto=format&fit=crop&q=60',
     },
     {
@@ -474,7 +474,7 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       album: 'Armageddon - K-Pop Smash',
       duration_secs: 178,
       source: 'youtube',
-      url_or_id: 'phuiAIQAx40',
+      url_or_id: 'G8YNFjruzPk',
       thumbnail: 'https://images.unsplash.com/photo-1526478806334-5fd488fcaabc?w=500&auto=format&fit=crop&q=60',
     },
     {

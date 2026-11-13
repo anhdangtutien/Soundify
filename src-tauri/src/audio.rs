@@ -1,7 +1,7 @@
-use crate::models::{PlaybackStatus, Track};
+use crate::models::{PlaybackStatus, Track, TrackSource};
 use rodio::{Decoder, OutputStream, Sink};
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Cursor};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -42,6 +42,61 @@ impl AudioPlayerManager {
         }
     }
 
+    /// Fetch online audio bytes (Audius 320kbps MP3 or YouTube Music VISIONOS M4A/AAC) natively in Rust
+    fn fetch_online_audio_bytes(track: &Track) -> Result<(Vec<u8>, u64), String> {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|e| e.to_string())?;
+
+        rt.block_on(async {
+            let (stream_url, resolved_dur) = match track.source {
+                TrackSource::YouTube => {
+                    let resolved = crate::sources::youtube::resolve_youtube_music_stream(
+                        &track.path_or_url,
+                        &track.title,
+                        &track.artist,
+                    )
+                    .await?;
+                    let url = resolved
+                        .stream_url
+                        .ok_or_else(|| "Không lấy được luồng audio trực tiếp từ YouTube Music".to_string())?;
+                    let dur = if resolved.duration_secs > 0 {
+                        resolved.duration_secs
+                    } else {
+                        track.duration_secs
+                    };
+                    (url, dur)
+                }
+                TrackSource::Audius | TrackSource::SoundCloud => {
+                    (track.path_or_url.clone(), track.duration_secs)
+                }
+                TrackSource::Local => {
+                    return Err("Local track uses direct file reader".to_string());
+                }
+            };
+
+            let client = reqwest::Client::builder()
+                .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15")
+                .timeout(Duration::from_secs(20))
+                .build()
+                .map_err(|e| e.to_string())?;
+
+            let res = client
+                .get(&stream_url)
+                .send()
+                .await
+                .map_err(|e| e.to_string())?;
+
+            if !res.status().is_success() {
+                return Err(format!("HTTP stream status: {}", res.status()));
+            }
+
+            let bytes = res.bytes().await.map_err(|e| e.to_string())?;
+            Ok((bytes.to_vec(), resolved_dur))
+        })
+    }
+
     fn spawn_audio_thread(rx: Receiver<AudioCommand>, thread_status: Arc<Mutex<PlaybackStatus>>) {
         thread::spawn(move || {
             let mut _stream: Option<OutputStream> = None;
@@ -62,7 +117,7 @@ impl AudioPlayerManager {
                         }
                     }
                     Err(e) => {
-                        eprintln!("[Nutify Audio] Output device init error: {}", e);
+                        eprintln!("[Spytify Audio] Output device init error: {}", e);
                     }
                 }
             };
@@ -70,34 +125,66 @@ impl AudioPlayerManager {
             init_output(&mut sink, &mut _stream, volume);
 
             loop {
-                // Safeguard against any panic inside command handling or decoding
                 let loop_step = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     match rx.recv_timeout(Duration::from_millis(250)) {
-                        Ok(AudioCommand::Play(track)) => {
+                        Ok(AudioCommand::Play(mut track)) => {
                             if sink.is_none() {
                                 init_output(&mut sink, &mut _stream, volume);
                             }
                             if let Some(s) = &sink {
                                 s.stop();
                             }
-                            let file_path = &track.path_or_url;
-                            if let Ok(file) = File::open(file_path) {
-                                let reader = BufReader::new(file);
-                                let decode_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                                    Decoder::new(reader)
-                                }));
-                                if let Ok(Ok(source)) = decode_res {
-                                    if let Some(s) = &sink {
-                                        let append_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                                            s.append(source);
-                                            s.play();
-                                        }));
-                                        if append_res.is_ok() {
-                                            is_paused = false;
-                                            start_time = Some(Instant::now());
-                                            elapsed_before_pause = 0;
-                                            current_track = Some(track);
+
+                            if track.source == TrackSource::Local {
+                                let file_path = &track.path_or_url;
+                                if let Ok(file) = File::open(file_path) {
+                                    let reader = BufReader::new(file);
+                                    let decode_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                                        Decoder::new(reader)
+                                    }));
+                                    if let Ok(Ok(source)) = decode_res {
+                                        if let Some(s) = &sink {
+                                            let append_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                                                s.append(source);
+                                                s.play();
+                                            }));
+                                            if append_res.is_ok() {
+                                                is_paused = false;
+                                                start_time = Some(Instant::now());
+                                                elapsed_before_pause = 0;
+                                                current_track = Some(track);
+                                            }
                                         }
+                                    }
+                                }
+                            } else {
+                                // Native Rust streaming for YouTube Music (M4A/AAC) & Audius (320k MP3)
+                                match Self::fetch_online_audio_bytes(&track) {
+                                    Ok((bytes, resolved_dur)) => {
+                                        if resolved_dur > 0 {
+                                            track.duration_secs = resolved_dur;
+                                        }
+                                        let cursor = Cursor::new(bytes);
+                                        let decode_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                                            Decoder::new(cursor)
+                                        }));
+                                        if let Ok(Ok(source)) = decode_res {
+                                            if let Some(s) = &sink {
+                                                let append_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                                                    s.append(source);
+                                                    s.play();
+                                                }));
+                                                if append_res.is_ok() {
+                                                    is_paused = false;
+                                                    start_time = Some(Instant::now());
+                                                    elapsed_before_pause = 0;
+                                                    current_track = Some(track);
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Err(err) => {
+                                        eprintln!("[Spytify Native Stream] Failed to stream online track in Rust: {}", err);
                                     }
                                 }
                             }
@@ -151,16 +238,12 @@ impl AudioPlayerManager {
                                 }
                             }
                         }
-                        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                            // Normal timeout, continue to status update
-                        }
+                        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
                         Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
-                            // Receiver disconnected - graceful exit
                             return false;
                         }
                     }
 
-                    // Update shared status with f64 precision
                     let is_playing = sink.as_ref().map(|s| !s.is_paused() && !s.empty()).unwrap_or(false);
                     let mut current_time_secs: f64 = elapsed_before_pause as f64;
                     if is_playing {
@@ -189,8 +272,7 @@ impl AudioPlayerManager {
                         }
                     }
                     Err(panic_err) => {
-                        eprintln!("[Nutify Audio] Caught panic in audio thread: {:?}", panic_err);
-                        // Re-initialize audio device
+                        eprintln!("[Spytify Audio] Caught panic in audio thread: {:?}", panic_err);
                         sink = None;
                         _stream = None;
                         init_output(&mut sink, &mut _stream, volume);
@@ -203,7 +285,6 @@ impl AudioPlayerManager {
     fn send_command(&self, cmd: AudioCommand) -> Result<(), String> {
         let mut sender_guard = self.sender.lock().map_err(|e| e.to_string())?;
         if let Err(_) = sender_guard.send(cmd.clone()) {
-            eprintln!("[Nutify Audio] Audio thread channel closed. Reviving audio worker thread...");
             let (new_tx, new_rx) = channel::<AudioCommand>();
             Self::spawn_audio_thread(new_rx, Arc::clone(&self.status));
             *sender_guard = new_tx;
