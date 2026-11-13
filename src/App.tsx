@@ -18,7 +18,7 @@ import { SplashScreen } from './components/SplashScreen';
 import { cloudSyncPull, cloudSyncPush, isSupabaseConfigured } from './services/supabase';
 import { deduplicateTracks, optimizeThumbnailUrl, handleImageError } from './utils/trackUtils';
 import { Track, PlaybackStatus, SearchResult, ViewType, User, UserAlbum, RecommendationResult } from './types';
-import { FolderPlus, Disc, CheckCircle2, Tv, X, Radio, ArrowUpRight, LogIn, Sun, Moon, Music, Play, Globe, Languages, ChevronDown, ChevronUp, EyeOff } from 'lucide-react';
+import { FolderPlus, Disc, CheckCircle2, Tv, X, Radio, ArrowUpRight, LogIn, Sun, Moon, Music, Play, Globe, Languages, ChevronDown, ChevronUp, EyeOff, Sparkles } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './components/Icons';
 import { LanguageCode, SUPPORTED_LANGUAGES, getTranslation } from './locales/i18n';
 
@@ -535,6 +535,7 @@ export default function App() {
     alternatives?: Track[];
   }
   const [nextTrackPopup, setNextTrackPopup] = useState<NextTrackPopupData | null>(null);
+  const [isAiLoadingNext, setIsAiLoadingNext] = useState<boolean>(false);
   const [isNextTrackPopupCollapsed, setIsNextTrackPopupCollapsed] = useState(false);
   const nextTrackPopupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const endOfTrackPopupShownForRef = useRef<string | null>(null);
@@ -1103,6 +1104,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
     endOfTrackPopupShownForRef.current = null;
 
     const fetchUpcoming = async () => {
+      setIsAiLoadingNext(true);
       try {
         const related = await invoke<SearchResult[]>('get_related_tracks', {
           title: currentTrack.title,
@@ -1151,6 +1153,8 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
         }
       } catch (err) {
         console.error('Error prefetching upcoming songs:', err);
+      } finally {
+        setIsAiLoadingNext(false);
       }
     };
 
@@ -1300,12 +1304,16 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
   useEffect(() => {
     if (!isNextTrackPopupEnabledRef.current || !effectiveUpcomingTrack) return;
     if (!currentTrackRef.current) return;
+    const useNew = shouldNextBeNewDiscovery();
+
+    // When in discovery/fresh mode, NEVER fall back to favorites/library tracks while AI is analyzing/loading!
+    if (useNew && !preloadedNextTrack) return;
+
     const allList = getEffectiveQueue();
     const cur = currentTrackRef.current;
-    const useNew = shouldNextBeNewDiscovery();
     const altList = (useNew && preloadedAlternativesRef.current.length > 0)
       ? preloadedAlternativesRef.current.slice(0, 3)
-      : allList.filter(t => t.id !== cur?.id && t.id !== effectiveUpcomingTrack.id).slice(0, 3);
+      : (!useNew ? allList.filter(t => t.id !== cur?.id && t.id !== effectiveUpcomingTrack.id).slice(0, 3) : []);
 
     setNextTrackPopup(prev => ({
       title: effectiveUpcomingTrack.title,
@@ -1317,7 +1325,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
       remainingSecs: prev?.remainingSecs,
       alternatives: altList,
     }));
-  }, [effectiveUpcomingTrack, recommendMode, isShuffle, activeQueueContext, language]);
+  }, [effectiveUpcomingTrack, preloadedNextTrack, recommendMode, isShuffle, activeQueueContext, language]);
 
   // ─── AUTO-PLAY NEXT TRACK & AUTO-RECOMMEND ENGINE ──────────────────────────
   const handleNext = useCallback(async (isManualSkip = false) => {
@@ -1980,12 +1988,14 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
 
     if (isNextTrackPopupEnabledRef.current && !isTrayModeRef.current) {
       if (nextPreloaded) {
+        setIsAiLoadingNext(false);
         const immediateData = buildImmediatePopupData();
         if (immediateData) {
           setNextTrackPopup(immediateData);
         }
       } else {
-        // Clear/hide old popup so stale/unrelated recommendations are NEVER shown while fetching new related tracks
+        // AI is loading related tracks for this new song
+        setIsAiLoadingNext(true);
         setNextTrackPopup(null);
       }
     }
@@ -2576,7 +2586,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
       )}
 
       {/* ─── NEXT TRACK POPUP (SMOOTH PLAYBACK FLOATING WIDGET) ── */}
-      {!isTrayMode && nextTrackPopup && isNextTrackPopupEnabled && (
+      {!isTrayMode && (nextTrackPopup || (isAiLoadingNext && currentTrack)) && isNextTrackPopupEnabled && (
         <div 
           className={`fixed right-6 z-50 p-3.5 rounded-2xl backdrop-blur-xl border shadow-2xl flex flex-col gap-2.5 transition-all duration-300 ${
             themeMode === 'light' ? 'bg-white/95' : 'bg-[#0c0c14]/95'
@@ -2592,7 +2602,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
               : `0 12px 35px rgba(0,0,0,0.8), 0 0 16px ${accentColor}30`
           }}
         >
-          {isNextTrackPopupCollapsed ? (
+          {isNextTrackPopupCollapsed && nextTrackPopup ? (
             <div className="flex items-center justify-between gap-2.5">
               <div className="flex items-center gap-2 overflow-hidden flex-1">
                 <span className="text-[10px] font-mono font-bold uppercase flex-shrink-0" style={{ color: accentColor }}>
@@ -2632,7 +2642,60 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 </button>
               </div>
             </div>
-          ) : (
+          ) : (isAiLoadingNext && !nextTrackPopup) ? (
+            <div className="flex flex-col gap-2.5 py-1">
+              <style>{`
+                @keyframes spytifyPopupPulse {
+                  0%, 100% { transform: scale(1) translateY(0px); }
+                  50% { transform: scale(1.08) translateY(-3px); }
+                }
+              `}</style>
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-[#1c1c28] pb-1.5">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: accentColor }}>
+                  <Sparkles className="w-3 h-3 animate-spin" />
+                  {getTranslation(language, 'popup.aiAnalyzing')}
+                </span>
+                <button 
+                  onClick={handleToggleNextTrackPopupEnabled}
+                  className="text-[#666] hover:text-white transition-colors cursor-pointer text-xs p-1 leading-none"
+                  title={getTranslation(language, 'popup.close')}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Startup-style Breathing Glow Box & Analyzing Text */}
+              <div className="flex flex-col items-center justify-center py-2.5 select-none">
+                <div
+                  style={{
+                    animation: 'spytifyPopupPulse 1.2s ease-in-out infinite',
+                    filter: `drop-shadow(0 4px 16px ${accentColor}80)`,
+                  }}
+                  className="w-11 h-11 rounded-2xl flex items-center justify-center bg-[#151520] border border-[#2a2a3e]"
+                >
+                  <Sparkles className="w-5 h-5 fill-current" style={{ color: accentColor }} />
+                </div>
+                <p className="mt-2 text-xs font-semibold text-white animate-pulse">
+                  {getTranslation(language, 'popup.findingRelated')}
+                </p>
+                <p className="text-[10px] font-mono text-[#888899] mt-0.5 truncate max-w-[220px]">
+                  {currentTrack?.title} • {currentTrack?.artist}
+                </p>
+              </div>
+
+              {/* Shimmer Skeleton Placeholder */}
+              <div className="space-y-2 p-2 rounded-xl bg-[#12121a]/60 border border-[#1e1e2c]">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-[#20202e] animate-pulse flex-shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-2.5 w-4/5 bg-[#252536] rounded-full animate-pulse" />
+                    <div className="h-2 w-2/5 bg-[#1b1b26] rounded-full animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : nextTrackPopup ? (
             <>
               {/* Header */}
               <div className="flex items-center justify-between border-b border-[#1c1c28] pb-1.5">
@@ -2767,7 +2830,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 </div>
               )}
             </>
-          )}
+          ) : null}
         </div>
       )}
       {/* Toast Notification — Invincible Accent (Hiển thị ngay trên thanh Play) */}
