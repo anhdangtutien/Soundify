@@ -39,18 +39,37 @@ impl Downloader {
     }
 
     pub fn find_node_bin() -> Option<PathBuf> {
-        // 1. Check D:\NodeJS\node.exe
-        let d_node = PathBuf::from("D:\\NodeJS\\node.exe");
-        if d_node.exists() {
-            return Some(d_node);
+        // 1. Common Windows locations
+        #[cfg(target_os = "windows")]
+        {
+            let d_node = PathBuf::from("D:\\NodeJS\\node.exe");
+            if d_node.exists() {
+                return Some(d_node);
+            }
+            let pf_node = PathBuf::from("C:\\Program Files\\nodejs\\node.exe");
+            if pf_node.exists() {
+                return Some(pf_node);
+            }
         }
-        // 2. Check Program Files
-        let pf_node = PathBuf::from("C:\\Program Files\\nodejs\\node.exe");
-        if pf_node.exists() {
-            return Some(pf_node);
+
+        // 2. Common macOS / Linux locations
+        #[cfg(not(target_os = "windows"))]
+        {
+            for p in &["/usr/local/bin/node", "/opt/homebrew/bin/node", "/usr/bin/node"] {
+                let pb = PathBuf::from(p);
+                if pb.exists() {
+                    return Some(pb);
+                }
+            }
         }
+
         // 3. Check system PATH
-        if let Ok(output) = SyncCommand::new("where").arg("node").output() {
+        #[cfg(target_os = "windows")]
+        let cmd = "where";
+        #[cfg(not(target_os = "windows"))]
+        let cmd = "which";
+
+        if let Ok(output) = SyncCommand::new(cmd).arg("node").output() {
             if output.status.success() {
                 let s = String::from_utf8_lossy(&output.stdout);
                 if let Some(line) = s.lines().next() {
@@ -65,20 +84,51 @@ impl Downloader {
     }
 
     pub fn find_ytdlp_bin() -> Option<PathBuf> {
-        // 1. Check APPDATA/snutify/bin/yt-dlp.exe
+        // 1. Check APPDATA or HOME
+        #[cfg(target_os = "windows")]
         if let Ok(appdata) = std::env::var("APPDATA") {
             let p = PathBuf::from(appdata).join("snutify").join("bin").join("yt-dlp.exe");
             if p.exists() {
                 return Some(p);
             }
         }
-        // 2. Check current working directory / bin
+        #[cfg(not(target_os = "windows"))]
+        if let Ok(home) = std::env::var("HOME") {
+            let p = PathBuf::from(home).join(".local").join("bin").join("yt-dlp");
+            if p.exists() {
+                return Some(p);
+            }
+            let p2 = PathBuf::from(home).join(".spytify").join("bin").join("yt-dlp");
+            if p2.exists() {
+                return Some(p2);
+            }
+        }
+
+        // 2. Common macOS Homebrew / Linux locations
+        #[cfg(not(target_os = "windows"))]
+        for p in &["/opt/homebrew/bin/yt-dlp", "/usr/local/bin/yt-dlp", "/usr/bin/yt-dlp"] {
+            let pb = PathBuf::from(p);
+            if pb.exists() {
+                return Some(pb);
+            }
+        }
+
+        // 3. Check current working directory / bin
+        #[cfg(target_os = "windows")]
         let local_bin = PathBuf::from("bin").join("yt-dlp.exe");
+        #[cfg(not(target_os = "windows"))]
+        let local_bin = PathBuf::from("bin").join("yt-dlp");
         if local_bin.exists() {
             return Some(local_bin);
         }
-        // 3. Check system PATH
-        if let Ok(output) = SyncCommand::new("where").arg("yt-dlp").output() {
+
+        // 4. Check system PATH
+        #[cfg(target_os = "windows")]
+        let cmd = "where";
+        #[cfg(not(target_os = "windows"))]
+        let cmd = "which";
+
+        if let Ok(output) = SyncCommand::new(cmd).arg("yt-dlp").output() {
             if output.status.success() {
                 let s = String::from_utf8_lossy(&output.stdout);
                 if let Some(line) = s.lines().next() {
@@ -97,15 +147,35 @@ impl Downloader {
             return Ok(existing);
         }
 
-        // Auto-download standalone yt-dlp.exe from GitHub into APPDATA/snutify/bin/yt-dlp.exe
-        let appdata = std::env::var("APPDATA")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| std::env::temp_dir());
-        let bin_dir = appdata.join("snutify").join("bin");
-        let _ = fs::create_dir_all(&bin_dir);
-        let dest = bin_dir.join("yt-dlp.exe");
+        #[cfg(target_os = "windows")]
+        let (bin_dir, dest, download_url) = {
+            let appdata = std::env::var("APPDATA")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| std::env::temp_dir());
+            let dir = appdata.join("snutify").join("bin");
+            (dir.clone(), dir.join("yt-dlp.exe"), "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe")
+        };
 
-        let download_url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
+        #[cfg(target_os = "macos")]
+        let (bin_dir, dest, download_url) = {
+            let home = std::env::var("HOME")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| std::env::temp_dir());
+            let dir = home.join(".spytify").join("bin");
+            (dir.clone(), dir.join("yt-dlp"), "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos")
+        };
+
+        #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+        let (bin_dir, dest, download_url) = {
+            let home = std::env::var("HOME")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| std::env::temp_dir());
+            let dir = home.join(".spytify").join("bin");
+            (dir.clone(), dir.join("yt-dlp"), "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp")
+        };
+
+        let _ = fs::create_dir_all(&bin_dir);
+
         let client = reqwest::Client::builder()
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
             .timeout(std::time::Duration::from_secs(45))
@@ -126,6 +196,16 @@ impl Downloader {
         let bytes = res.bytes().await.map_err(|e| format!("Lỗi tải dữ liệu: {}", e))?;
         file.write_all(&bytes).map_err(|e| format!("Lỗi lưu file: {}", e))?;
         file.flush().map_err(|e| format!("Lỗi hoàn tất: {}", e))?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Ok(meta) = fs::metadata(&dest) {
+                let mut perms = meta.permissions();
+                perms.set_mode(0o755);
+                let _ = fs::set_permissions(&dest, perms);
+            }
+        }
 
         Ok(dest)
     }

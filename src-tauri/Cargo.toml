@@ -29,6 +29,7 @@ base64 = "0.22"
 rusqlite = { version = "0.32", features = ["bundled"] }
 sha2 = "0.10"
 uuid = { version = "1.10", features = ["v4"] }
+tauri-plugin-single-instance = "2.5.5"
 
 [profile.release]
 codegen-units = 1

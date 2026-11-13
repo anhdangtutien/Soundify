@@ -1,4 +1,4 @@
-name: Build & Release Spytify (Windows, Android APK, iOS)
+name: Build & Release Spytify (Windows, macOS DMG, Android APK, iOS)
 
 on:
   workflow_dispatch: # Allows manual trigger from GitHub Actions tab
@@ -106,7 +106,58 @@ jobs:
           path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
 
   # ─────────────────────────────────────────────────────────────
-  # 3. BUILD IOS (Xcode Project / IPA)
+  # 3. BUILD MACOS (.dmg & .app Universal: Apple Silicon & Intel)
+  # ─────────────────────────────────────────────────────────────
+  build-macos:
+    name: Build macOS (DMG & APP)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Rust stable & macOS targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build macOS Application & DMG
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Spytify ${{ github.ref_name }}'
+          releaseBody: 'Phiên bản Spytify cho Windows, macOS (Apple Silicon M1/M2/M3/M4 & Intel), Android và iOS.'
+          releaseDraft: false
+          prerelease: false
+          args: --target universal-apple-darwin
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Spytify-macOS-Universal-Package
+          path: |
+            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            src-tauri/target/release/bundle/dmg/*.dmg
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
+            src-tauri/target/release/bundle/macos/*.app
+
+  # ─────────────────────────────────────────────────────────────
+  # 4. BUILD IOS (Xcode Project / IPA)
   # ─────────────────────────────────────────────────────────────
   build-ios:
     name: Build iOS

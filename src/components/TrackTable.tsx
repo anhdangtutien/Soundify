@@ -177,6 +177,13 @@ export const TrackTable: React.FC<TrackTableProps> = ({
           return (
             <div
               key={track.id}
+              onClick={() => {
+                if (isSelected) {
+                  onTogglePlay();
+                } else {
+                  onTrackSelect(track);
+                }
+              }}
               onDoubleClick={() => onTrackSelect(track)}
               style={{
                 height: `${ROW_HEIGHT}px`,

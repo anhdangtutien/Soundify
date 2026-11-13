@@ -57,6 +57,18 @@ pub async fn perform_google_oauth(
             .args(&["/C", "start", &auth_url])
             .spawn();
     }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("open")
+            .arg(&auth_url)
+            .spawn();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let _ = std::process::Command::new("xdg-open")
+            .arg(&auth_url)
+            .spawn();
+    }
 
     // 3. Wait for browser callback with timeout (90 seconds)
     let timeout = Duration::from_secs(90);

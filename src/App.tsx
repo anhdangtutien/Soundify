@@ -2117,7 +2117,7 @@ export default function App() {
         invoke('db_add_favorite', { trackId: savedTrack.id }).catch(() => {});
       }
 
-      // If this was the playing track, smoothly point currentTrack to local file without losing UI selection
+      // If this was the playing track, mark it as downloaded without mutating active player stream
       if (
         currentTrackRef.current?.id === track.id ||
         (currentTrackRef.current?.path_or_url && currentTrackRef.current.path_or_url === track.path_or_url) ||
@@ -2126,8 +2126,6 @@ export default function App() {
       ) {
         const updatedCurrent: Track = {
           ...currentTrackRef.current,
-          path_or_url: savedTrack.path_or_url,
-          source: 'local',
           is_downloaded: true,
         };
         currentTrackRef.current = updatedCurrent;

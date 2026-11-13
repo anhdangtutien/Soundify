@@ -735,6 +735,14 @@ pub fn run() {
         .manage(rust_ui_engine)
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+                let _ = window.emit("app-window-state", "normal");
+            }
+        }))
         .setup(|app| {
             // Setup System Tray
             let show_i = MenuItem::with_id(app, "show", "Hiện Spytify", true, None::<&str>)?;
