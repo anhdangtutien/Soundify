@@ -689,10 +689,20 @@ export default function App() {
       .catch(() => {});
   }, [currentUser]);
 
+function shuffleList<T>(list: T[]): T[] {
+  const arr = [...list];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 const getLanguageAiSeeds = (lang: LanguageCode): Track[] => {
+  let pool: Track[] = [];
   switch (lang) {
     case 'ko':
-      return [
+      pool = [
         {
           id: 'aimix_seed_ko_1',
           title: 'APT. (feat. Bruno Mars)',
@@ -733,9 +743,50 @@ const getLanguageAiSeeds = (lang: LanguageCode): Track[] => {
           cover_art: 'https://i.ytimg.com/vi/JleoAppaxi0/hqdefault.jpg',
           source: 'youtube',
         },
+        {
+          id: 'aimix_seed_ko_5',
+          title: 'How Sweet',
+          artist: 'NewJeans (뉴진스)',
+          album: 'AI 믹스 • Groovy K-Pop',
+          duration_secs: 219,
+          path_or_url: 'Q3K0TOvTOno',
+          cover_art: 'https://i.ytimg.com/vi/Q3K0TOvTOno/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_ko_6',
+          title: 'Perfect Night',
+          artist: 'LE SSERAFIM (르세라핌)',
+          album: 'AI 믹스 • Night Drive',
+          duration_secs: 160,
+          path_or_url: 'hLvWy2b857I',
+          cover_art: 'https://i.ytimg.com/vi/hLvWy2b857I/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_ko_7',
+          title: 'Dynamite',
+          artist: 'BTS (방탄소년단)',
+          album: 'AI 믹스 • Billboard #1 Hit',
+          duration_secs: 199,
+          path_or_url: 'gdZLi9oWNZg',
+          cover_art: 'https://i.ytimg.com/vi/gdZLi9oWNZg/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_ko_8',
+          title: 'MAESTRO',
+          artist: 'SEVENTEEN (세븐틴)',
+          album: 'AI 믹스 • High Energy',
+          duration_secs: 198,
+          path_or_url: 'ilbT0854-C4',
+          cover_art: 'https://i.ytimg.com/vi/ilbT0854-C4/hqdefault.jpg',
+          source: 'youtube',
+        },
       ];
+      break;
     case 'ja':
-      return [
+      pool = [
         {
           id: 'aimix_seed_ja_1',
           title: 'Idol (アイドル)',
@@ -776,9 +827,30 @@ const getLanguageAiSeeds = (lang: LanguageCode): Track[] => {
           cover_art: 'https://i.ytimg.com/vi/M2cckDmNLMI/hqdefault.jpg',
           source: 'youtube',
         },
+        {
+          id: 'aimix_seed_ja_5',
+          title: 'Show (唱)',
+          artist: 'Ado',
+          album: 'AI Mix • High Voltage',
+          duration_secs: 191,
+          path_or_url: 'pgXpM4l_MwI',
+          cover_art: 'https://i.ytimg.com/vi/pgXpM4l_MwI/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_ja_6',
+          title: 'Lilac (ライラック)',
+          artist: 'Mrs. GREEN APPLE',
+          album: 'AI Mix • J-Rock Sensation',
+          duration_secs: 204,
+          path_or_url: 'Q7PqG8K7fWw',
+          cover_art: 'https://i.ytimg.com/vi/Q7PqG8K7fWw/hqdefault.jpg',
+          source: 'youtube',
+        },
       ];
+      break;
     case 'zh-CN':
-      return [
+      pool = [
         {
           id: 'aimix_seed_zh_1',
           title: '晴天 (Sunny Day)',
@@ -819,9 +891,20 @@ const getLanguageAiSeeds = (lang: LanguageCode): Track[] => {
           cover_art: 'https://i.ytimg.com/vi/H58vbez_m4E/hqdefault.jpg',
           source: 'youtube',
         },
+        {
+          id: 'aimix_seed_zh_5',
+          title: '哪里都是你',
+          artist: '队长 (Young Captain)',
+          album: 'AI Mix • 潮流说唱',
+          duration_secs: 208,
+          path_or_url: '5dZ8vV8Y3fE',
+          cover_art: 'https://i.ytimg.com/vi/5dZ8vV8Y3fE/hqdefault.jpg',
+          source: 'youtube',
+        },
       ];
+      break;
     case 'en-US':
-      return [
+      pool = [
         {
           id: 'aimix_seed_en_1',
           title: 'Die With A Smile',
@@ -862,10 +945,41 @@ const getLanguageAiSeeds = (lang: LanguageCode): Track[] => {
           cover_art: 'https://i.ytimg.com/vi/4NRXx6U8ABQ/hqdefault.jpg',
           source: 'youtube',
         },
+        {
+          id: 'aimix_seed_en_5',
+          title: 'Cruel Summer',
+          artist: 'Taylor Swift',
+          album: 'AI Mix • Pop Sensation',
+          duration_secs: 178,
+          path_or_url: 'ic8j13piAhQ',
+          cover_art: 'https://i.ytimg.com/vi/ic8j13piAhQ/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_en_6',
+          title: 'Beautiful Things',
+          artist: 'Benson Boone',
+          album: 'AI Mix • Global Hit',
+          duration_secs: 180,
+          path_or_url: 'Oa_RSwwpPaA',
+          cover_art: 'https://i.ytimg.com/vi/Oa_RSwwpPaA/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_en_7',
+          title: 'Houdini',
+          artist: 'Dua Lipa',
+          album: 'AI Mix • Dance Pop',
+          duration_secs: 185,
+          path_or_url: 'suAR1PYFNYA',
+          cover_art: 'https://i.ytimg.com/vi/suAR1PYFNYA/hqdefault.jpg',
+          source: 'youtube',
+        },
       ];
+      break;
     case 'vi':
     default:
-      return [
+      pool = [
         {
           id: 'aimix_seed_vi_1',
           title: 'Đừng Làm Trái Tim Anh Đau',
@@ -898,16 +1012,58 @@ const getLanguageAiSeeds = (lang: LanguageCode): Track[] => {
         },
         {
           id: 'aimix_seed_vi_4',
-          title: 'APT. (feat. Bruno Mars)',
-          artist: 'ROSÉ & Bruno Mars',
-          album: 'AI Mix • Viral Hit',
-          duration_secs: 173,
-          path_or_url: 'ekr2nIex040',
-          cover_art: 'https://i.ytimg.com/vi/ekr2nIex040/hqdefault.jpg',
+          title: 'Từng Quen',
+          artist: 'Wren Evans',
+          album: 'AI Mix • New Wave',
+          duration_secs: 174,
+          path_or_url: 'zepHPnUDROE',
+          cover_art: 'https://i.ytimg.com/vi/zepHPnUDROE/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_vi_5',
+          title: 'Giá Như',
+          artist: 'SOOBIN',
+          album: 'AI Mix • R&B V-Pop',
+          duration_secs: 216,
+          path_or_url: 'kFq-qT8g16Q',
+          cover_art: 'https://i.ytimg.com/vi/kFq-qT8g16Q/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_vi_6',
+          title: 'Thủy Triều',
+          artist: 'Quang Hùng MasterD',
+          album: 'AI Mix • Viral V-Pop',
+          duration_secs: 202,
+          path_or_url: '7ig2lXjozdw',
+          cover_art: 'https://i.ytimg.com/vi/7ig2lXjozdw/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_vi_7',
+          title: 'Cắt Đôi Nỗi Sầu',
+          artist: 'Tăng Duy Tân',
+          album: 'AI Mix • Catchy Beat',
+          duration_secs: 195,
+          path_or_url: 'GpmOn4RyzZI',
+          cover_art: 'https://i.ytimg.com/vi/GpmOn4RyzZI/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_vi_8',
+          title: 'Thanh Xuân',
+          artist: 'Da LAB',
+          album: 'AI Mix • Nostalgia V-Pop',
+          duration_secs: 228,
+          path_or_url: 'GgQFO8dL5XQ',
+          cover_art: 'https://i.ytimg.com/vi/GgQFO8dL5XQ/hqdefault.jpg',
           source: 'youtube',
         },
       ];
+      break;
   }
+  return shuffleList(pool);
 };
 
 const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
