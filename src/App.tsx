@@ -168,6 +168,26 @@ export default function App() {
     setShowLanguageDropdown(false);
     const langInfo = SUPPORTED_LANGUAGES.find(l => l.code === newLang);
     showNotification(`${getTranslation(newLang, 'toast.langChanged')} ${langInfo ? `${langInfo.flag} ${langInfo.nativeName}` : newLang}`);
+
+    // Instantly update the floating AI Mix popup recommendations for the newly selected language
+    if (!currentTrackRef.current) {
+      const seeds = getLanguageAiSeeds(newLang);
+      const label = getLanguageAiPopupLabel(newLang);
+      preloadedNextTrackRef.current = seeds[0];
+      setPreloadedNextTrack(seeds[0]);
+      preloadedAlternativesRef.current = seeds.slice(1, 4);
+      if (isNextTrackPopupEnabledRef.current && !isTrayModeRef.current) {
+        setNextTrackPopup({
+          title: seeds[0].title,
+          artist: seeds[0].artist,
+          thumbnail: seeds[0].cover_art || undefined,
+          source: seeds[0].source,
+          modeLabel: label,
+          isCountdown: false,
+          alternatives: seeds.slice(1, 4),
+        });
+      }
+    }
   };
 
   // ─── SLEEP TIMER (HẸN GIỜ TẮT NHẠC) ───────────────────────────
@@ -1062,7 +1082,7 @@ const getLanguageSearchQuery = (lang: LanguageCode): string => {
     };
 
     fetchUpcoming();
-  }, [currentTrack]);
+  }, [currentTrack, language]);
 
   // ─── RESTORE USER SESSION FROM SQLITE ──────────────────────────────────────
   useEffect(() => {
