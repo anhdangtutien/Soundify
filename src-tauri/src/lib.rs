@@ -467,21 +467,27 @@ async fn get_related_tracks(title: String, artist: String) -> Result<Vec<SearchR
     };
 
     // Fast-path: YouTube is our fastest and most accurate provider (~200ms).
-    // Secondary sources (SoundCloud, Audius) get a strict 1000ms timeout so they never delay responsiveness.
+    // Secondary sources (SoundCloud, Audius) get a generous 1500ms timeout for multi-source variety
     let yt_fut1 = sources::youtube::search_youtube(&yt_query1);
     let yt_fut2 = sources::youtube::search_youtube(&yt_query2);
-    let sc_fut = tokio::time::timeout(tokio::time::Duration::from_millis(1000), sources::soundcloud::search_soundcloud(&sc_query));
-    let audius_fut = tokio::time::timeout(tokio::time::Duration::from_millis(1000), sources::audius::search_audius(&audius_query));
+    let sc_fut = tokio::time::timeout(tokio::time::Duration::from_millis(1500), sources::soundcloud::search_soundcloud(&sc_query));
+    let audius_fut = tokio::time::timeout(tokio::time::Duration::from_millis(1500), sources::audius::search_audius(&audius_query));
 
     let (yt_res1, yt_res2, sc_res, audius_res) = tokio::join!(yt_fut1, yt_fut2, sc_fut, audius_fut);
 
-    let mut combined: Vec<SearchResult> = Vec::new();
+    let mut yt_list: Vec<SearchResult> = Vec::new();
+    if let Ok(yt1) = yt_res1 { yt_list.extend(yt1); }
+    if let Ok(yt2) = yt_res2 { yt_list.extend(yt2); }
 
-    // YouTube recommendations first (highest relevance to active genre & artist)
-    if let Ok(yt1) = yt_res1 { combined.extend(yt1); }
-    if let Ok(yt2) = yt_res2 { combined.extend(yt2); }
-    if let Ok(Ok(sc)) = sc_res { combined.extend(sc); }
-    if let Ok(Ok(audius)) = audius_res { combined.extend(audius); }
+    let sc_list: Vec<SearchResult> = match sc_res {
+        Ok(Ok(sc)) => sc,
+        _ => Vec::new(),
+    };
+
+    let audius_list: Vec<SearchResult> = match audius_res {
+        Ok(Ok(audius)) => audius,
+        _ => Vec::new(),
+    };
 
     // 2. Strict Duration and Same-Song Filter:
     // - Eliminate tracks that are just other versions/remixes of the SAME song (e.g. "Closer")
@@ -493,26 +499,42 @@ async fn get_related_tracks(title: String, artist: String) -> Result<Vec<SearchR
         "podcast", "livestream", "24/7", "trực tiếp"
     ];
 
-    combined.retain(|r| {
+    let filter_track = |r: &SearchResult| -> bool {
         let t = r.title.to_lowercase();
-
-        // Strictly eliminate any song containing the core title keyword if core_title has at least 3 chars
         if core_lower.len() >= 3 && t.contains(&core_lower) {
             return false;
         }
-
-        // Filter out audio longer than 10 minutes (600 seconds)
         if r.duration_secs > 600 {
             return false;
         }
-
-        // Filter out titles with 1-hour/compilation keywords
         if long_indicators.iter().any(|&k| t.contains(k)) {
             return false;
         }
-
         true
-    });
+    };
+
+    yt_list.retain(filter_track);
+    let mut sc_filtered = sc_list;
+    sc_filtered.retain(filter_track);
+    let mut audius_filtered = audius_list;
+    audius_filtered.retain(filter_track);
+
+    // Multi-source round-robin interleaving:
+    // Guarantees rich variety across YouTube, SoundCloud, and Audius 320K
+    let mut combined: Vec<SearchResult> = Vec::new();
+    let max_len = yt_list.len().max(sc_filtered.len()).max(audius_filtered.len());
+
+    for i in 0..max_len {
+        if i < yt_list.len() {
+            combined.push(yt_list[i].clone());
+        }
+        if i < sc_filtered.len() {
+            combined.push(sc_filtered[i].clone());
+        }
+        if i < audius_filtered.len() {
+            combined.push(audius_filtered[i].clone());
+        }
+    }
 
     // Deduplicate by title similarity
     let mut unique: Vec<SearchResult> = Vec::new();

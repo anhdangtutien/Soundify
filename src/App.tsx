@@ -1479,6 +1479,9 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
     }
   }, [language]);
 
+  const handleNextRef = useRef(handleNext);
+  handleNextRef.current = handleNext;
+
   const [isTrayMode, setIsTrayMode] = useState(false);
   const isTrayModeRef = useRef(false);
 
@@ -1504,7 +1507,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
           if (trueDur > 0 && elapsed >= (trueDur + 8)) {
             playStartTimestampRef.current = null;
             accumulatedTimeRef.current = 0;
-            handleNext();
+            handleNextRef.current?.();
             return;
           }
         }
@@ -1540,7 +1543,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
       }
     }, 250);
     return () => clearInterval(interval);
-  }, [handleNext, upcomingTrack]);
+  }, [upcomingTrack]);
 
   // ─── INSTANT RESYNC WHEN SWITCHING BACK TO APP WINDOW ────────────────────
   const syncPlaybackStateNow = useCallback(async () => {
@@ -1800,12 +1803,12 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
       setIsPlaying(false);
       playStartTimestampRef.current = null;
       accumulatedTimeRef.current = 0;
-      handleNext();
+      handleNextRef.current?.();
     };
     audio.addEventListener('timeupdate', onTimeUpdate);
     audio.addEventListener('ended', onEnded);
     return () => { audio.pause(); audio.removeEventListener('timeupdate', onTimeUpdate); audio.removeEventListener('ended', onEnded); };
-  }, [handleNext]);
+  }, []);
 
   // ─── LOCAL playback polling ───────────────────────────────────────────────
   useEffect(() => {
@@ -2223,8 +2226,6 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
 
   const handleTogglePlayRef = useRef(handleTogglePlay);
   handleTogglePlayRef.current = handleTogglePlay;
-  const handleNextRef = useRef(handleNext);
-  handleNextRef.current = handleNext;
   const handleUserPrevRef = useRef<() => void>(() => {});
 
   // ─── SYSTEM TRAY & RAM OPTIMIZER (MỤC 3: GIẢI PHÓNG BỘ NHỚ KHI ẨN / THU NHỎ <= 150MB) ───
