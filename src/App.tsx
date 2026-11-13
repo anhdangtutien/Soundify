@@ -810,16 +810,9 @@ export default function App() {
           }));
 
           if (candidates.length > 0) {
-            if (!preloadedNextTrackRef.current) {
-              preloadedNextTrackRef.current = candidates[0];
-              setPreloadedNextTrack(candidates[0]);
-              preloadedAlternativesRef.current = candidates.slice(1, 6);
-            } else {
-              const lockedNorm = preloadedNextTrackRef.current.title.trim().toLowerCase();
-              preloadedAlternativesRef.current = candidates
-                .filter(c => c.title.trim().toLowerCase() !== lockedNorm)
-                .slice(0, 5);
-            }
+            preloadedNextTrackRef.current = candidates[0];
+            setPreloadedNextTrack(candidates[0]);
+            preloadedAlternativesRef.current = candidates.slice(1, 6);
             if (isNextTrackPopupEnabledRef.current && !isTrayModeRef.current) {
               const immediate = buildImmediatePopupData();
               if (immediate) {
@@ -1615,13 +1608,22 @@ export default function App() {
       );
 
     let nextPreloaded: Track | null = null;
-    if (isValidNewCandidate(preloadedNextTrackRef.current)) {
+    const curArtistNorm = track.artist.trim().toLowerCase();
+    if (
+      isValidNewCandidate(preloadedNextTrackRef.current) &&
+      (preloadedNextTrackRef.current.artist.trim().toLowerCase() === curArtistNorm || !curArtistNorm)
+    ) {
       nextPreloaded = preloadedNextTrackRef.current;
     } else {
       const remainingAlts = preloadedAlternativesRef.current.filter(c => isValidNewCandidate(c));
-      if (remainingAlts.length > 0) {
-        nextPreloaded = remainingAlts[0];
-        preloadedAlternativesRef.current = remainingAlts.slice(1);
+      const matchingAlt = remainingAlts.find(c => c.artist.trim().toLowerCase() === curArtistNorm);
+      if (matchingAlt) {
+        nextPreloaded = matchingAlt;
+        preloadedAlternativesRef.current = remainingAlts.filter(c => c.id !== matchingAlt.id);
+      } else {
+        // Clear stale candidates so fetchUpcoming populates fresh recommendations for this exact song's genre/artist
+        nextPreloaded = null;
+        preloadedAlternativesRef.current = [];
       }
     }
     preloadedNextTrackRef.current = nextPreloaded;

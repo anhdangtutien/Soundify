@@ -19,7 +19,7 @@
         "minHeight": 640,
         "decorations": true,
         "transparent": false,
-        "additionalBrowserArgs": "--disable-features=Translate,OptimizationHints,MediaRouter,CalculateNativeWinOcclusion --disk-cache-size=16777216 --media-cache-size=16777216 --js-flags=--max-old-space-size=96 --renderer-process-limit=1 --enable-low-end-device-mode --disable-gpu-shader-disk-cache --disable-background-networking --disable-component-update --disable-default-apps --disable-extensions --disable-sync"
+        "additionalBrowserArgs": "--disable-features=Translate,OptimizationHints,MediaRouter --disk-cache-size=16777216 --media-cache-size=16777216 --js-flags=--max-old-space-size=128"
       }
     ],
     "security": {

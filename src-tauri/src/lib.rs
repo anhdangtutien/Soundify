@@ -23,42 +23,56 @@ use tauri::{
 };
 
 #[cfg(target_os = "windows")]
-fn trim_single_process_tree() {
+mod win_mem {
+    #[repr(C)]
+    pub struct ProcessEntry32W {
+        pub dw_size: u32,
+        pub cnt_usage: u32,
+        pub th32_process_id: u32,
+        pub th32_default_heap_id: usize,
+        pub th32_module_id: u32,
+        pub cnt_threads: u32,
+        pub th32_parent_process_id: u32,
+        pub pc_pri_class_base: i32,
+        pub dw_flags: u32,
+        pub sz_exe_file: [u16; 260],
+    }
+
+    #[repr(C)]
+    pub struct ProcessMemoryCounters {
+        pub cb: u32,
+        pub page_fault_count: u32,
+        pub peak_working_set_size: usize,
+        pub working_set_size: usize,
+        pub quota_peak_paged_pool_usage: usize,
+        pub quota_paged_pool_usage: usize,
+        pub quota_peak_non_paged_pool_usage: usize,
+        pub quota_non_paged_pool_usage: usize,
+        pub pagefile_usage: usize,
+        pub peak_pagefile_usage: usize,
+    }
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        pub fn GetCurrentProcess() -> isize;
+        pub fn GetCurrentProcessId() -> u32;
+        pub fn OpenProcess(desired_access: u32, inherit_handle: i32, process_id: u32) -> isize;
+        pub fn CloseHandle(object: isize) -> i32;
+        pub fn K32EmptyWorkingSet(process: isize) -> i32;
+        pub fn K32GetProcessMemoryInfo(process: isize, counters: *mut ProcessMemoryCounters, cb: u32) -> i32;
+        pub fn CreateToolhelp32Snapshot(flags: u32, process_id: u32) -> isize;
+        pub fn Process32FirstW(snapshot: isize, lppe: *mut ProcessEntry32W) -> i32;
+        pub fn Process32NextW(snapshot: isize, lppe: *mut ProcessEntry32W) -> i32;
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn get_tree_pids(root_pid: u32) -> std::collections::HashSet<u32> {
+    use win_mem::*;
+    let mut tree_pids = std::collections::HashSet::new();
+    tree_pids.insert(root_pid);
+
     unsafe {
-        #[repr(C)]
-        struct ProcessEntry32W {
-            dw_size: u32,
-            cnt_usage: u32,
-            th32_process_id: u32,
-            th32_default_heap_id: usize,
-            th32_module_id: u32,
-            cnt_threads: u32,
-            th32_parent_process_id: u32,
-            pc_pri_class_base: i32,
-            dw_flags: u32,
-            sz_exe_file: [u16; 260],
-        }
-
-        #[link(name = "kernel32")]
-        extern "system" {
-            fn GetCurrentProcess() -> isize;
-            fn GetCurrentProcessId() -> u32;
-            fn OpenProcess(desired_access: u32, inherit_handle: i32, process_id: u32) -> isize;
-            fn CloseHandle(object: isize) -> i32;
-            fn SetProcessWorkingSetSize(process: isize, min: usize, max: usize) -> i32;
-            fn K32EmptyWorkingSet(process: isize) -> i32;
-            fn CreateToolhelp32Snapshot(flags: u32, process_id: u32) -> isize;
-            fn Process32FirstW(snapshot: isize, lppe: *mut ProcessEntry32W) -> i32;
-            fn Process32NextW(snapshot: isize, lppe: *mut ProcessEntry32W) -> i32;
-        }
-
-        // 1. Trim current Rust host process
-        let self_proc = GetCurrentProcess();
-        K32EmptyWorkingSet(self_proc);
-        SetProcessWorkingSetSize(self_proc, usize::MAX, usize::MAX);
-
-        // 2. Trim all child/descendant WebView2 processes (Browser, Renderer, GPU, Utility)
-        let root_pid = GetCurrentProcessId();
         let snapshot = CreateToolhelp32Snapshot(0x00000002, 0); // TH32CS_SNAPPROCESS
         if snapshot != -1 && snapshot != 0 {
             let mut entries: Vec<(u32, u32)> = Vec::new();
@@ -75,9 +89,6 @@ fn trim_single_process_tree() {
             }
             CloseHandle(snapshot);
 
-            // Collect all descendant PIDs of root_pid
-            let mut tree_pids = std::collections::HashSet::new();
-            tree_pids.insert(root_pid);
             let mut added = true;
             while added {
                 added = false;
@@ -88,16 +99,56 @@ fn trim_single_process_tree() {
                     }
                 }
             }
+        }
+    }
+    tree_pids
+}
 
-            // PROCESS_QUERY_INFORMATION (0x0400) | PROCESS_SET_QUOTA (0x0100)
-            for pid in tree_pids {
-                if pid == root_pid {
-                    continue;
+#[cfg(target_os = "windows")]
+pub fn get_tree_working_set() -> usize {
+    use win_mem::*;
+    let mut total_bytes = 0usize;
+    unsafe {
+        let root_pid = GetCurrentProcessId();
+        let tree_pids = get_tree_pids(root_pid);
+
+        for pid in tree_pids {
+            let h_proc = if pid == root_pid {
+                GetCurrentProcess()
+            } else {
+                OpenProcess(0x0400 | 0x1000, 0, pid) // PROCESS_QUERY_INFORMATION | PROCESS_QUERY_LIMITED_INFORMATION
+            };
+            if h_proc != 0 {
+                let mut counters: ProcessMemoryCounters = std::mem::zeroed();
+                counters.cb = std::mem::size_of::<ProcessMemoryCounters>() as u32;
+                if K32GetProcessMemoryInfo(h_proc, &mut counters, counters.cb) != 0 {
+                    total_bytes += counters.working_set_size;
                 }
-                let h_proc = OpenProcess(0x0400 | 0x0100, 0, pid);
-                if h_proc != 0 {
-                    K32EmptyWorkingSet(h_proc);
-                    SetProcessWorkingSetSize(h_proc, usize::MAX, usize::MAX);
+                if pid != root_pid {
+                    CloseHandle(h_proc);
+                }
+            }
+        }
+    }
+    total_bytes
+}
+
+#[cfg(target_os = "windows")]
+pub fn trim_single_process_tree() {
+    use win_mem::*;
+    unsafe {
+        let root_pid = GetCurrentProcessId();
+        let tree_pids = get_tree_pids(root_pid);
+
+        for pid in tree_pids {
+            let h_proc = if pid == root_pid {
+                GetCurrentProcess()
+            } else {
+                OpenProcess(0x0400 | 0x0100, 0, pid) // PROCESS_QUERY_INFORMATION | PROCESS_SET_QUOTA
+            };
+            if h_proc != 0 {
+                K32EmptyWorkingSet(h_proc);
+                if pid != root_pid {
                     CloseHandle(h_proc);
                 }
             }
@@ -742,6 +793,20 @@ pub fn run() {
             }
 
             builder.build(app)?;
+
+            // Background dynamic RAM watchdog (Keeps foreground RAM around ~200MB, tray ~30-60MB)
+            #[cfg(target_os = "windows")]
+            {
+                std::thread::spawn(|| {
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_secs(15));
+                        // If total process tree exceeds ~210MB, gently trim back down to maintain ~200MB range
+                        if get_tree_working_set() > 210 * 1024 * 1024 {
+                            trim_single_process_tree();
+                        }
+                    }
+                });
+            }
 
             Ok(())
         })
