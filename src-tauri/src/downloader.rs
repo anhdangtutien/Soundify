@@ -149,8 +149,6 @@ impl Downloader {
                 Self::make_local_track(&dest_file, track)
             }
             TrackSource::YouTube => {
-                let ytdlp = Self::ensure_ytdlp_available().await?;
-
                 let video_id = if track.path_or_url.contains("v=") {
                     track.path_or_url.split("v=").nth(1).unwrap_or(&track.path_or_url).split('&').next().unwrap_or(&track.path_or_url)
                 } else if track.path_or_url.starts_with("yt_") {
@@ -158,6 +156,27 @@ impl Downloader {
                 } else {
                     &track.path_or_url
                 };
+
+                // Fast Path 1: Resolve direct audio/mp4 stream via YouTube Music + VISIONOS API (no yt-dlp needed!)
+                if let Ok(resolved) = crate::sources::youtube::resolve_youtube_music_stream(
+                    video_id,
+                    &track.title,
+                    &track.artist,
+                )
+                .await
+                {
+                    if let Some(stream_url) = resolved.stream_url {
+                        let dest_m4a = target_dir.join(format!("{}.m4a", base_filename));
+                        if Self::download_http_stream(&stream_url, &dest_m4a).await.is_ok()
+                            && dest_m4a.exists()
+                        {
+                            return Self::make_local_track(&dest_m4a, track);
+                        }
+                    }
+                }
+
+                // Fallback Path 2: yt-dlp binary
+                let ytdlp = Self::ensure_ytdlp_available().await?;
 
                 let yt_url = format!("https://www.youtube.com/watch?v={}", video_id);
                 let out_template = target_dir.join(format!("{}.%(ext)s", base_filename));

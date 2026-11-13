@@ -15,6 +15,7 @@ import { HomeTrendingView } from './components/HomeTrendingView';
 import { AlbumsView } from './components/AlbumsView';
 import { AddToAlbumModal } from './components/AddToAlbumModal';
 import { SplashScreen } from './components/SplashScreen';
+import { RustFastUiView } from './components/RustFastUiView';
 import { cloudSyncPull, cloudSyncPush, isSupabaseConfigured } from './services/supabase';
 import { deduplicateTracks, optimizeThumbnailUrl } from './utils/trackUtils';
 import { Track, PlaybackStatus, SearchResult, ViewType, User, UserAlbum } from './types';
@@ -39,6 +40,7 @@ export default function App() {
   const [repeatMode, setRepeatMode] = useState<'all' | 'one' | 'off'>('all'); // default: auto-play next
   const [isShuffle, setIsShuffle] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+  const [isRustUiMode, setIsRustUiMode] = useState(false);
 
   // Download & Offline Music Storage State
   const [downloadFolder, setDownloadFolder] = useState<string>(() => {
@@ -451,6 +453,8 @@ export default function App() {
   const ytIframeRef = useRef<HTMLIFrameElement | null>(null);
   const ytUnavailableTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ytHasStartedPlayingRef = useRef(false);
+  const ytMusicFallbackActiveRef = useRef(false);
+  const ytMusicFallbackTriedRef = useRef(false);
   const scIframeRef = useRef<HTMLIFrameElement | null>(null);
   const onlineAudioRef = useRef<HTMLAudioElement | null>(null);
   const currentTrackRef = useRef<Track | null>(null);
@@ -1089,7 +1093,7 @@ export default function App() {
           }
         } catch {}
       }
-    } else if (track.source === 'audius') {
+    } else if (track.source === 'audius' || (track.source === 'youtube' && ytMusicFallbackActiveRef.current)) {
       if (onlineAudioRef.current) {
         const playing = !onlineAudioRef.current.paused;
         isPlayingRef.current = playing;
@@ -1133,12 +1137,17 @@ export default function App() {
         // YouTube events
         if (data.event === 'onError') {
           if (currentTrackRef.current?.source !== 'youtube') return;
-          console.warn('[YouTube Player] Embed blocked or unavailable, code:', data.info);
-          showNotification('⚠️ Video này không khả dụng (bản quyền YouTube). Tự động chuyển bài sau 5s...');
+          const erroredTrack = currentTrackRef.current;
+          console.warn('[YouTube Player] Embed blocked or unavailable, code:', data.info, '-> Auto-resolving via YouTube Music API...');
           if (ytUnavailableTimerRef.current) clearTimeout(ytUnavailableTimerRef.current);
-          ytUnavailableTimerRef.current = setTimeout(() => {
-            handleNext();
-          }, 5000);
+          fallbackToYoutubeMusicStream(erroredTrack).then((recovered) => {
+            if (!recovered && currentTrackRef.current?.id === erroredTrack.id) {
+              showNotification('⚠️ Bài hát này bị giới hạn khu vực trên YouTube. Tự động chuyển bài...');
+              ytUnavailableTimerRef.current = setTimeout(() => {
+                handleNext();
+              }, 2500);
+            }
+          });
         }
 
         if (data.event === 'onStateChange') {
@@ -1291,7 +1300,11 @@ export default function App() {
     const audio = new Audio();
     onlineAudioRef.current = audio;
     const onTimeUpdate = () => {
-      if (currentTrackRef.current?.source === 'audius' || currentTrackRef.current?.source === 'local') {
+      if (
+        currentTrackRef.current?.source === 'audius' ||
+        currentTrackRef.current?.source === 'local' ||
+        (currentTrackRef.current?.source === 'youtube' && ytMusicFallbackActiveRef.current)
+      ) {
         currentTimeRef.current = audio.currentTime;
         if (audio.duration > 0 && !isNaN(audio.duration)) {
           durationRef.current = audio.duration;
@@ -1371,6 +1384,64 @@ export default function App() {
     }
   };
 
+  // Auto-resolve blocked/unavailable YouTube videos via YouTube Music API (`WEB_REMIX` + `VISIONOS` direct audio stream)
+  const fallbackToYoutubeMusicStream = async (track: Track): Promise<boolean> => {
+    if (ytMusicFallbackTriedRef.current) return false;
+    ytMusicFallbackTriedRef.current = true;
+
+    let rawVid = track.path_or_url || track.id;
+    if (rawVid.startsWith('yt_')) rawVid = rawVid.replace('yt_', '');
+    if (rawVid.includes('v=')) rawVid = rawVid.split('v=')[1].split('&')[0];
+
+    try {
+      const res = await invoke<{
+        stream_url: string | null;
+        resolved_video_id: string;
+        duration_secs: number;
+      }>('resolve_youtube_music_stream', {
+        videoId: rawVid,
+        title: track.title,
+        artist: track.artist,
+      });
+
+      // Ensure user hasn't switched to another track while resolving
+      if (currentTrackRef.current?.id !== track.id) return true;
+
+      if (res.stream_url && onlineAudioRef.current) {
+        if (ytUnavailableTimerRef.current) clearTimeout(ytUnavailableTimerRef.current);
+        sendYtCmd('stopVideo');
+        setYtVideoId(null);
+        setShowYoutubeVideo(false);
+
+        ytMusicFallbackActiveRef.current = true;
+        onlineAudioRef.current.pause();
+        onlineAudioRef.current.src = res.stream_url;
+        onlineAudioRef.current.volume = volume;
+
+        if (res.duration_secs > 0) {
+          durationRef.current = res.duration_secs;
+          if (!isTrayModeRef.current) setDuration(res.duration_secs);
+        }
+
+        await onlineAudioRef.current.play();
+        ytHasStartedPlayingRef.current = true;
+        isPlayingRef.current = true;
+        setIsPlaying(true);
+        playStartTimestampRef.current = Date.now();
+        showNotification(`🎵 YouTube Music Hi-Fi: ${track.title}`);
+        return true;
+      }
+
+      if (res.resolved_video_id && res.resolved_video_id !== rawVid) {
+        setYtVideoId(res.resolved_video_id);
+        return true;
+      }
+    } catch (err) {
+      console.warn('[YouTube Music Fallback] Error resolving stream:', err);
+    }
+    return false;
+  };
+
   // â”€â”€â”€ Core play function â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const playTrackInternal = async (track: Track, isBackOrForward = false) => {
     // Record true previously playing track into playback history stack before switching
@@ -1396,6 +1467,8 @@ export default function App() {
     setCurrentTrack(track);
     currentTimeRef.current = 0;
     setCurrentTime(0);
+    ytMusicFallbackActiveRef.current = false;
+    ytMusicFallbackTriedRef.current = false;
 
     // Record into in-memory listened set immediately so candidate promotion never picks the currently playing track
     if (track.title) listenedHistoryTitlesRef.current.add(track.title.trim().toLowerCase());
@@ -1515,13 +1588,18 @@ export default function App() {
       if (ytUnavailableTimerRef.current) clearTimeout(ytUnavailableTimerRef.current);
       ytUnavailableTimerRef.current = setTimeout(() => {
         if (!ytHasStartedPlayingRef.current && currentTrackRef.current?.source === 'youtube') {
-          console.warn('[YouTube Watchdog] Video unavailable after 5s, auto skipping...');
-          showNotification('⚠️ Video không khả dụng (bản quyền YouTube). Tự động chuyển bài tiếp theo sau 5s...');
-          setTimeout(() => {
-            handleNext();
-          }, 1000);
+          const stalledTrack = currentTrackRef.current;
+          console.warn('[YouTube Watchdog] Embed stalled after 3.5s, trying YouTube Music API stream...');
+          fallbackToYoutubeMusicStream(stalledTrack).then((recovered) => {
+            if (!recovered && currentTrackRef.current?.id === stalledTrack.id && !ytHasStartedPlayingRef.current) {
+              showNotification('⚠️ Bài hát này không khả dụng. Tự động chuyển bài tiếp theo...');
+              setTimeout(() => {
+                handleNext();
+              }, 1500);
+            }
+          });
         }
-      }, 5000);
+      }, 3500);
 
     } else if (track.source === 'soundcloud') {
       if (ytUnavailableTimerRef.current) clearTimeout(ytUnavailableTimerRef.current);
@@ -1618,7 +1696,11 @@ export default function App() {
         onlineAudioRef.current?.pause();
         try { await invoke('pause_track'); } catch {}
       } else if (track.source === 'youtube') {
-        sendYtCmd('pauseVideo');
+        if (ytMusicFallbackActiveRef.current && onlineAudioRef.current?.src) {
+          onlineAudioRef.current.pause();
+        } else {
+          sendYtCmd('pauseVideo');
+        }
       } else if (track.source === 'soundcloud') {
         sendScCmd('pause');
       } else {
@@ -1638,7 +1720,11 @@ export default function App() {
           try { await invoke('resume_track'); } catch {}
         }
       } else if (track.source === 'youtube') {
-        sendYtCmd('playVideo');
+        if (ytMusicFallbackActiveRef.current && onlineAudioRef.current?.src) {
+          onlineAudioRef.current.play().catch(console.error);
+        } else {
+          sendYtCmd('playVideo');
+        }
       } else if (track.source === 'soundcloud') {
         sendScCmd('play');
       } else {
@@ -1737,7 +1823,11 @@ export default function App() {
       }
       try { await invoke('seek_track', { positionSecs: Math.floor(secs) }); } catch {}
     } else if (currentTrack?.source === 'youtube') {
-      sendYtCmd('seekTo', [secs, true]);
+      if (ytMusicFallbackActiveRef.current && onlineAudioRef.current?.src) {
+        onlineAudioRef.current.currentTime = secs;
+      } else {
+        sendYtCmd('seekTo', [secs, true]);
+      }
     } else if (currentTrack?.source === 'soundcloud') {
       sendScCmd('seekTo', secs * 1000);
     } else if (onlineAudioRef.current) {
@@ -2334,6 +2424,22 @@ export default function App() {
                 </button>
               )}
               <button
+                onClick={() => {
+                  // Stop heavy iframes when entering Rust Native UI mode
+                  sendYtCmd('stopVideo');
+                  setYtVideoId(null);
+                  setShowYoutubeVideo(false);
+                  sendScCmd('pause');
+                  setScTrackUrl(null);
+                  setIsRustUiMode(true);
+                  invoke('trim_memory').catch(() => {});
+                }}
+                className="px-3 py-1 bg-[#ff2a55]/15 hover:bg-[#ff2a55]/25 text-[#ff2a55] text-xs font-bold rounded-md border border-[#ff2a55]/40 transition-colors flex items-center gap-1.5 cursor-pointer"
+                title="Chuyển sang giao diện Rust UI (Blitz/Stylo) siêu tốc, giải phóng WebView DOM"
+              >
+                ⚡ Rust UI
+              </button>
+              <button
                 onClick={handleSelectFolder}
                 className="px-3 py-1 bg-[#121212] hover:bg-[#1c1c1c] text-white text-xs font-medium rounded-md border border-[#222] transition-colors flex items-center gap-1.5 cursor-pointer"
               >
@@ -2344,6 +2450,21 @@ export default function App() {
           </header>
 
           {/* Body Content */}
+          {isRustUiMode ? (
+            <div className="flex-1 overflow-hidden">
+              <RustFastUiView
+                userId={currentUser?.id}
+                localTracks={tracks.filter(t => t.source === 'local')}
+                onExitRustUi={() => setIsRustUiMode(false)}
+                onPlayTrackFromRust={(t) => {
+                  currentTrackRef.current = t;
+                  setCurrentTrack(t);
+                  isPlayingRef.current = true;
+                  setIsPlaying(true);
+                }}
+              />
+            </div>
+          ) : (
           <div className="flex-1 overflow-y-auto px-7 py-5">
             {showVisualizer && currentView !== 'profile' && currentView !== 'ai_mix' && <AudioVisualizer isPlaying={isPlaying} language={language} accentColor={accentColor} source={currentTrack?.source} />}
 
@@ -2619,6 +2740,7 @@ export default function App() {
               </div>
             )}
           </div>
+          )}
         </main>
       </div>
 

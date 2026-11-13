@@ -4,12 +4,14 @@ pub mod db;
 pub mod downloader;
 pub mod models;
 pub mod oauth;
+pub mod rust_ui;
 pub mod scanner;
 pub mod sources;
 
 use ai::MusicAiEngine;
 use audio::AudioPlayerManager;
 use db::DatabaseManager;
+use rust_ui::{RustUiEngine, RustUiSnapshot};
 use models::{
     HistoryItem, PlaybackStatus, RecommendationResult, SearchResult, Track, TrainingReport, User,
     UserStats,
@@ -119,6 +121,15 @@ pub fn trim_process_memory() {}
 fn trim_memory() -> Result<(), String> {
     trim_process_memory();
     Ok(())
+}
+
+#[tauri::command]
+async fn resolve_youtube_music_stream(
+    video_id: String,
+    title: String,
+    artist: String,
+) -> Result<sources::youtube::YoutubeAudioStream, String> {
+    sources::youtube::resolve_youtube_music_stream(&video_id, &title, &artist).await
 }
 
 #[tauri::command]
@@ -588,14 +599,87 @@ async fn download_track(track: Track, target_dir: Option<String>) -> Result<Trac
     downloader::Downloader::download(&track, target_dir).await
 }
 
+#[tauri::command]
+fn rust_ui_get_snapshot(
+    user_id: Option<String>,
+    local_tracks: Option<Vec<Track>>,
+    rust_ui: State<'_, RustUiEngine>,
+    audio: State<'_, AudioPlayerManager>,
+    db: State<'_, DatabaseManager>,
+) -> Result<RustUiSnapshot, String> {
+    if let Some(uid) = user_id {
+        rust_ui.sync_from_db(&db, &uid);
+    }
+    if let Some(locals) = local_tracks {
+        rust_ui.set_local_tracks(locals);
+    }
+    Ok(rust_ui.snapshot(&audio))
+}
+
+#[tauri::command]
+fn rust_ui_switch_tab(
+    tab: String,
+    rust_ui: State<'_, RustUiEngine>,
+    audio: State<'_, AudioPlayerManager>,
+) -> Result<RustUiSnapshot, String> {
+    rust_ui.switch_tab(&tab);
+    Ok(rust_ui.snapshot(&audio))
+}
+
+#[tauri::command]
+fn rust_ui_filter(
+    query: String,
+    rust_ui: State<'_, RustUiEngine>,
+    audio: State<'_, AudioPlayerManager>,
+) -> Result<RustUiSnapshot, String> {
+    rust_ui.set_search_query(&query);
+    Ok(rust_ui.snapshot(&audio))
+}
+
+#[tauri::command]
+async fn rust_ui_search_online(
+    query: String,
+    rust_ui: State<'_, RustUiEngine>,
+    audio: State<'_, AudioPlayerManager>,
+) -> Result<RustUiSnapshot, String> {
+    let (yt_res, audius_res) = tokio::join!(
+        sources::youtube::search_youtube(&query),
+        sources::audius::search_audius(&query)
+    );
+    let mut combined = Vec::new();
+    if let Ok(yt) = yt_res {
+        combined.extend(yt);
+    }
+    if let Ok(au) = audius_res {
+        combined.extend(au);
+    }
+    rust_ui.set_search_results(combined);
+    Ok(rust_ui.snapshot(&audio))
+}
+
+#[tauri::command]
+fn rust_ui_play_index(
+    index: usize,
+    rust_ui: State<'_, RustUiEngine>,
+    audio: State<'_, AudioPlayerManager>,
+) -> Result<Option<Track>, String> {
+    if let Some(track) = rust_ui.get_track_by_index(index) {
+        audio.play(track.clone())?;
+        return Ok(Some(track));
+    }
+    Ok(None)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let audio_manager = AudioPlayerManager::new();
     let db_manager = DatabaseManager::new().expect("Failed to initialize SQLite database");
+    let rust_ui_engine = RustUiEngine::new();
 
     tauri::Builder::default()
         .manage(audio_manager)
         .manage(db_manager)
+        .manage(rust_ui_engine)
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
@@ -712,7 +796,13 @@ pub fn run() {
             ai_smart_dj_next,
             get_default_download_directory,
             download_track,
-            trim_memory
+            trim_memory,
+            resolve_youtube_music_stream,
+            rust_ui_get_snapshot,
+            rust_ui_switch_tab,
+            rust_ui_filter,
+            rust_ui_search_online,
+            rust_ui_play_index
         ])
         .run(tauri::generate_context!())
         .expect("error while running soundify application");
