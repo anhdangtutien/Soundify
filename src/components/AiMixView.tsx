@@ -1,8 +1,7 @@
 ﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { 
-  Cpu, Sparkles, Play, Music, RefreshCw, Loader2, CheckCircle2, Sliders, Zap, Compass,
-  ChevronLeft, ChevronRight
+  Cpu, Sparkles, Play, Music, RefreshCw, Loader2, CheckCircle2, Sliders, Zap, Compass
 } from 'lucide-react';
 import { Track, User, RecommendationResult, TrainingReport, SearchResult } from '../types';
 import { LanguageCode, getTranslation } from '../locales/i18n';
@@ -142,15 +141,6 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
-
-  const scrollGenres = (direction: 'left' | 'right') => {
-    if (genreScrollRef.current) {
-      genreScrollRef.current.scrollBy({
-        left: direction === 'left' ? -280 : 280,
-        behavior: 'smooth',
-      });
-    }
-  };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const el = genreScrollRef.current;
@@ -460,67 +450,46 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
           </div>
         </div>
 
-        {/* Genre Selector Chips with Mouse Wheel, Drag-to-Scroll & Navigation Arrows */}
-        <div className="relative group/genres mb-4 flex items-center">
-          {/* Scroll Left Arrow Button */}
-          <button
-            onClick={() => scrollGenres('left')}
-            className="absolute left-0 z-10 w-7 h-7 rounded-full bg-[#14141c]/95 hover:bg-[#252535] text-white flex items-center justify-center shadow-lg border border-[#2e2e3e] transition-all opacity-80 hover:opacity-100 cursor-pointer active:scale-95"
-            title="Cuộn sang trái"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-
-          {/* Scrollable Container */}
-          <div
-            ref={genreScrollRef}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUpOrLeave}
-            onMouseLeave={handleMouseUpOrLeave}
-            className="flex items-center gap-2 overflow-x-auto px-8 py-1.5 scrollbar-thin scrollbar-thumb-[#252535] scrollbar-track-transparent select-none cursor-grab active:cursor-grabbing w-full"
-          >
-            {availableGenres.map((genre, idx) => {
-              const isSelected = selectedGenre === genre;
-              return (
-                <button
-                  key={genre}
-                  onClick={() => {
-                    if (!hasMoved) {
-                      setSelectedGenre(genre);
-                    }
-                  }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer border ${
-                    isSelected
-                      ? ''
-                      : 'bg-[#121218] text-[#9e9ea7] border-[#1e1e28] hover:text-white hover:bg-[#1a1a24]'
-                  }`}
-                  style={
-                    isSelected
-                      ? {
-                          backgroundColor: accentColor,
-                          color: getContrastTextColor(accentColor),
-                          borderColor: accentColor,
-                          boxShadow: `0 0 10px ${accentColor}35`,
-                        }
-                      : undefined
+        {/* Minimal Smooth Genre Slider */}
+        <div
+          ref={genreScrollRef}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUpOrLeave}
+          onMouseLeave={handleMouseUpOrLeave}
+          className="flex items-center gap-2 overflow-x-auto pb-2.5 mb-4 scrollbar-thin scrollbar-thumb-[#252535] hover:scrollbar-thumb-[#353545] scrollbar-track-transparent select-none cursor-grab active:cursor-grabbing w-full"
+        >
+          {availableGenres.map((genre, idx) => {
+            const isSelected = selectedGenre === genre;
+            return (
+              <button
+                key={genre}
+                onClick={() => {
+                  if (!hasMoved) {
+                    setSelectedGenre(genre);
                   }
-                >
-                  {idx === 0 && <span className="text-[10px]">⭐</span>}
-                  <span>{genre}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Scroll Right Arrow Button */}
-          <button
-            onClick={() => scrollGenres('right')}
-            className="absolute right-0 z-10 w-7 h-7 rounded-full bg-[#14141c]/95 hover:bg-[#252535] text-white flex items-center justify-center shadow-lg border border-[#2e2e3e] transition-all opacity-80 hover:opacity-100 cursor-pointer active:scale-95"
-            title="Cuộn sang phải"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
+                }}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer border ${
+                  isSelected
+                    ? ''
+                    : 'bg-[#121218] text-[#9e9ea7] border-[#1e1e28] hover:text-white hover:bg-[#1a1a24]'
+                }`}
+                style={
+                  isSelected
+                    ? {
+                        backgroundColor: accentColor,
+                        color: getContrastTextColor(accentColor),
+                        borderColor: accentColor,
+                        boxShadow: `0 0 10px ${accentColor}35`,
+                      }
+                    : undefined
+                }
+              >
+                {idx === 0 && <span className="text-[10px]">⭐</span>}
+                <span>{genre}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Tracks List for Selected Genre */}
