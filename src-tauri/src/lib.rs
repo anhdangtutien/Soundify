@@ -466,18 +466,17 @@ async fn get_related_tracks(title: String, artist: String) -> Result<Vec<SearchR
         core_title.clone()
     };
 
-    // Fast-path: YouTube is our fastest and most accurate provider (~200ms).
-    // Secondary sources (SoundCloud, Audius) get a generous 1500ms timeout for multi-source variety
-    let yt_fut1 = sources::youtube::search_youtube(&yt_query1);
-    let yt_fut2 = sources::youtube::search_youtube(&yt_query2);
+    // Fast-path: YouTube is our primary provider (~200ms). Secondary sources get a 1500ms timeout.
+    let yt_fut1 = tokio::time::timeout(tokio::time::Duration::from_millis(3000), sources::youtube::search_youtube(&yt_query1));
+    let yt_fut2 = tokio::time::timeout(tokio::time::Duration::from_millis(3000), sources::youtube::search_youtube(&yt_query2));
     let sc_fut = tokio::time::timeout(tokio::time::Duration::from_millis(1500), sources::soundcloud::search_soundcloud(&sc_query));
     let audius_fut = tokio::time::timeout(tokio::time::Duration::from_millis(1500), sources::audius::search_audius(&audius_query));
 
     let (yt_res1, yt_res2, sc_res, audius_res) = tokio::join!(yt_fut1, yt_fut2, sc_fut, audius_fut);
 
     let mut yt_list: Vec<SearchResult> = Vec::new();
-    if let Ok(yt1) = yt_res1 { yt_list.extend(yt1); }
-    if let Ok(yt2) = yt_res2 { yt_list.extend(yt2); }
+    if let Ok(Ok(yt1)) = yt_res1 { yt_list.extend(yt1); }
+    if let Ok(Ok(yt2)) = yt_res2 { yt_list.extend(yt2); }
 
     let sc_list: Vec<SearchResult> = match sc_res {
         Ok(Ok(sc)) => sc,

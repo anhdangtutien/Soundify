@@ -1103,64 +1103,81 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
       return;
     }
     endOfTrackPopupShownForRef.current = null;
+  }, [currentTrack, !currentTrack ? language : undefined]);
 
-    const fetchUpcoming = async () => {
-      setIsAiLoadingNext(true);
-      try {
-        const related = await invoke<SearchResult[]>('get_related_tracks', {
-          title: currentTrack.title,
-          artist: currentTrack.artist,
+  const fetchUpcomingReqIdRef = useRef(0);
+
+  const fetchUpcomingForTrack = async (targetTrack: Track) => {
+    const reqId = ++fetchUpcomingReqIdRef.current;
+    setIsAiLoadingNext(true);
+
+    try {
+      const related = await invoke<SearchResult[]>('get_related_tracks', {
+        title: targetTrack.title,
+        artist: targetTrack.artist,
+      });
+
+      if (reqId !== fetchUpcomingReqIdRef.current) return;
+
+      if (related && related.length > 0) {
+        const listened = listenedHistoryTitlesRef.current;
+        const curTitleLower = targetTrack.title.toLowerCase();
+
+        // Filter out tracks already in any user playlist (Favorites, Albums, Local, Active Queue) or listened history
+        const strictOutsideCandidates = related.filter(r => {
+          const rTitle = r.title.toLowerCase();
+          if (rTitle.includes(curTitleLower) || curTitleLower.includes(rTitle)) return false;
+          if (listened.has(rTitle) || listened.has(r.url_or_id.toLowerCase())) return false;
+          if (isTrackInUserPlaylists(r.title, r.url_or_id)) return false;
+          return true;
         });
 
-        if (related && related.length > 0) {
-          const listened = listenedHistoryTitlesRef.current;
-          const curTitleLower = currentTrack.title.toLowerCase();
+        const rawPool = strictOutsideCandidates.length > 0
+          ? strictOutsideCandidates
+          : related.filter(r => !isTrackInUserPlaylists(r.title, r.url_or_id));
 
-          // Filter out tracks already in any user playlist (Favorites, Albums, Local, Active Queue) or listened history
-          const strictOutsideCandidates = related.filter(r => {
-            const rTitle = r.title.toLowerCase();
-            if (rTitle.includes(curTitleLower) || curTitleLower.includes(rTitle)) return false;
-            if (listened.has(rTitle) || listened.has(r.url_or_id.toLowerCase())) return false;
-            if (isTrackInUserPlaylists(r.title, r.url_or_id)) return false;
-            return true;
-          });
+        const candidates = (rawPool.length > 0 ? rawPool : related).map((r): Track => ({
+          id: `${r.source}_rec_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          title: r.title,
+          artist: r.artist,
+          album: r.album || 'Gợi ý ngoài Playlist',
+          duration_secs: r.duration_secs || 210,
+          path_or_url: r.url_or_id,
+          cover_art: r.thumbnail,
+          source: r.source,
+        }));
 
-          const rawPool = strictOutsideCandidates.length > 0
-            ? strictOutsideCandidates
-            : related.filter(r => !isTrackInUserPlaylists(r.title, r.url_or_id));
+        if (candidates.length > 0) {
+          preloadedNextTrackRef.current = candidates[0];
+          setPreloadedNextTrack(candidates[0]);
+          preloadedAlternativesRef.current = candidates.slice(1, 6);
+          if (isNextTrackPopupEnabledRef.current && !isTrayModeRef.current) {
+            const popupLabel = recommendModeRef.current === 'fresh'
+              ? getTranslation(language, 'mode.freshPopup')
+              : recommendModeRef.current === 'mix'
+                ? getTranslation(language, 'mode.mixPopup')
+                : getTranslation(language, 'mode.queuePopup');
 
-          const candidates = (rawPool.length > 0 ? rawPool : related).map((r): Track => ({
-            id: `${r.source}_rec_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-            title: r.title,
-            artist: r.artist,
-            album: r.album || 'Gợi ý ngoài Playlist',
-            duration_secs: r.duration_secs || 210,
-            path_or_url: r.url_or_id,
-            cover_art: r.thumbnail,
-            source: r.source,
-          }));
-
-          if (candidates.length > 0) {
-            preloadedNextTrackRef.current = candidates[0];
-            setPreloadedNextTrack(candidates[0]);
-            preloadedAlternativesRef.current = candidates.slice(1, 6);
-            if (isNextTrackPopupEnabledRef.current && !isTrayModeRef.current) {
-              const immediate = buildImmediatePopupData();
-              if (immediate) {
-                setNextTrackPopup(immediate);
-              }
-            }
+            setNextTrackPopup({
+              title: candidates[0].title,
+              artist: candidates[0].artist,
+              thumbnail: candidates[0].cover_art || undefined,
+              source: candidates[0].source,
+              modeLabel: popupLabel,
+              isCountdown: false,
+              alternatives: candidates.slice(1, 4),
+            });
           }
         }
-      } catch (err) {
-        console.error('Error prefetching upcoming songs:', err);
-      } finally {
+      }
+    } catch (err) {
+      console.error('Error prefetching upcoming songs:', err);
+    } finally {
+      if (reqId === fetchUpcomingReqIdRef.current) {
         setIsAiLoadingNext(false);
       }
-    };
-
-    fetchUpcoming();
-  }, [currentTrack, !currentTrack ? language : undefined]);
+    }
+  };
 
   // ─── RESTORE USER SESSION FROM SQLITE ──────────────────────────────────────
   useEffect(() => {
@@ -2001,6 +2018,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
         // AI is loading related tracks for this new song
         setIsAiLoadingNext(true);
         setNextTrackPopup(null);
+        fetchUpcomingForTrack(track);
       }
     }
 
