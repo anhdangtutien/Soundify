@@ -7,11 +7,11 @@ import {
   Music, RefreshCw, Disc, Palette, Camera, Upload, Trash2, 
   Check, Sparkles, Shield, Sun, Moon, Download, Database, HardDriveDownload,
   Cloud, CloudLightning, Key, ChevronDown, ChevronUp, Globe, Languages,
-  Folder, FolderOpen, FolderDown
+  Folder, FolderOpen, FolderDown, Copy, CheckCheck, ExternalLink, Zap
 } from 'lucide-react';
 import { 
   getStoredSupabaseConfig, saveStoredSupabaseConfig, isSupabaseConfigured,
-  cloudSyncPush, cloudSyncPull
+  cloudSyncPush, cloudSyncPull, SUPABASE_SCHEMA_SQL, testSupabaseConnection
 } from '../services/supabase';
 import { LanguageCode, SUPPORTED_LANGUAGES, getTranslation } from '../locales/i18n';
 
@@ -160,6 +160,28 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   };
 
   // ──────────────── SUPABASE CLOUD SYNC ACTIONS ────────────────
+  const [copiedSql, setCopiedSql] = useState(false);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+
+  const handleCopySql = () => {
+    navigator.clipboard.writeText(SUPABASE_SCHEMA_SQL);
+    setCopiedSql(true);
+    setCloudStatusMsg('✅ Đã sao chép toàn bộ mã SQL khởi tạo vào Clipboard!');
+    setTimeout(() => {
+      setCopiedSql(false);
+      setCloudStatusMsg(null);
+    }, 4000);
+  };
+
+  const handleTestConnection = async () => {
+    setIsTestingConnection(true);
+    saveStoredSupabaseConfig(supabaseConfig.url, supabaseConfig.anonKey);
+    const res = await testSupabaseConnection();
+    setCloudStatusMsg(res.message);
+    setIsTestingConnection(false);
+    setTimeout(() => setCloudStatusMsg(null), 6000);
+  };
+
   const handleSaveSupabase = (e: React.FormEvent) => {
     e.preventDefault();
     saveStoredSupabaseConfig(supabaseConfig.url, supabaseConfig.anonKey);
@@ -800,10 +822,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <div>
               <label className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
                 <Cloud className="w-3.5 h-3.5" style={{ color: accentColor }} />
-                Đồng bộ Đám mây Supabase (Cross-Device Cloud Sync)
+                Đồng bộ Đám mây (Cloud Sync)
               </label>
               <p className="text-[11px] text-[#777] mt-0.5">
-                Tự động đồng bộ Album, Bài hát yêu thích và Avatar qua máy khác theo thời gian thực (Miễn phí 100%)
+                Tự động đồng bộ Album, Bài hát yêu thích và Avatar qua các máy tính khác theo thời gian thực (100% Miễn phí)
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -817,7 +839,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex flex-wrap items-center gap-2.5 mb-3">
             <button
               onClick={handleTriggerCloudSync}
               disabled={isCloudSyncing}
@@ -836,58 +858,84 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               className="py-2.5 px-3 rounded-xl bg-[#0c0c12] hover:bg-[#15151e] border border-[#222230] text-xs font-semibold text-[#aaa] hover:text-white flex items-center gap-1.5 cursor-pointer transition-colors"
             >
               <Key className="w-3.5 h-3.5" />
-              <span>Cài đặt khóa Supabase</span>
+              <span>Cài đặt Supabase riêng (Dành cho IT)</span>
               {showSupabaseSettings ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
           </div>
 
           {cloudStatusMsg && (
-            <p className="text-[11px] font-mono text-emerald-400 mb-3 animate-pulse">
-              {cloudStatusMsg}
-            </p>
+            <div className="p-2.5 rounded-lg bg-[#0e1610] border border-emerald-500/30 text-emerald-400 text-xs font-mono mb-3 animate-in fade-in flex items-center justify-between">
+              <span>{cloudStatusMsg}</span>
+            </div>
           )}
 
-          {/* Collapsible Supabase Key Inputs */}
+          {/* Collapsible Supabase Custom Server Setup */}
           {showSupabaseSettings && (
-            <form onSubmit={handleSaveSupabase} className="p-4 rounded-xl bg-[#0c0c12] border border-[#1e1e28] space-y-3 mb-3 animate-in fade-in duration-200">
-              <div>
-                <label className="text-[11px] font-mono text-[#888] block mb-1">
-                  Supabase Project URL (ví dụ: https://xyzcompany.supabase.co)
-                </label>
-                <input
-                  type="text"
-                  placeholder="https://your-project.supabase.co"
-                  value={supabaseConfig.url}
-                  onChange={(e) => setSupabaseConfig(prev => ({ ...prev, url: e.target.value }))}
-                  className="w-full py-2 px-3 rounded-lg bg-[#070709] border border-[#262634] text-xs text-white outline-none focus:border-white/50 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-mono text-[#888] block mb-1">
-                  Supabase Anon Public API Key (eyJhbGciOi...)
-                </label>
-                <input
-                  type="password"
-                  placeholder="eyJhbGciOi..."
-                  value={supabaseConfig.anonKey}
-                  onChange={(e) => setSupabaseConfig(prev => ({ ...prev, anonKey: e.target.value }))}
-                  className="w-full py-2 px-3 rounded-lg bg-[#070709] border border-[#262634] text-xs text-white outline-none focus:border-white/50 font-mono"
-                />
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <p className="text-[10px] text-[#666] font-mono">
-                  File schema SQL khởi tạo nằm tại <code className="text-white">supabase/schema.sql</code>
-                </p>
+            <div className="p-4 rounded-xl bg-[#0c0c12] border border-[#1e1e28] space-y-3 mb-3 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-[#181822] pb-2">
+                <span className="text-xs font-bold text-white flex items-center gap-1.5 font-mono">
+                  <Zap className="w-3.5 h-3.5" style={{ color: accentColor }} />
+                  Tự lưu trữ cơ sở dữ liệu Supabase riêng
+                </span>
                 <button
-                  type="submit"
-                  className="py-1.5 px-4 rounded-lg bg-white text-black font-bold text-xs hover:bg-[#ddd] transition-colors cursor-pointer"
+                  type="button"
+                  onClick={handleCopySql}
+                  className="px-2.5 py-1 rounded bg-[#181824] hover:bg-[#222230] text-[11px] font-mono text-[#aaa] hover:text-white border border-[#2c2c3c] flex items-center gap-1 cursor-pointer transition-colors"
                 >
-                  Lưu cấu hình
+                  {copiedSql ? <CheckCheck className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedSql ? 'Đã sao chép SQL!' : 'Sao chép mã SQL 1-Click'}</span>
                 </button>
               </div>
-            </form>
+
+              <form onSubmit={handleSaveSupabase} className="space-y-3">
+                <div>
+                  <label className="text-[11px] font-mono text-[#888] block mb-1">
+                    Supabase Project URL (ví dụ: https://xyzcompany.supabase.co)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="https://your-project.supabase.co"
+                    value={supabaseConfig.url}
+                    onChange={(e) => setSupabaseConfig(prev => ({ ...prev, url: e.target.value }))}
+                    className="w-full py-2 px-3 rounded-lg bg-[#070709] border border-[#262634] text-xs text-white outline-none focus:border-white/50 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-mono text-[#888] block mb-1">
+                    Supabase Anon Public API Key (eyJhbGciOi...)
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="eyJhbGciOi..."
+                    value={supabaseConfig.anonKey}
+                    onChange={(e) => setSupabaseConfig(prev => ({ ...prev, anonKey: e.target.value }))}
+                    className="w-full py-2 px-3 rounded-lg bg-[#070709] border border-[#262634] text-xs text-white outline-none focus:border-white/50 font-mono"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleTestConnection}
+                      disabled={isTestingConnection}
+                      className="py-1.5 px-3 rounded-lg bg-[#181824] hover:bg-[#222234] border border-[#2c2c3c] text-white font-mono text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isTestingConnection ? 'animate-spin' : ''}`} />
+                      <span>{isTestingConnection ? 'Đang kiểm tra...' : 'Kiểm tra kết nối'}</span>
+                    </button>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="py-1.5 px-4 rounded-lg bg-white text-black font-bold text-xs hover:bg-[#ddd] transition-colors cursor-pointer"
+                  >
+                    Lưu cấu hình
+                  </button>
+                </div>
+              </form>
+            </div>
           )}
         </div>
 
