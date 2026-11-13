@@ -101,6 +101,75 @@ const getDefaultGenreForLang = (lang: LanguageCode): string => {
   }
 };
 
+interface TimeVibe {
+  period: 'morning' | 'afternoon' | 'evening' | 'night' | 'late_night';
+  timeLabel: string;
+  genres: string[];
+}
+
+const getTimeOfDayVibe = (lang: LanguageCode): TimeVibe => {
+  const hour = new Date().getHours();
+  const isVi = lang === 'vi';
+  const isKo = lang === 'ko';
+
+  if (hour >= 5 && hour < 11) {
+    return {
+      period: 'morning',
+      timeLabel: isKo ? '🌅 아침 • 상쾌한 에너지' : isVi ? '🌅 Buổi Sáng • Năng Lượng Mới' : '🌅 Morning • Fresh Energy',
+      genres: [
+        'Morning Boost & Vibes',
+        'Low Cortisol & Chill',
+        'Coffee Shop & Study',
+        'Acoustic & Indie Ballad',
+      ],
+    };
+  } else if (hour >= 11 && hour < 17) {
+    return {
+      period: 'afternoon',
+      timeLabel: isKo ? '☀️ 오후 • 집중 & 업무' : isVi ? '☀️ Buổi Chiều • Tập Trung Cao Độ' : '☀️ Afternoon • Deep Focus',
+      genres: [
+        'Deep Focus & Working',
+        'Lock In & Grind Mode',
+        'Lo-Fi Chill & Study',
+        'Coffee Shop & Study',
+      ],
+    };
+  } else if (hour >= 17 && hour < 20) {
+    return {
+      period: 'evening',
+      timeLabel: isKo ? '🌆 저녁 • 운동 & 힐링' : isVi ? '🌆 Chiều Tối • Thư Giãn & Tập Luyện' : '🌆 Evening • Workout & Chill',
+      genres: [
+        'Gym & Beast Workout',
+        'Low Cortisol & Chill',
+        'R&B & Neo-Soul',
+        'Late Night Drive',
+      ],
+    };
+  } else if (hour >= 20 && hour < 24) {
+    return {
+      period: 'night',
+      timeLabel: isKo ? '🌃 밤 • 드라이브 & 감성' : isVi ? '🌃 Buổi Tối • Lái Xe & Thư Giãn' : '🌃 Night • Drive & Vibes',
+      genres: [
+        'Late Night Drive',
+        'Gaming & Phonk Rush',
+        'Low Cortisol & Chill',
+        'Deep House & Club Remix',
+      ],
+    };
+  } else {
+    return {
+      period: 'late_night',
+      timeLabel: isKo ? '🌙 심야 • 숙면 & 몰입' : isVi ? '🌙 Đêm Khuya • Tĩnh Lặng & Ngủ Ngon' : '🌙 Midnight • Sleep & Flow',
+      genres: [
+        'Peaceful Sleep & Ambient',
+        'Lock In & Grind Mode',
+        'Rainy Day Acoustic',
+        'Low Cortisol & Chill',
+      ],
+    };
+  }
+};
+
 export const AiMixView: React.FC<AiMixViewProps> = ({
   currentUser,
   allTracks,
@@ -117,8 +186,51 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
   const [recommendations, setRecommendations] = useState<RecommendationResult[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(false);
 
+  const [timeVibe, setTimeVibe] = useState<TimeVibe>(() => getTimeOfDayVibe(language));
+
+  // Auto-update time-of-day vibe every 60 seconds
+  useEffect(() => {
+    setTimeVibe(getTimeOfDayVibe(language));
+    const interval = setInterval(() => {
+      setTimeVibe(getTimeOfDayVibe(language));
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [language]);
+
+  // Dynamically generate personalized artist mixes based on user's library & history
+  const userArtistGenres = useMemo(() => {
+    if (!allTracks || allTracks.length === 0) return [];
+    const counts: Record<string, number> = {};
+    for (const t of allTracks) {
+      if (t.artist && t.artist.trim().length > 1 && !t.artist.toLowerCase().includes('unknown')) {
+        const clean = t.artist.split(',')[0].split('&')[0].split('feat')[0].trim();
+        counts[clean] = (counts[clean] || 0) + 1;
+      }
+    }
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([artist]) => `Mix: ${artist}`);
+  }, [allTracks]);
+
+  // Available genres: Time-of-day dynamic vibes -> Personal Artist Mixes -> AI Top Genres -> Regional Default -> Full Catalogue
+  const availableGenres = useMemo(() => {
+    const timeGenres = timeVibe.genres;
+    const aiTop = report?.top_genres || [];
+    const langDefault = getDefaultGenreForLang(language);
+
+    const set = new Set([
+      ...timeGenres,
+      ...userArtistGenres,
+      langDefault,
+      ...aiTop,
+      ...DEFAULT_GENRES,
+    ]);
+    return Array.from(set);
+  }, [timeVibe, userArtistGenres, report?.top_genres, language]);
+
   // Genre recommendations state
-  const [selectedGenre, setSelectedGenre] = useState<string>(() => getDefaultGenreForLang(language));
+  const [selectedGenre, setSelectedGenre] = useState<string>(() => timeVibe.genres[0] || getDefaultGenreForLang(language));
   const [genreTracks, setGenreTracks] = useState<Track[]>([]);
   const [loadingGenreTracks, setLoadingGenreTracks] = useState(false);
 
@@ -167,18 +279,8 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
   };
 
   useEffect(() => {
-    setSelectedGenre(getDefaultGenreForLang(language));
-  }, [language]);
-
-  // Available genres based on AI report or defaults
-  const availableGenres = useMemo(() => {
-    if (report?.top_genres && report.top_genres.length > 0) {
-      // Merge AI top genres with default genres ensuring uniqueness
-      const set = new Set([...report.top_genres, ...DEFAULT_GENRES]);
-      return Array.from(set);
-    }
-    return DEFAULT_GENRES;
-  }, [report?.top_genres]);
+    setSelectedGenre(timeVibe.genres[0] || getDefaultGenreForLang(language));
+  }, [language, timeVibe.period]);
 
   const fetchRecommendations = async () => {
     if (!currentUser || allTracks.length === 0) return;
@@ -207,7 +309,15 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
       }).slice(0, 6);
 
       // 2. Fetch online tracks for that genre
-      const query = GENRE_SEARCH_QUERIES[genre] || `${genre} popular hits official audio`;
+      let query = GENRE_SEARCH_QUERIES[genre];
+      if (!query) {
+        if (genre.startsWith('Mix: ')) {
+          const artist = genre.replace('Mix: ', '').trim();
+          query = `${artist} best songs viral hits official audio`;
+        } else {
+          query = `${genre} popular hits official audio`;
+        }
+      }
       const searchResults = await invoke<SearchResult[]>('search_online', {
         query,
         source: 'youtube',
@@ -409,14 +519,14 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
                 {getTranslation(language, 'aimix.genreSectionTitle')}
               </h3>
               <span 
-                className="text-[9px] font-mono uppercase px-2 py-0.5 rounded border"
+                className="text-[9px] font-mono uppercase px-2 py-0.5 rounded border flex items-center gap-1 font-semibold"
                 style={{
                   color: accentColor,
                   backgroundColor: `${accentColor}12`,
                   borderColor: `${accentColor}25`,
                 }}
               >
-                AI Curated
+                {timeVibe.timeLabel}
               </span>
             </div>
             <p className="text-xs text-[#777] mt-1">
