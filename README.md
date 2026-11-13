@@ -69,5 +69,84 @@ File `.dmg` sẽ nằm trong `src-tauri/target/release/bundle/dmg/`.
 
 ---
 
+## ☁️ Cấu hình đồng bộ Supabase Cloud (Tùy chọn)
+
+Spytify hoạt động **100% offline với SQLite** không phụ thuộc internet. Nếu bạn muốn đồng bộ Album, bài hát Yêu thích và Lịch sử nghe nhạc đa thiết bị miễn phí:
+
+1. Tạo dự án miễn phí tại [Supabase](https://supabase.com).
+2. Vào mục **SQL Editor** trong bảng điều khiển Supabase, dán đoạn mã bên dưới (hoặc mở file [`supabase/schema.sql`](supabase/schema.sql)) và nhấn **Run**:
+
+<details>
+<summary><b>📋 Bấm vào đây để xem / sao chép mã SQL khởi tạo Supabase</b></summary>
+
+```sql
+-- 1. Profiles & UI Preferences Table
+CREATE TABLE IF NOT EXISTS public.spytify_profiles (
+    id TEXT PRIMARY KEY,
+    username TEXT,
+    display_name TEXT,
+    avatar TEXT,
+    accent_color TEXT DEFAULT '#FF2A55',
+    theme_mode TEXT DEFAULT 'dark',
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- 2. User Albums Table
+CREATE TABLE IF NOT EXISTS public.spytify_albums (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    tracks JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+CREATE INDEX IF NOT EXISTS idx_spytify_albums_user_id ON public.spytify_albums(user_id);
+
+-- 3. User Favorites Table
+CREATE TABLE IF NOT EXISTS public.spytify_favorites (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    track_id TEXT NOT NULL,
+    track_json JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+CREATE INDEX IF NOT EXISTS idx_spytify_favs_user_id ON public.spytify_favorites(user_id);
+
+-- 4. User Playback History Table
+CREATE TABLE IF NOT EXISTS public.spytify_history (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    track_id TEXT NOT NULL,
+    track_title TEXT NOT NULL,
+    artist TEXT NOT NULL,
+    source TEXT NOT NULL,
+    duration_secs INTEGER NOT NULL,
+    path_or_url TEXT,
+    cover_art TEXT,
+    track_json JSONB,
+    listened_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+CREATE INDEX IF NOT EXISTS idx_spytify_history_user_id ON public.spytify_history(user_id);
+
+-- ROW LEVEL SECURITY (RLS) POLICIES
+ALTER TABLE public.spytify_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.spytify_albums ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.spytify_favorites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.spytify_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read-write for spytify_profiles" ON public.spytify_profiles FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read-write for spytify_albums" ON public.spytify_albums FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read-write for spytify_favorites" ON public.spytify_favorites FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read-write for spytify_history" ON public.spytify_history FOR ALL USING (true) WITH CHECK (true);
+```
+
+</details>
+
+3. Trong Spytify, chuyển sang trang **Tài khoản**, dán **Project URL** và **Anon Public Key** (lấy từ *Project Settings -> API* trên Supabase) là xong!
+
+---
+
 ## 📜 Giấy phép
 Phát hành theo giấy phép [MIT](LICENSE). Tự do sử dụng và đóng góp!
