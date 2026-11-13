@@ -4,6 +4,7 @@ version = "0.1.1"
 description = "Spytify - Spy Music"
 authors = ["Spytify Team", "anhdangtutien"]
 edition = "2021"
+default-run = "snutify"
 
 [lib]
 name = "snutify_lib"
