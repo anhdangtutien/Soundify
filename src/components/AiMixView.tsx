@@ -19,6 +19,19 @@ interface AiMixViewProps {
 }
 
 const DEFAULT_GENRES = [
+  // ─── MOOD & LIFESTYLE VIBE PLAYLISTS ───
+  'Low Cortisol & Chill',
+  'Deep Focus & Working',
+  'Lock In & Grind Mode',
+  'Gym & Beast Workout',
+  'Late Night Drive',
+  'Coffee Shop & Study',
+  'Rainy Day Acoustic',
+  'Gaming & Phonk Rush',
+  'Peaceful Sleep & Ambient',
+  'Morning Boost & Vibes',
+
+  // ─── MUSIC GENRES & REGIONAL HITS ───
   'K-Pop & Idol',
   'V-Pop Trending',
   'US-UK Pop Hits',
@@ -42,6 +55,19 @@ const DEFAULT_GENRES = [
 ];
 
 const GENRE_SEARCH_QUERIES: Record<string, string> = {
+  // Mood & Activity Playlists
+  'Low Cortisol & Chill': 'low cortisol playlist peaceful chill study relax aesthetic',
+  'Deep Focus & Working': 'deep focus music for working study coding lofi ambient chill',
+  'Lock In & Grind Mode': 'lock in playlist study grind phonk focus aesthetic beats',
+  'Gym & Beast Workout': 'gym workout motivation aggressive phonk edm beast mode bass',
+  'Late Night Drive': 'late night drive synthwave phonk chill playlist aesthetic',
+  'Coffee Shop & Study': 'coffee shop ambience cozy study lofi acoustic playlist',
+  'Rainy Day Acoustic': 'rainy day acoustic guitar cozy aesthetic playlist songs',
+  'Gaming & Phonk Rush': 'gaming phonk drift high energy combat aggressive bass',
+  'Peaceful Sleep & Ambient': 'peaceful sleep ambient music delta waves healing relaxation',
+  'Morning Boost & Vibes': 'morning boost positive energy upbeat feel good acoustic pop',
+
+  // Regional & Music Genres
   'K-Pop & Idol': 'kpop melon top 100 trending viral hits official mv audio',
   'V-Pop Trending': 'vpop thinh hanh trending hits official music video audio',
   'US-UK Pop Hits': 'billboard hot 100 global pop viral hits official audio',

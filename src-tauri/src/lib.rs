@@ -308,6 +308,21 @@ fn filter_actual_songs(results: Vec<SearchResult>) -> Vec<SearchResult> {
 #[tauri::command]
 async fn get_trending_hits(category: String) -> Result<Vec<SearchResult>, String> {
     let raw = match category.to_lowercase().as_str() {
+        "cortisol" | "low_cortisol" => {
+            return sources::youtube::search_youtube("low cortisol playlist peaceful chill study relax aesthetic").await;
+        }
+        "working" | "deep_focus" => {
+            return sources::youtube::search_youtube("deep focus music for working study coding lofi ambient chill").await;
+        }
+        "lockin" | "grind" => {
+            return sources::youtube::search_youtube("lock in playlist study grind phonk focus aesthetic beats").await;
+        }
+        "gym" | "workout" => {
+            return sources::youtube::search_youtube("gym workout motivation aggressive phonk edm beast mode bass").await;
+        }
+        "nightdrive" => {
+            return sources::youtube::search_youtube("late night drive synthwave phonk chill playlist aesthetic").await;
+        }
         "usuk" | "global" => {
             sources::youtube::search_youtube("global top hits official music video audio").await
         }
