@@ -670,13 +670,141 @@ export default function App() {
       .catch(() => {});
   }, [currentUser]);
 
-  // Pre-fetch AI Mix recommendations on initial app startup (when !currentTrack),
-  // and switch to normal Next Track pre-fetching once a track starts playing
-  useEffect(() => {
-    if (!currentTrack) {
-      const initialAiMixSeeds: Track[] = [
+const getLanguageAiSeeds = (lang: LanguageCode): Track[] => {
+  switch (lang) {
+    case 'ko':
+      return [
         {
-          id: 'aimix_seed_1',
+          id: 'aimix_seed_ko_1',
+          title: 'APT. (feat. Bruno Mars)',
+          artist: 'ROSÉ & Bruno Mars',
+          album: 'AI 믹스 • K-Pop Global',
+          duration_secs: 173,
+          path_or_url: 'ekr2nIex040',
+          cover_art: 'https://i.ytimg.com/vi/ekr2nIex040/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_ko_2',
+          title: 'Supernova',
+          artist: 'aespa (에스파)',
+          album: 'AI 믹스 • Viral Pick',
+          duration_secs: 180,
+          path_or_url: 'phuiAIQAxZ4',
+          cover_art: 'https://i.ytimg.com/vi/phuiAIQAxZ4/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_ko_3',
+          title: 'Magnetic',
+          artist: 'ILLIT (아일릿)',
+          album: 'AI 믹스 • Hot Trend',
+          duration_secs: 161,
+          path_or_url: 'Vk5-c_v4gMU',
+          cover_art: 'https://i.ytimg.com/vi/Vk5-c_v4gMU/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_ko_4',
+          title: 'Love wins all',
+          artist: 'IU (아이유)',
+          album: 'AI 믹스 • K-Ballad',
+          duration_secs: 272,
+          path_or_url: 'JleoAppaxi0',
+          cover_art: 'https://i.ytimg.com/vi/JleoAppaxi0/hqdefault.jpg',
+          source: 'youtube',
+        },
+      ];
+    case 'ja':
+      return [
+        {
+          id: 'aimix_seed_ja_1',
+          title: 'Idol (アイドル)',
+          artist: 'YOASOBI',
+          album: 'AI Mix • J-Pop Top',
+          duration_secs: 213,
+          path_or_url: 'ZRtdQ81jPUQ',
+          cover_art: 'https://i.ytimg.com/vi/ZRtdQ81jPUQ/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_ja_2',
+          title: 'Bling-Bang-Bang-Born',
+          artist: 'Creepy Nuts',
+          album: 'AI Mix • Viral J-Pop',
+          duration_secs: 178,
+          path_or_url: 'mLW35YMz1eo',
+          cover_art: 'https://i.ytimg.com/vi/mLW35YMz1eo/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_ja_3',
+          title: 'Shinunoga E-Wa (死ぬのがいいわ)',
+          artist: 'Fujii Kaze (藤井 風)',
+          album: 'AI Mix • Chill Groove',
+          duration_secs: 185,
+          path_or_url: 'dFfvP9-A_P8',
+          cover_art: 'https://i.ytimg.com/vi/dFfvP9-A_P8/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_ja_4',
+          title: 'KICK BACK',
+          artist: 'Kenshi Yonezu (米津玄師)',
+          album: 'AI Mix • Anime Hit',
+          duration_secs: 193,
+          path_or_url: 'M2cckDmNLMI',
+          cover_art: 'https://i.ytimg.com/vi/M2cckDmNLMI/hqdefault.jpg',
+          source: 'youtube',
+        },
+      ];
+    case 'zh-CN':
+      return [
+        {
+          id: 'aimix_seed_zh_1',
+          title: '晴天 (Sunny Day)',
+          artist: '周杰伦 (Jay Chou)',
+          album: 'AI Mix • 经典热歌',
+          duration_secs: 269,
+          path_or_url: 'DYptgVvkVLQ',
+          cover_art: 'https://i.ytimg.com/vi/DYptgVvkVLQ/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_zh_2',
+          title: '光年之外 (LIGHT YEARS AWAY)',
+          artist: 'G.E.M. 邓紫棋',
+          album: 'AI Mix • 华语流行',
+          duration_secs: 235,
+          path_or_url: 'T4SimnaiktU',
+          cover_art: 'https://i.ytimg.com/vi/T4SimnaiktU/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_zh_3',
+          title: '带我去找夜生活',
+          artist: '告五人 (Accusefive)',
+          album: 'AI Mix • 独立流行',
+          duration_secs: 243,
+          path_or_url: '55nPtJyp4eQ',
+          cover_art: 'https://i.ytimg.com/vi/55nPtJyp4eQ/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_zh_4',
+          title: '孤勇者 (Lonely Warrior)',
+          artist: '陈奕迅 (Eason Chan)',
+          album: 'AI Mix • 巅峰热榜',
+          duration_secs: 256,
+          path_or_url: 'H58vbez_m4E',
+          cover_art: 'https://i.ytimg.com/vi/H58vbez_m4E/hqdefault.jpg',
+          source: 'youtube',
+        },
+      ];
+    case 'en-US':
+      return [
+        {
+          id: 'aimix_seed_en_1',
           title: 'Die With A Smile',
           artist: 'Lady Gaga & Bruno Mars',
           album: 'AI Mix • Top Match',
@@ -686,17 +814,41 @@ export default function App() {
           source: 'youtube',
         },
         {
-          id: 'aimix_seed_2',
-          title: 'APT. (feat. Bruno Mars)',
-          artist: 'ROSÉ & Bruno Mars',
-          album: 'AI Mix • Viral Pick',
-          duration_secs: 173,
-          path_or_url: 'ekr2nIex040',
-          cover_art: 'https://i.ytimg.com/vi/ekr2nIex040/hqdefault.jpg',
+          id: 'aimix_seed_en_2',
+          title: 'Birds of a Feather',
+          artist: 'Billie Eilish',
+          album: 'AI Mix • Chill Pop',
+          duration_secs: 196,
+          path_or_url: 'V9PVRfjEBTI',
+          cover_art: 'https://i.ytimg.com/vi/V9PVRfjEBTI/hqdefault.jpg',
           source: 'youtube',
         },
         {
-          id: 'aimix_seed_3',
+          id: 'aimix_seed_en_3',
+          title: 'Espresso',
+          artist: 'Sabrina Carpenter',
+          album: 'AI Mix • Viral Summer',
+          duration_secs: 175,
+          path_or_url: 'eVli-tstM5E',
+          cover_art: 'https://i.ytimg.com/vi/eVli-tstM5E/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_en_4',
+          title: 'Blinding Lights',
+          artist: 'The Weeknd',
+          album: 'AI Mix • Synthwave',
+          duration_secs: 200,
+          path_or_url: '4NRXx6U8ABQ',
+          cover_art: 'https://i.ytimg.com/vi/4NRXx6U8ABQ/hqdefault.jpg',
+          source: 'youtube',
+        },
+      ];
+    case 'vi':
+    default:
+      return [
+        {
+          id: 'aimix_seed_vi_1',
           title: 'Đừng Làm Trái Tim Anh Đau',
           artist: 'Sơn Tùng M-TP',
           album: 'AI Mix • V-Pop Hot',
@@ -706,40 +858,88 @@ export default function App() {
           source: 'youtube',
         },
         {
-          id: 'aimix_seed_4',
-          title: 'Birds of a Feather',
-          artist: 'Billie Eilish',
-          album: 'AI Mix • Chill Pop',
-          duration_secs: 196,
-          path_or_url: 'V9PVRfjEBTI',
-          cover_art: 'https://i.ytimg.com/vi/V9PVRfjEBTI/hqdefault.jpg',
+          id: 'aimix_seed_vi_2',
+          title: 'Không Thể Say',
+          artist: 'HIEUTHUHAI',
+          album: 'AI Mix • Trending Rap',
+          duration_secs: 210,
+          path_or_url: 'W_aX497N4cE',
+          cover_art: 'https://i.ytimg.com/vi/W_aX497N4cE/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_vi_3',
+          title: 'Bước Qua Mùa Cô Đơn',
+          artist: 'Vũ.',
+          album: 'AI Mix • Indie Ballad',
+          duration_secs: 279,
+          path_or_url: 'bX8d8XbS0hU',
+          cover_art: 'https://i.ytimg.com/vi/bX8d8XbS0hU/hqdefault.jpg',
+          source: 'youtube',
+        },
+        {
+          id: 'aimix_seed_vi_4',
+          title: 'APT. (feat. Bruno Mars)',
+          artist: 'ROSÉ & Bruno Mars',
+          album: 'AI Mix • Viral Hit',
+          duration_secs: 173,
+          path_or_url: 'ekr2nIex040',
+          cover_art: 'https://i.ytimg.com/vi/ekr2nIex040/hqdefault.jpg',
           source: 'youtube',
         },
       ];
+  }
+};
 
-      // Immediately show AI Mix popup at 0ms on app startup
-      if (!preloadedNextTrackRef.current) {
-        preloadedNextTrackRef.current = initialAiMixSeeds[0];
-        setPreloadedNextTrack(initialAiMixSeeds[0]);
-        preloadedAlternativesRef.current = initialAiMixSeeds.slice(1, 4);
-      }
+const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
+  switch (lang) {
+    case 'ko': return '✨ AI 믹스 • 당신을 위한 맞춤 추천';
+    case 'ja': return '✨ AI 믹스 • あなたへのおすすめ';
+    case 'zh-CN': return '✨ AI 混音 • 为你专属推荐';
+    case 'en-US': return '✨ AI MIX • RECOMMENDED FOR YOU';
+    case 'vi':
+    default: return '✨ AI MIX • ĐỀ XUẤT CHO BẠN';
+  }
+};
+
+const getLanguageSearchQuery = (lang: LanguageCode): string => {
+  switch (lang) {
+    case 'ko': return 'kpop melon top 100 trending viral hits official mv audio';
+    case 'ja': return 'jpop billboard japan hot 100 official music video';
+    case 'zh-CN': return 'cpop trending hot hits official music video audio';
+    case 'en-US': return 'billboard hot 100 global pop viral hits official audio';
+    case 'vi':
+    default: return 'vpop thinh hanh trending hits official music video audio';
+  }
+};
+
+  // Pre-fetch AI Mix recommendations on initial app startup (when !currentTrack)
+  // or when language changes, and switch to normal Next Track pre-fetching once a track starts playing
+  useEffect(() => {
+    if (!currentTrack) {
+      const initialAiMixSeeds: Track[] = getLanguageAiSeeds(language);
+      const popupModeLabel = getLanguageAiPopupLabel(language);
+
+      // Immediately show AI Mix popup tailored to selected language
+      preloadedNextTrackRef.current = initialAiMixSeeds[0];
+      setPreloadedNextTrack(initialAiMixSeeds[0]);
+      preloadedAlternativesRef.current = initialAiMixSeeds.slice(1, 4);
+
       if (isNextTrackPopupEnabledRef.current && !isTrayModeRef.current) {
-        const topPick = preloadedNextTrackRef.current || initialAiMixSeeds[0];
-        const alts = preloadedAlternativesRef.current.length > 0
-          ? preloadedAlternativesRef.current.slice(0, 3)
-          : initialAiMixSeeds.slice(1, 4);
+        const topPick = initialAiMixSeeds[0];
+        const alts = initialAiMixSeeds.slice(1, 4);
         setNextTrackPopup({
           title: topPick.title,
           artist: topPick.artist,
           thumbnail: topPick.cover_art || undefined,
           source: topPick.source,
-          modeLabel: '✨ AI MIX • ĐỀ XUẤT CHO BẠN',
+          modeLabel: popupModeLabel,
           isCountdown: false,
           alternatives: alts,
         });
       }
 
-      // Asynchronously refine initial popup with personalized on-device AI Mix & online discovery
+      // Asynchronously refine initial popup with personalized on-device AI Mix & online discovery for this language
       const fetchInitialAiMix = async () => {
         try {
           const uid = currentUserRef.current?.id || 'guest_spy';
@@ -757,15 +957,16 @@ export default function App() {
             } catch {}
           }
 
-          // Also fetch fresh online AI Mix recommendations based on user's top track or trending AI Mix
+          // Fetch fresh online AI Mix recommendations based on language
           const seedTrack = aiPool[0] || tracksRef.current[0];
+          const query = getLanguageSearchQuery(language);
           const related = seedTrack
             ? await invoke<SearchResult[]>('get_related_tracks', {
                 title: seedTrack.title,
                 artist: seedTrack.artist,
               })
             : await invoke<SearchResult[]>('search_online', {
-                query: 'vpop usuk kpop viral hits official audio',
+                query,
                 source: 'youtube',
               });
 
@@ -793,7 +994,7 @@ export default function App() {
                 artist: aiPool[0].artist,
                 thumbnail: aiPool[0].cover_art || undefined,
                 source: aiPool[0].source,
-                modeLabel: '✨ AI MIX • ĐỀ XUẤT CHO BẠN',
+                modeLabel: popupModeLabel,
                 isCountdown: false,
                 alternatives: aiPool.slice(1, 4),
               });

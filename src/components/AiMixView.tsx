@@ -19,26 +19,60 @@ interface AiMixViewProps {
 }
 
 const DEFAULT_GENRES = [
-  'V-Pop',
-  'EDM / Dance',
-  'K-Pop',
-  'US-UK Pop',
-  'Lo-Fi & Chill',
-  'Hip-Hop & Rap',
-  'Ballad & Acoustic',
-  'J-Pop / Anime',
+  'K-Pop & Idol',
+  'V-Pop Trending',
+  'US-UK Pop Hits',
+  'EDM & Festival Dance',
+  'Lo-Fi Chill & Study',
+  'Phonk & Drift Beats',
+  'Hip-Hop, Rap & Trap',
+  'Acoustic & Indie Ballad',
+  'R&B & Neo-Soul',
+  'J-Pop & Anime OST',
+  'C-Pop & Mandopop',
+  'Synthwave & Cyberpunk 80s',
+  'Deep House & Club Remix',
+  'City Pop & Retro Groove',
+  'Rock & Alternative',
+  'Drill & UK Bass',
+  'Hyperpop & Glitchcore',
+  'Jazz & Coffee Lounge',
+  'Cinematic & Epic Soundtracks',
+  'Nightcore & Speed Up Remix',
 ];
 
 const GENRE_SEARCH_QUERIES: Record<string, string> = {
-  'V-Pop': 'vpop thinh hanh official music video',
-  'EDM / Dance': 'festival edm electronic dance banger official audio',
-  'K-Pop': 'kpop viral hits official mv audio',
-  'US-UK Pop': 'global top pop hits official music video audio',
-  'Lo-Fi & Chill': 'lofi chill beats study relax official audio',
-  'Hip-Hop & Rap': 'viet rap hip hop trending official audio',
-  'Ballad & Acoustic': 'acoustic ballad nhe nhang tinh cam acoustic official',
-  'J-Pop / Anime': 'jpop anime viral opening official music video',
-  'Rock & Alternative': 'popular rock alternative hits official audio',
+  'K-Pop & Idol': 'kpop melon top 100 trending viral hits official mv audio',
+  'V-Pop Trending': 'vpop thinh hanh trending hits official music video audio',
+  'US-UK Pop Hits': 'billboard hot 100 global pop viral hits official audio',
+  'EDM & Festival Dance': 'festival edm electronic dance banger progressive house official',
+  'Lo-Fi Chill & Study': 'lofi chill beats study relax sleep beats official audio',
+  'Phonk & Drift Beats': 'drift phonk brazilian phonk aggressive cowbell trending audio',
+  'Hip-Hop, Rap & Trap': 'top trending rap hip hop trap bass boosted official audio',
+  'Acoustic & Indie Ballad': 'acoustic indie ballad gentle guitar emotional official audio',
+  'R&B & Neo-Soul': 'chill rnb soul smooth vibes contemporary groove official audio',
+  'J-Pop & Anime OST': 'jpop anime viral opening theme song official music video',
+  'C-Pop & Mandopop': 'cpop mandopop trending hot songs official music video audio',
+  'Synthwave & Cyberpunk 80s': 'retrowave synthwave 80s cyberpunk electronic neon night drive',
+  'Deep House & Club Remix': 'deep house club remix selected ibiza vocal chillout audio',
+  'City Pop & Retro Groove': 'japanese city pop 80s retro funk groove aesthetic',
+  'Rock & Alternative': 'popular rock alternative hits modern indie rock official audio',
+  'Drill & UK Bass': 'uk drill bass rap heavy 808 trending beats audio',
+  'Hyperpop & Glitchcore': 'hyperpop glitchcore energetic futuristic pop audio',
+  'Jazz & Coffee Lounge': 'smooth jazz coffee shop cozy lounge instrumental audio',
+  'Cinematic & Epic Soundtracks': 'epic cinematic orchestral soundtrack hans zimmer style trailer',
+  'Nightcore & Speed Up Remix': 'nightcore speed up viral tiktok remix official audio',
+};
+
+const getDefaultGenreForLang = (lang: LanguageCode): string => {
+  switch (lang) {
+    case 'ko': return 'K-Pop & Idol';
+    case 'ja': return 'J-Pop & Anime OST';
+    case 'zh-CN': return 'C-Pop & Mandopop';
+    case 'en-US': return 'US-UK Pop Hits';
+    case 'vi':
+    default: return 'V-Pop Trending';
+  }
 };
 
 export const AiMixView: React.FC<AiMixViewProps> = ({
@@ -58,9 +92,13 @@ export const AiMixView: React.FC<AiMixViewProps> = ({
   const [loadingRecs, setLoadingRecs] = useState(false);
 
   // Genre recommendations state
-  const [selectedGenre, setSelectedGenre] = useState<string>('V-Pop');
+  const [selectedGenre, setSelectedGenre] = useState<string>(() => getDefaultGenreForLang(language));
   const [genreTracks, setGenreTracks] = useState<Track[]>([]);
   const [loadingGenreTracks, setLoadingGenreTracks] = useState(false);
+
+  useEffect(() => {
+    setSelectedGenre(getDefaultGenreForLang(language));
+  }, [language]);
 
   // Available genres based on AI report or defaults
   const availableGenres = useMemo(() => {
