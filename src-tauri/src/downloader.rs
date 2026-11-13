@@ -264,7 +264,16 @@ impl Downloader {
 
         let safe_title = Self::sanitize_filename(&track.title);
         let safe_artist = Self::sanitize_filename(&track.artist);
-        let base_filename = format!("{} - {}", safe_artist, safe_title);
+        let lower_title = safe_title.to_lowercase();
+        let lower_artist = safe_artist.to_lowercase();
+
+        let base_filename = if lower_title.starts_with(&format!("{} - ", lower_artist)) {
+            safe_title.clone()
+        } else if safe_artist.is_empty() || lower_artist == "unknown artist" || lower_artist == "youtube artist" || lower_artist == "local file" {
+            safe_title.clone()
+        } else {
+            format!("{} - {}", safe_artist, safe_title)
+        };
 
         match track.source {
             TrackSource::Audius => {
@@ -437,12 +446,34 @@ impl Downloader {
     }
 
     fn make_local_track(file_path: &Path, original_track: &Track) -> Result<Track, String> {
+        let artist = if original_track.artist.is_empty() || original_track.artist == "Unknown Artist" {
+            "Local Artist"
+        } else {
+            &original_track.artist
+        };
+        let title = if original_track.title.is_empty() || original_track.title == "Unknown Track" {
+            "Audio Track"
+        } else {
+            &original_track.title
+        };
+        let album = if original_track.album.is_empty() || original_track.album == "Unknown Album" {
+            "Spytify Downloads"
+        } else {
+            &original_track.album
+        };
+
+        // Write tags directly into downloaded audio file on disk
+        let _ = scanner::write_metadata(file_path, title, artist, album);
+
         if let Some(mut local_track) = scanner::extract_track_info(file_path) {
             if local_track.artist == "Unknown Artist" || local_track.artist == "Local File" {
                 local_track.artist = original_track.artist.clone();
             }
             if local_track.title == "Unknown Track" || local_track.title.is_empty() {
                 local_track.title = original_track.title.clone();
+            }
+            if local_track.album == "Unknown Album" || local_track.album.is_empty() {
+                local_track.album = album.to_string();
             }
             if local_track.cover_art.is_none() {
                 local_track.cover_art = original_track.cover_art.clone();
@@ -454,7 +485,7 @@ impl Downloader {
                 id: format!("local_{}", uuid::Uuid::new_v4().simple()),
                 title: original_track.title.clone(),
                 artist: original_track.artist.clone(),
-                album: "Spytify Downloads".to_string(),
+                album: album.to_string(),
                 duration_secs: original_track.duration_secs,
                 path_or_url: path_str,
                 cover_art: original_track.cover_art.clone(),

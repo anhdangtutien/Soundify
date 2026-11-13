@@ -1,9 +1,10 @@
 use crate::models::{Track, TrackSource};
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
+use lofty::config::WriteOptions;
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::probe::Probe;
-use lofty::tag::Accessor;
+use lofty::tag::{Accessor, Tag, TagExt};
 use rayon::prelude::*;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -89,6 +90,24 @@ pub fn extract_track_info(file_path: &Path) -> Option<Track> {
                 }
             }
 
+            // Fallback: If artist is unknown, missing, or generic ("Unknown Artist", "Local File", etc.), parse from filename
+            let is_artist_generic = artist == "Unknown Artist" || artist == "Local File" || artist.trim().is_empty();
+            let is_title_generic = title == "Unknown Track" || title == filename || title.trim().is_empty();
+
+            if is_artist_generic {
+                let (parsed_artist, parsed_title) = parse_artist_title_from_filename(&filename);
+                artist = parsed_artist;
+                if is_title_generic {
+                    title = parsed_title;
+                }
+                // Save resolved metadata to file tags so future scans & external music players recognize it
+                let _ = write_metadata(file_path, &title, &artist, &album);
+            }
+
+            if album == "Unknown Album" || album.trim().is_empty() {
+                album = "Spytify Library".to_string();
+            }
+
             Some(Track {
                 id,
                 title,
@@ -103,11 +122,15 @@ pub fn extract_track_info(file_path: &Path) -> Option<Track> {
         }
         Err(_) => {
             // Fallback for audio files without valid tags
+            let (parsed_artist, parsed_title) = parse_artist_title_from_filename(&filename);
+            let album = "Spytify Library".to_string();
+            let _ = write_metadata(file_path, &parsed_title, &parsed_artist, &album);
+
             Some(Track {
                 id,
-                title: filename,
-                artist: "Local File".to_string(),
-                album: "Local Music".to_string(),
+                title: parsed_title,
+                artist: parsed_artist,
+                album,
                 duration_secs: 0,
                 path_or_url: path_str,
                 cover_art: None,
@@ -118,6 +141,110 @@ pub fn extract_track_info(file_path: &Path) -> Option<Track> {
     }
 }
 
+pub fn parse_artist_title_from_filename(filename: &str) -> (String, String) {
+    let raw = filename.trim();
+    if raw.is_empty() {
+        return ("Local Artist".to_string(), "Unknown Track".to_string());
+    }
+
+    // Split by common delimiters: " - ", " -- ", or " – "
+    let delimiter = if raw.contains(" - ") {
+        " - "
+    } else if raw.contains(" -- ") {
+        " -- "
+    } else if raw.contains(" – ") {
+        " – "
+    } else {
+        ""
+    };
+
+    if delimiter.is_empty() {
+        return ("Local Artist".to_string(), raw.to_string());
+    }
+
+    let parts: Vec<&str> = raw
+        .split(delimiter)
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    if parts.len() == 1 {
+        return ("Local Artist".to_string(), parts[0].to_string());
+    }
+
+    if parts.len() == 2 {
+        return clean_artist_title_pair(parts[0], parts[1]);
+    }
+
+    // parts.len() >= 3:
+    // Check if parts[0] duplicates parts[1] (e.g. "The Weeknd - The Weeknd - The Hills" or "Ngọt - Ngọt - HẾT THỜI")
+    let p0_lower = parts[0].to_lowercase();
+    let p1_lower = parts[1].to_lowercase();
+
+    if p0_lower == p1_lower || p0_lower.contains(&p1_lower) || p1_lower.contains(&p0_lower) {
+        let artist_part = if parts[1].len() <= parts[0].len() { parts[1] } else { parts[0] };
+        let rest_title = parts[2..].join(" - ");
+        return clean_artist_title_pair(artist_part, &rest_title);
+    }
+
+    // Check if parts[0] is an aggregator/channel/label name:
+    // e.g. "BBCRadio1VEVO", "R&BHype", "HYBE LABELS", "1 Giờ Chill", "Lofi Fruits Music", "K8V"
+    let is_curator = p0_lower.contains("vevo")
+        || p0_lower.contains("official")
+        || p0_lower.contains("hype")
+        || p0_lower.contains("labels")
+        || p0_lower.contains("records")
+        || p0_lower.contains("fruits")
+        || p0_lower.contains("chill")
+        || p0_lower.contains("studio")
+        || p0_lower.contains("channel")
+        || p0_lower.contains("và ")
+        || p0_lower.contains(" & ")
+        || parts[0].len() <= 4;
+
+    if is_curator {
+        let rest_title = parts[2..].join(" - ");
+        return clean_artist_title_pair(parts[1], &rest_title);
+    }
+
+    // Default 3+ parts: parts[0] is artist, parts[1..] is title
+    clean_artist_title_pair(parts[0], &parts[1..].join(" - "))
+}
+
+fn clean_artist_title_pair(raw_artist: &str, raw_title: &str) -> (String, String) {
+    let mut artist = raw_artist.trim().to_string();
+    let mut title = raw_title.trim().to_string();
+
+    // Clean artist:
+    let lower_artist = artist.to_lowercase();
+    if lower_artist.starts_with("official ") {
+        artist = artist[9..].trim().to_string();
+    } else if lower_artist.ends_with(" official") {
+        let len = artist.len();
+        artist = artist[..len - 9].trim().to_string();
+    } else if lower_artist.ends_with(" vevo") {
+        let len = artist.len();
+        artist = artist[..len - 5].trim().to_string();
+    }
+
+    // Clean title:
+    let lower_title = title.to_lowercase();
+    let lower_artist_clean = artist.to_lowercase();
+    let redundant_prefix = format!("{} - ", lower_artist_clean);
+    if lower_title.starts_with(&redundant_prefix) {
+        title = title[redundant_prefix.len()..].trim().to_string();
+    }
+
+    if artist.is_empty() {
+        artist = "Local Artist".to_string();
+    }
+    if title.is_empty() {
+        title = "Unknown Track".to_string();
+    }
+
+    (artist, title)
+}
+
 // Simple fast hash for track IDs
 fn md5_hash(input: &str) -> u64 {
     let mut hash: u64 = 5381;
@@ -125,4 +252,28 @@ fn md5_hash(input: &str) -> u64 {
         hash = ((hash << 5).wrapping_add(hash)).wrapping_add(byte as u64);
     }
     hash
+}
+
+pub fn write_metadata(file_path: &Path, title: &str, artist: &str, album: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let probe = Probe::open(file_path)?;
+    let mut tagged_file = probe.read()?;
+
+    let tag = if let Some(t) = tagged_file.primary_tag_mut() {
+        t
+    } else if let Some(t) = tagged_file.first_tag_mut() {
+        t
+    } else {
+        let tag_type = tagged_file.primary_tag_type();
+        tagged_file.insert_tag(Tag::new(tag_type));
+        match tagged_file.primary_tag_mut() {
+            Some(t) => t,
+            None => return Ok(()),
+        }
+    };
+
+    tag.set_title(title.to_string());
+    tag.set_artist(artist.to_string());
+    tag.set_album(album.to_string());
+    let _ = tag.save_to_path(file_path, WriteOptions::default());
+    Ok(())
 }
