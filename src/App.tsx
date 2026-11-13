@@ -588,14 +588,18 @@ export default function App() {
     const fallbackNext = getNextPlaylistTrack(cur);
     const useNewDiscovery = shouldNextBeNewDiscovery();
 
+    // In new discovery (Fresh) mode, ONLY use genuine preloaded discovery track.
+    // Do NOT pull random songs from allList/history to prevent showing unrelated songs.
     const nextToUse = useNewDiscovery
-      ? (preloadedNextTrackRef.current || fallbackNext)
+      ? preloadedNextTrackRef.current
       : (fallbackNext || preloadedNextTrackRef.current);
     if (!nextToUse || (cur && nextToUse.id === cur.id)) return null;
 
     const altList = (useNewDiscovery && preloadedAlternativesRef.current.length > 0)
       ? preloadedAlternativesRef.current.slice(0, 3)
-      : allList.filter(t => t.id !== cur?.id && t.id !== nextToUse.id).slice(0, 3);
+      : (!useNewDiscovery
+          ? allList.filter(t => t.id !== cur?.id && t.id !== nextToUse.id).slice(0, 3)
+          : []);
 
     return {
       title: nextToUse.title,
@@ -1954,21 +1958,15 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
     let nextPreloaded: Track | null = null;
     const curArtistNorm = track.artist.trim().toLowerCase();
     if (
+      curArtistNorm &&
       isValidNewCandidate(preloadedNextTrackRef.current) &&
-      (preloadedNextTrackRef.current.artist.trim().toLowerCase() === curArtistNorm || !curArtistNorm)
+      preloadedNextTrackRef.current.artist.trim().toLowerCase() === curArtistNorm
     ) {
       nextPreloaded = preloadedNextTrackRef.current;
     } else {
-      const remainingAlts = preloadedAlternativesRef.current.filter(c => isValidNewCandidate(c));
-      const matchingAlt = remainingAlts.find(c => c.artist.trim().toLowerCase() === curArtistNorm);
-      if (matchingAlt) {
-        nextPreloaded = matchingAlt;
-        preloadedAlternativesRef.current = remainingAlts.filter(c => c.id !== matchingAlt.id);
-      } else {
-        // Clear stale candidates so fetchUpcoming populates fresh recommendations for this exact song's genre/artist
-        nextPreloaded = null;
-        preloadedAlternativesRef.current = [];
-      }
+      // Clear stale candidates completely so we never leak unrelated songs into the new track
+      nextPreloaded = null;
+      preloadedAlternativesRef.current = [];
     }
     preloadedNextTrackRef.current = nextPreloaded;
     setPreloadedNextTrack(nextPreloaded);
@@ -1981,9 +1979,14 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
     setIsPlaying(false);
 
     if (isNextTrackPopupEnabledRef.current && !isTrayModeRef.current) {
-      const immediateData = buildImmediatePopupData();
-      if (immediateData) {
-        setNextTrackPopup(immediateData);
+      if (nextPreloaded) {
+        const immediateData = buildImmediatePopupData();
+        if (immediateData) {
+          setNextTrackPopup(immediateData);
+        }
+      } else {
+        // Clear/hide old popup so stale/unrelated recommendations are NEVER shown while fetching new related tracks
+        setNextTrackPopup(null);
       }
     }
 
