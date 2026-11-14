@@ -867,33 +867,33 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
   const [activeCategory, setActiveCategory] = useState<string>('usuk');
 
   const fetchTrending = async (category: string) => {
-    const curated = CURATED_BY_CATEGORY[category] || CURATED_BY_CATEGORY.usuk;
-    // Set curated real songs immediately to guarantee authentic music tracks
-    setTrendingTracks(curated);
     setLoading(true);
+    setTrendingTracks([]);
 
     try {
       const results = await invoke<SearchResult[]>('get_trending_hits', { category });
-      if (results && results.length > 0) {
-        // Pool curated tracks and live results, then strictly deduplicate by ID and normalized title
-        const pool = category === 'lofi' ? [...curated, ...results] : [...results, ...curated];
-        const unique: SearchResult[] = [];
-        for (const item of pool) {
-          const itemTitleNorm = item.title.trim().toLowerCase();
-          const exists = unique.some(
-            u => u.url_or_id === item.url_or_id ||
-                 u.title.trim().toLowerCase() === itemTitleNorm ||
-                 (u.title.trim().toLowerCase().startsWith(itemTitleNorm.slice(0, 18)) &&
-                  u.artist.trim().toLowerCase() === item.artist.trim().toLowerCase())
-          );
-          if (!exists) {
-            unique.push(item);
-          }
+      const curated = CURATED_BY_CATEGORY[category] || [];
+      const pool = results && results.length > 0
+        ? (category === 'lofi' ? [...curated, ...results] : [...results, ...curated])
+        : curated;
+
+      const unique: SearchResult[] = [];
+      for (const item of pool) {
+        const itemTitleNorm = item.title.trim().toLowerCase();
+        const exists = unique.some(
+          u => u.url_or_id === item.url_or_id ||
+               u.title.trim().toLowerCase() === itemTitleNorm ||
+               (u.title.trim().toLowerCase().startsWith(itemTitleNorm.slice(0, 18)) &&
+                u.artist.trim().toLowerCase() === item.artist.trim().toLowerCase())
+        );
+        if (!exists) {
+          unique.push(item);
         }
-        setTrendingTracks(unique);
       }
+      setTrendingTracks(unique.length > 0 ? unique : (CURATED_BY_CATEGORY[category] || CURATED_BY_CATEGORY.usuk));
     } catch (err) {
       console.error('Failed to fetch trending hits:', err);
+      setTrendingTracks(CURATED_BY_CATEGORY[category] || CURATED_BY_CATEGORY.usuk);
     } finally {
       setLoading(false);
     }
@@ -965,90 +965,102 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
   return (
     <div className="flex-1 p-6 lg:p-8 overflow-y-auto space-y-7 max-w-7xl mx-auto select-none">
       {/* ─── HERO SPOTLIGHT (BILLBOARD HOT #1 / FEATURED TRACK) ──────────────── */}
-      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#0d0d12] via-[#09090c] to-black border border-[#1c1c24] p-6 lg:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
-        <div className="z-10 max-w-xl space-y-3">
-          <div className="flex items-center gap-2">
-            <span 
-              className="px-2.5 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5"
-              style={{
-                backgroundColor: `${accentColor}20`,
-                color: accentColor,
-                borderColor: `${accentColor}50`,
-              }}
-            >
-              <Crown className="w-3 h-3" style={{ color: accentColor }} />
-              {getTranslation(language, 'trending.globalRank')}
-            </span>
-            <span className="text-xs text-[#8e8e9f] font-mono">Top Trending Stream</span>
+      {loading ? (
+        <div className="relative rounded-2xl overflow-hidden bg-[#0d0d12] border border-[#1c1c24] p-6 lg:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl animate-pulse">
+          <div className="z-10 max-w-xl space-y-4 w-full">
+            <div className="w-36 h-5 bg-white/10 rounded-full" />
+            <div className="w-3/4 h-8 bg-white/10 rounded-xl" />
+            <div className="w-1/2 h-4 bg-white/10 rounded-md" />
+            <div className="w-32 h-9 bg-white/10 rounded-xl mt-3" />
           </div>
-
-          <h1 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight leading-tight">
-            {sanitizeTrackTitle(featured.title)}
-          </h1>
-
-          <p className="text-sm font-medium text-[#a0a0b2]">
-            {featured.artist} • <span className="text-white font-mono">{featured.album || 'Billboard Spotlight'}</span>
-          </p>
-
-          <div className="pt-2 flex items-center gap-3">
-            <button
-              onClick={() => onPlaySearchResult(featured)}
-              style={{
-                backgroundColor: accentColor,
-                color: getContrastTextColor(accentColor),
-                boxShadow: `0 0 16px ${accentColor}40`
-              }}
-              className="px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 hover:scale-105 active:scale-95"
-            >
-              <Play className="w-4 h-4 fill-current ml-0.5" />
-              <span>{getTranslation(language, 'trending.playNow')}</span>
-            </button>
-            {(!featured.duration_secs || featured.duration_secs <= 0) ? (
-              <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
-                LIVE 24/7
+          <div className="w-44 h-44 lg:w-52 lg:h-52 rounded-2xl bg-white/10 flex-shrink-0" />
+        </div>
+      ) : featured ? (
+        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#0d0d12] via-[#09090c] to-black border border-[#1c1c24] p-6 lg:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
+          <div className="z-10 max-w-xl space-y-3">
+            <div className="flex items-center gap-2">
+              <span 
+                className="px-2.5 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-wider font-mono flex items-center gap-1.5"
+                style={{
+                  backgroundColor: `${accentColor}20`,
+                  color: accentColor,
+                  borderColor: `${accentColor}50`,
+                }}
+              >
+                <Crown className="w-3 h-3" style={{ color: accentColor }} />
+                {getTranslation(language, 'trending.globalRank')}
               </span>
-            ) : (
-              <span className="text-xs font-mono text-[#777]">{formatTime(featured.duration_secs)}</span>
-            )}
-          </div>
-        </div>
+              <span className="text-xs text-[#8e8e9f] font-mono">Top Trending Stream</span>
+            </div>
 
-        {/* Featured Cover Art */}
-        <div
-          onClick={() => onPlaySearchResult(featured)}
-          className="relative w-44 h-44 lg:w-52 lg:h-52 rounded-2xl overflow-hidden border border-[#2a2a35] flex-shrink-0 cursor-pointer shadow-xl group"
-        >
-          {featured.thumbnail ? (
-            <img
-              src={optimizeThumbnailUrl(featured.thumbnail, featured.url_or_id)}
-              alt={featured.title}
-              referrerPolicy="no-referrer"
-              onError={(e) => handleImageError(e, featured.url_or_id)}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-          ) : (
-            <div className="w-full h-full bg-[#121218] flex items-center justify-center text-white">
-              <Disc className="w-12 h-12" />
+            <h1 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight leading-tight">
+              {sanitizeTrackTitle(featured.title)}
+            </h1>
+
+            <p className="text-sm font-medium text-[#a0a0b2]">
+              {featured.artist} • <span className="text-white font-mono">{featured.album || 'Billboard Spotlight'}</span>
+            </p>
+
+            <div className="pt-2 flex items-center gap-3">
+              <button
+                onClick={() => onPlaySearchResult(featured)}
+                style={{
+                  backgroundColor: accentColor,
+                  color: getContrastTextColor(accentColor),
+                  boxShadow: `0 0 16px ${accentColor}40`
+                }}
+                className="px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 hover:scale-105 active:scale-95"
+              >
+                <Play className="w-4 h-4 fill-current ml-0.5" />
+                <span>{getTranslation(language, 'trending.playNow')}</span>
+              </button>
+              {(!featured.duration_secs || featured.duration_secs <= 0) ? (
+                <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                  LIVE 24/7
+                </span>
+              ) : (
+                <span className="text-xs font-mono text-[#777]">{formatTime(featured.duration_secs)}</span>
+              )}
             </div>
-          )}
-          <div className="absolute top-2 right-2">
-            {getSourceBadge(featured.source)}
           </div>
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <div 
-              className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-transform"
-              style={{
-                backgroundColor: accentColor,
-                color: getContrastTextColor(accentColor),
-                boxShadow: `0 0 16px ${accentColor}60`,
-              }}
-            >
-              <Play className="w-5 h-5 fill-current ml-0.5" />
+
+          {/* Featured Cover Art */}
+          <div
+            onClick={() => onPlaySearchResult(featured)}
+            className="relative w-44 h-44 lg:w-52 lg:h-52 rounded-2xl overflow-hidden border border-[#2a2a35] flex-shrink-0 cursor-pointer shadow-xl group"
+          >
+            {featured.thumbnail ? (
+              <img
+                src={optimizeThumbnailUrl(featured.thumbnail, featured.url_or_id)}
+                alt={featured.title}
+                referrerPolicy="no-referrer"
+                onError={(e) => handleImageError(e, featured.url_or_id)}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+            ) : (
+              <div className="w-full h-full bg-[#121218] flex items-center justify-center text-white">
+                <Disc className="w-12 h-12" />
+              </div>
+            )}
+            <div className="absolute top-2 right-2">
+              {getSourceBadge(featured.source)}
+            </div>
+            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <div 
+                className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-transform"
+                style={{
+                  backgroundColor: accentColor,
+                  color: getContrastTextColor(accentColor),
+                  boxShadow: `0 0 16px ${accentColor}60`,
+                }}
+              >
+                <Play className="w-5 h-5 fill-current ml-0.5" />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
       {/* ─── CATEGORY FILTER PILLS ────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -1098,107 +1110,127 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
           <span className="text-xs text-[#777] font-mono">{getTranslation(language, 'trending.top10')}</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-          {top10.map((item, idx) => {
-            const rank = idx + 1;
-            const isRank1 = rank === 1;
-            const isRank2 = rank === 2;
-            const isRank3 = rank === 3;
-            const isCurrent = currentTrack && (
-              item.url_or_id === currentTrack.id ||
-              item.url_or_id === currentTrack.path_or_url ||
-              item.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase()
-            );
-
-            return (
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {Array.from({ length: 10 }).map((_, idx) => (
               <div
                 key={idx}
-                onClick={() => onPlaySearchResult(item)}
-                style={{
-                  borderColor: isCurrent ? accentColor : undefined,
-                  backgroundColor: isCurrent ? `${accentColor}18` : undefined,
-                  boxShadow: isCurrent ? `0 0 14px ${accentColor}30` : undefined,
-                }}
-                className={`card-hover-accent p-3 rounded-xl bg-[#09090c] hover:bg-[#121218] border transition-all flex items-center justify-between gap-3 group cursor-pointer shadow-sm ${
-                  isCurrent ? '' : 'border-[#161620]'
-                }`}
+                className="p-3 rounded-xl bg-[#09090c] border border-[#161620] flex items-center justify-between gap-3 animate-pulse"
               >
-                <div className="flex items-center gap-3 overflow-hidden">
-                  {/* Rank Badge */}
-                  <div
-                    style={isRank1 ? {
-                      backgroundColor: accentColor,
-                      color: getContrastTextColor(accentColor),
-                      boxShadow: `0 0 10px ${accentColor}50`,
-                    } : undefined}
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs font-mono flex-shrink-0 ${
-                      isRank1
-                        ? ''
-                        : isRank2
-                        ? 'bg-white text-black'
-                        : isRank3
-                        ? 'bg-[#252530] text-white'
-                        : 'bg-[#14141a] text-[#777]'
-                    }`}
-                  >
-                    {rank}
+                <div className="flex items-center gap-3 overflow-hidden flex-1">
+                  <div className="w-7 h-7 rounded-lg bg-white/10 flex-shrink-0" />
+                  <div className="w-11 h-11 rounded-lg bg-white/10 flex-shrink-0" />
+                  <div className="overflow-hidden flex-1 space-y-1.5">
+                    <div className="w-3/4 h-3.5 bg-white/10 rounded" />
+                    <div className="w-1/2 h-2.5 bg-white/5 rounded" />
                   </div>
+                </div>
+                <div className="w-14 h-4 bg-white/10 rounded flex-shrink-0" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {top10.map((item, idx) => {
+              const rank = idx + 1;
+              const isRank1 = rank === 1;
+              const isRank2 = rank === 2;
+              const isRank3 = rank === 3;
+              const isCurrent = currentTrack && (
+                item.url_or_id === currentTrack.id ||
+                item.url_or_id === currentTrack.path_or_url ||
+                item.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase()
+              );
 
-                  {/* Thumbnail with hover play */}
-                  <div className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-[#14141c] border border-[#222]">
-                    {item.thumbnail ? (
-                      <img
-                        src={optimizeThumbnailUrl(item.thumbnail, item.url_or_id)}
-                        alt={item.title}
-                        referrerPolicy="no-referrer"
-                        onError={(e) => handleImageError(e, item.url_or_id)}
-                        loading="lazy"
-                        decoding="async"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[#555]">
-                        <Music className="w-4 h-4" />
+              return (
+                <div
+                  key={idx}
+                  onClick={() => onPlaySearchResult(item)}
+                  style={{
+                    borderColor: isCurrent ? accentColor : undefined,
+                    backgroundColor: isCurrent ? `${accentColor}18` : undefined,
+                    boxShadow: isCurrent ? `0 0 14px ${accentColor}30` : undefined,
+                  }}
+                  className={`card-hover-accent p-3 rounded-xl bg-[#09090c] hover:bg-[#121218] border transition-all flex items-center justify-between gap-3 group cursor-pointer shadow-sm ${
+                    isCurrent ? '' : 'border-[#161620]'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    {/* Rank Badge */}
+                    <div
+                      style={isRank1 ? {
+                        backgroundColor: accentColor,
+                        color: getContrastTextColor(accentColor),
+                        boxShadow: `0 0 10px ${accentColor}50`,
+                      } : undefined}
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs font-mono flex-shrink-0 ${
+                        isRank1
+                          ? ''
+                          : isRank2
+                          ? 'bg-white text-black'
+                          : isRank3
+                          ? 'bg-[#252530] text-white'
+                          : 'bg-[#14141a] text-[#777]'
+                      }`}
+                    >
+                      {rank}
+                    </div>
+
+                    {/* Thumbnail with hover play */}
+                    <div className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-[#14141c] border border-[#222]">
+                      {item.thumbnail ? (
+                        <img
+                          src={optimizeThumbnailUrl(item.thumbnail, item.url_or_id)}
+                          alt={item.title}
+                          referrerPolicy="no-referrer"
+                          onError={(e) => handleImageError(e, item.url_or_id)}
+                          loading="lazy"
+                          decoding="async"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[#555]">
+                          <Music className="w-4 h-4" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Play className="w-4 h-4 fill-current text-white" />
                       </div>
-                    )}
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Play className="w-4 h-4 fill-current text-white" />
+                    </div>
+
+                    {/* Song Info */}
+                    <div className="overflow-hidden">
+                      <p 
+                        className="card-title-accent text-xs font-bold text-white truncate transition-colors" 
+                        style={{ color: isCurrent ? accentColor : undefined }}
+                      >
+                        {sanitizeTrackTitle(item.title)}
+                      </p>
+                      <p className="text-[11px] text-[#8e8e9f] truncate font-mono mt-0.5">
+                        {item.artist}
+                      </p>
                     </div>
                   </div>
 
-                  {/* Song Info */}
-                  <div className="overflow-hidden">
-                    <p 
-                      className="card-title-accent text-xs font-bold text-white truncate transition-colors" 
-                      style={{ color: isCurrent ? accentColor : undefined }}
-                      title={item.title}
-                    >
-                      {sanitizeTrackTitle(item.title)}
-                    </p>
-                    <p className="text-[11px] text-[#8e8e9f] truncate font-mono mt-0.5">
-                      {item.artist}
-                    </p>
+                  {/* Right metadata */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {(!item.duration_secs || item.duration_secs <= 0) ? (
+                      <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                        LIVE
+                      </span>
+                    ) : (
+                      <>
+                        {getSourceBadge(item.source)}
+                        <span className="text-[11px] font-mono text-[#666]">{formatTime(item.duration_secs)}</span>
+                      </>
+                    )}
                   </div>
                 </div>
-
-                {/* Right metadata */}
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {(!item.duration_secs || item.duration_secs <= 0) ? (
-                    <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
-                      LIVE
-                    </span>
-                  ) : (
-                    <>
-                      {getSourceBadge(item.source)}
-                      <span className="text-[11px] font-mono text-[#666]">{formatTime(item.duration_secs)}</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ─── TRENDING MOODS & GENRES ──────────────────────────────────────── */}
@@ -1238,7 +1270,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
       </div>
 
       {/* ─── MORE TRENDING DISCOVERIES ────────────────────────────────────── */}
-      {remaining.length > 0 && (
+      {!loading && remaining.length > 0 && (
         <div className="space-y-4 pt-2">
           <div className="flex items-center justify-between border-b border-[#161620] pb-2">
             <h2 className="text-sm font-bold text-white flex items-center gap-2">
@@ -1286,7 +1318,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
                   </div>
                 </div>
 
-                <p className="card-title-accent text-xs font-bold text-white truncate transition-colors" title={item.title}>
+                <p className="card-title-accent text-xs font-bold text-white truncate transition-colors">
                   {sanitizeTrackTitle(item.title)}
                 </p>
                 <p className="text-[11px] text-[#777] truncate font-mono mt-0.5">

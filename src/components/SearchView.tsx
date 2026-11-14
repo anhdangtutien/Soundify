@@ -412,7 +412,6 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   <div className="overflow-hidden flex-1">
                     <p 
                       className="card-title-accent text-xs font-semibold text-white truncate transition-colors" 
-                      title={r.title}
                       style={isMatchCurrent ? { color: accentColor } : undefined}
                     >
                       {sanitizeTrackTitle(r.title)}

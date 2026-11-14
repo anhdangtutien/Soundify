@@ -31,7 +31,7 @@ function setupAudioAnalyser(_audioEl?: HTMLAudioElement | null): AnalyserNode | 
 export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   isPlaying,
   language = 'vi',
-  accentColor = '#00E5FF',
+  accentColor = '#ff2a55',
   source,
   audioElement,
   currentTime = 0,

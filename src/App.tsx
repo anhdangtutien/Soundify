@@ -233,6 +233,38 @@ export default function App() {
   const langDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Trap browser history to avoid accidental WebView2 history back/forward navigations
+    try {
+      history.pushState(null, '', window.location.href);
+    } catch {}
+
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      try {
+        history.pushState(null, '', window.location.href);
+      } catch {}
+    };
+
+    const handleMouseSideButtons = (e: MouseEvent) => {
+      // button 3: Back (XButton1), button 4: Forward (XButton2)
+      if (e.button === 3 || e.button === 4) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.type === 'mouseup') {
+          if (e.button === 3) {
+            handleUserPrevRef.current();
+          } else if (e.button === 4) {
+            handleNextRef.current(true);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('mouseup', handleMouseSideButtons, true);
+    window.addEventListener('mousedown', handleMouseSideButtons, true);
+    window.addEventListener('auxclick', handleMouseSideButtons, true);
+
     const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
       if (langDropdownRef.current && !langDropdownRef.current.contains(e.target as Node)) {
         setShowLanguageDropdown(false);
@@ -255,6 +287,10 @@ export default function App() {
     document.addEventListener('touchstart', handleOutsideClick);
     window.addEventListener('keydown', handleKeyDown);
     return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('mouseup', handleMouseSideButtons, true);
+      window.removeEventListener('mousedown', handleMouseSideButtons, true);
+      window.removeEventListener('auxclick', handleMouseSideButtons, true);
       document.removeEventListener('mousedown', handleOutsideClick);
       document.removeEventListener('touchstart', handleOutsideClick);
       window.removeEventListener('keydown', handleKeyDown);
@@ -407,6 +443,18 @@ export default function App() {
       return updated;
     });
     showNotification(getTranslation(language, 'toast.albumDeleted'));
+  };
+
+  const handleUpdateAlbum = (albumId: string, updates: Partial<UserAlbum>) => {
+    setAlbums(prev => {
+      const updated = prev.map(a => a.id === albumId ? { ...a, ...updates } : a);
+      localStorage.setItem('spytify_user_albums', JSON.stringify(updated));
+      if (currentUserRef.current && isSupabaseConfigured()) {
+        cloudSyncPush(currentUserRef.current.id, { albums: updated }).catch(console.error);
+      }
+      return updated;
+    });
+    showNotification(getTranslation(language, 'album.updated'));
   };
 
   const handleAddTrackToAlbum = (albumId: string, track: Track) => {
@@ -3365,6 +3413,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 albums={albums}
                 onCreateAlbum={handleCreateAlbum}
                 onDeleteAlbum={handleDeleteAlbum}
+                onUpdateAlbum={handleUpdateAlbum}
                 onRemoveTrackFromAlbum={handleRemoveTrackFromAlbum}
                 onPlayTrack={handlePlayTrack}
                 onPlayAlbum={handlePlayAlbum}

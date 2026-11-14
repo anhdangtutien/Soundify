@@ -88,25 +88,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
               : 'text-[#888899] hover:text-white hover:bg-[#0e0e12]'
           }`}
         >
-          <span style={{ color: isActive ? accentColor : '#777788' }}>{icon}</span>
-          {dotIndicator && (
-            <span
-              className="absolute top-2 right-2.5 w-1.5 h-1.5 rounded-full"
-              style={{ backgroundColor: dotIndicator }}
-            />
-          )}
-          {view === 'community' && (
-            <span className="absolute top-2 right-2.5 flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: accentColor }} />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ backgroundColor: accentColor }} />
-            </span>
-          )}
-          {view === 'ai_mix' && (
-            <span 
-              className="absolute top-2 right-2.5 w-1.5 h-1.5 rounded-full"
-              style={{ backgroundColor: accentColor }}
-            />
-          )}
+          <div className="relative flex items-center justify-center">
+            <span style={{ color: isActive ? accentColor : '#777788' }}>{icon}</span>
+            {dotIndicator && (
+              <span
+                className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: dotIndicator }}
+              />
+            )}
+            {view === 'community' && (
+              <span className="absolute -top-1 -right-1 flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: accentColor }} />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ backgroundColor: accentColor }} />
+              </span>
+            )}
+            {view === 'ai_mix' && (
+              <span 
+                className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: accentColor }}
+              />
+            )}
+          </div>
         </button>
       );
     }

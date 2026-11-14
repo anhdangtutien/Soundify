@@ -44,7 +44,7 @@ const INITIAL_USERS: CommunityUserProfile[] = [
     avatar: null,
     role: 'DJ / HOST',
     status: 'online',
-    bio: 'Resident DJ tại Cyber Lounge 2077. Chuyên dòng nhạc Synthwave, Cyberpunk Beats & Lofi mật vụ 320Kbps.',
+    bio: 'Resident DJ tại Cyber Lounge 2077. Chuyên dòng nhạc Synthwave, Cyberpunk Beats & Lofi chill 320Kbps.',
     listening: 'After Dark - Mr.Kitty',
     listeningTrack: DEFAULT_DJ_TRACK,
     isHost: true,
@@ -104,7 +104,7 @@ const INITIAL_USERS: CommunityUserProfile[] = [
     avatar: null,
     role: 'AGENT',
     status: 'online',
-    bio: 'Mật vụ bóng đêm Spytify. Âm nhạc là chìa khóa mở mọi cánh cửa.',
+    bio: 'Thành viên yêu âm nhạc Spytify. Âm nhạc là chìa khóa mở mọi cánh cửa.',
     listening: null,
     listeningTrack: null,
     isHost: false,
@@ -142,14 +142,14 @@ const BUILTIN_SERVERS: CommunityServer[] = [
   {
     id: 'srv_cyber_2077',
     name: 'Cyber Lounge 2077',
-    description: 'Trạm phát Synthwave, Cyberpunk Beats & Lofi mật vụ xuyên đêm.',
+    description: 'Trạm phát Synthwave, Cyberpunk Beats & Lofi thư giãn xuyên đêm.',
     icon: '⚡',
     badge: 'OFFICIAL',
     accent_color: '#00E5FF',
     channels: [
-      { id: 'ch_cyber_gen', name: 'general-chat', type: 'text', topic: 'Kênh đàm thoại mật vụ' },
+      { id: 'ch_cyber_gen', name: 'general-chat', type: 'text', topic: 'Kênh trò chuyện chung' },
       { id: 'ch_cyber_share', name: 'music-radar', type: 'text', topic: 'Chia sẻ các giai điệu Cyberpunk & Synth đỉnh cao' },
-      { id: 'ch_cyber_voice', name: 'Phòng Thoại Mật Vụ', type: 'voice', topic: 'Hội thoại trực tiếp thời gian thực (Discord Voice Call)' },
+      { id: 'ch_cyber_voice', name: 'Phòng Thoại Voice', type: 'voice', topic: 'Hội thoại trực tiếp thời gian thực (Discord Voice Call)' },
     ],
   },
   {
@@ -189,7 +189,7 @@ const SERVER_PRESETS = [
     desc: 'Trạm phát Synthwave, Cyberpunk Beats & Giác đấu ban đêm.',
     defaultChannels: [
       { name: 'general-chat', type: 'text' as const },
-      { name: 'Phòng Thoại Mật Vụ', type: 'voice' as const },
+      { name: 'Phòng Thoại Voice', type: 'voice' as const },
     ]
   },
   {
@@ -264,7 +264,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newServerPreset, setNewServerPreset] = useState('cyber');
   const [newServerName, setNewServerName] = useState('My Cyber Lounge');
-  const [newServerDesc, setNewServerDesc] = useState('Trạm phát sóng âm nhạc mật vụ');
+  const [newServerDesc, setNewServerDesc] = useState('Trạm phát sóng âm nhạc');
   const [newServerIcon, setNewServerIcon] = useState('⚡');
   const [newServerColor, setNewServerColor] = useState('#00E5FF');
 
@@ -554,7 +554,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               avatar: p.avatar || null,
               role: 'AGENT',
               status: 'online',
-              bio: 'Mật vụ Spytify từ hệ thống đám mây.',
+              bio: 'Thành viên Spytify từ hệ thống cộng đồng.',
               listening: null,
               isHost: false,
               followsCurrentUser: true,
@@ -698,7 +698,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
         avatar: currentUser?.avatar || null,
         role: 'BẠN',
         status: 'online' as const,
-        bio: 'Mật vụ tối cao đang lắng nghe Spytify.',
+        bio: 'Đang lắng nghe âm nhạc trên Spytify.',
         listening: currentTrack ? `${currentTrack.title} - ${currentTrack.artist}` : null,
         listeningTrack: currentTrack,
         isHost: false,
@@ -736,7 +736,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
     setSelectedChannel(channel);
     setMessages([]);
 
-    // Nếu là kênh Voice (như "Phòng Thoại Mật Vụ"): Tự động tham gia cuộc gọi ngay lập tức giống Discord!
+    // Nếu là kênh Voice: Tự động tham gia cuộc gọi ngay lập tức giống Discord!
     if (channel.type === 'voice') {
       if (connectedVoiceChannel !== channel.id) {
         handleJoinVoiceCall(channel.id);
@@ -1165,7 +1165,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       server_id: selectedServer.id,
       channel_id: selectedChannel.id,
       host_user_id: currentUser?.id || 'guest',
-      host_name: currentUser?.display_name || 'Mật Vụ DJ',
+      host_name: currentUser?.display_name || 'DJ Host',
       current_track: currentTrack,
       position_secs: 0,
       is_playing: true,
@@ -1281,7 +1281,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4" style={{ color: accentColor }} />
                 <span className={`text-xs font-black uppercase tracking-wider ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>
-                  Bạn Bè Mật Vụ
+                  Bạn Bè
                 </span>
               </div>
             </div>
@@ -1507,19 +1507,17 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                         <div className="pl-6 space-y-1 py-0.5">
                           {isVoiceActive && (
                             <div className="flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: accentColor }}>
-                              <div className="relative">
+                              <div className="relative flex-shrink-0">
                                 <span 
-                                  className="w-4 h-4 rounded-full border text-[9px] font-bold flex items-center justify-center text-white"
+                                  className="w-4 h-4 rounded-full border text-[9px] font-bold flex items-center justify-center text-white transition-all"
                                   style={{
                                     backgroundColor: `${accentColor}30`,
-                                    borderColor: accentColor,
+                                    borderColor: isUserSpeaking ? accentColor : `${accentColor}50`,
+                                    boxShadow: isUserSpeaking ? `0 0 6px ${accentColor}` : undefined,
                                   }}
                                 >
                                   {(currentUser?.display_name || 'B').charAt(0)}
                                 </span>
-                                {isUserSpeaking && (
-                                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full animate-ping" style={{ backgroundColor: accentColor }} />
-                                )}
                               </div>
                               <span className="truncate">{currentUser?.display_name || getTranslation(language, 'community.you')} ({getTranslation(language, 'community.you')})</span>
                               {isMuted && <MicOff className="w-2.5 h-2.5 text-red-400 ml-auto" />}
@@ -1547,13 +1545,16 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                               }}
                               className={`flex items-center gap-1.5 text-[11px] p-0.5 rounded hover:bg-white/5 cursor-pointer ${isLight ? 'text-[#475569]' : 'text-[#aaa]'}`}
                             >
-                              <div className="relative">
-                                <span className={`w-4 h-4 rounded-full border text-[9px] font-bold flex items-center justify-center ${isLight ? 'bg-[#e2e8f0] border-[#cbd5e1] text-[#0f172a]' : 'bg-[#161622] border-white/20 text-white'}`}>
+                              <div className="relative flex-shrink-0">
+                                <span 
+                                  className={`w-4 h-4 rounded-full border text-[9px] font-bold flex items-center justify-center transition-all ${isLight ? 'bg-[#e2e8f0] text-[#0f172a]' : 'bg-[#161622] text-white'}`}
+                                  style={{
+                                    borderColor: vp.isSpeaking ? accentColor : (isLight ? '#cbd5e1' : 'rgba(255,255,255,0.2)'),
+                                    boxShadow: vp.isSpeaking ? `0 0 6px ${accentColor}` : undefined,
+                                  }}
+                                >
                                   {vp.name.charAt(0)}
                                 </span>
-                                {vp.isSpeaking && (
-                                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full animate-ping" style={{ backgroundColor: accentColor }} />
-                                )}
                               </div>
                               <span className="truncate">{vp.name}</span>
                               {vp.isHost && (
@@ -1655,7 +1656,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 font-bold text-xs">
                   <Users className="w-4 h-4" style={{ color: accentColor }} />
-                  <span className={isLight ? 'text-slate-900' : 'text-white'}>Bạn Bè Mật Vụ</span>
+                  <span className={isLight ? 'text-slate-900' : 'text-white'}>Bạn Bè</span>
                 </div>
                 <div className="h-4 w-[1px] bg-zinc-700/40" />
                 <div className="flex items-center gap-1.5 text-xs">
@@ -1725,7 +1726,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 <div className="max-w-xl mx-auto space-y-6 pt-4">
                   <div>
                     <h3 className={`text-base font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                      THÊM BẠN BÈ MẬT VỤ
+                      THÊM BẠN BÈ
                     </h3>
                     <p className="text-xs text-[#888] mt-1">
                       Nhập tên người dùng hoặc handle (ví dụ: <code className="text-cyan-400 font-mono">@cyberhawk</code>). Quy tắc kết bạn: <b>Nếu bạn follow người kia và người kia follow lại thì là bạn bè</b>!
@@ -1896,7 +1897,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                                 {isFriend ? (
                                   <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-400/10 border border-emerald-500/20 px-1.5 py-0.2 rounded flex items-center gap-1">
                                     <Sparkles className="w-2.5 h-2.5" />
-                                    BẠN BÈ MẬT VỤ
+                                    BẠN BÈ
                                   </span>
                                 ) : (
                                   <span className="text-[9px] font-mono text-cyan-400 bg-cyan-400/10 px-1.5 py-0.2 rounded">
@@ -2591,7 +2592,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               }`}
             >
               <Users className="w-3.5 h-3.5 text-[#888]" />
-              <span>Xem hồ sơ mật vụ</span>
+              <span>Xem hồ sơ</span>
             </button>
 
             {/* User / Bot Volume Slider (Discord Style: 0% - 200%) */}
@@ -3311,11 +3312,11 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                           isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-[#12121a] border-[#222232] text-white'
                         }`}
                       >
-                        <option value={10}>10 Mật Vụ (Phòng kín)</option>
-                        <option value={25}>25 Mật Vụ</option>
-                        <option value={50}>50 Mật Vụ (Tiêu chuẩn)</option>
-                        <option value={100}>100 Mật Vụ (Club lớn)</option>
-                        <option value={500}>500 Mật Vụ (Không giới hạn)</option>
+                        <option value={10}>10 thành viên (Phòng kín)</option>
+                        <option value={25}>25 thành viên</option>
+                        <option value={50}>50 thành viên (Tiêu chuẩn)</option>
+                        <option value={100}>100 thành viên (Club lớn)</option>
+                        <option value={500}>500 thành viên (Không giới hạn)</option>
                       </select>
                     </div>
                   </div>
@@ -3505,7 +3506,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     {followingUserIds.has(selectedProfileUser.id) ? (
                       <>
                         <UserCheck className="w-3.5 h-3.5" />
-                        <span>{isMutualFriend(selectedProfileUser) ? 'Bạn bè mật vụ' : 'Đang theo dõi'}</span>
+                        <span>{isMutualFriend(selectedProfileUser) ? 'Bạn bè' : 'Đang theo dõi'}</span>
                       </>
                     ) : (
                       <>
@@ -3534,7 +3535,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 {isMutualFriend(selectedProfileUser) ? (
                   <span className="text-emerald-400 font-bold flex items-center gap-1">
                     <Sparkles className="w-3.5 h-3.5" />
-                    BẠN BÈ MẬT VỤ (Follow Lẫn Nhau)
+                    BẠN BÈ (Follow Lẫn Nhau)
                   </span>
                 ) : followingUserIds.has(selectedProfileUser.id) ? (
                   <span className="text-cyan-400">Bạn đang theo dõi người này</span>
@@ -3548,7 +3549,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               {/* Bio */}
               <div className="mt-3">
                 <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#777] block mb-1">
-                  TIỂU SỬ MẬT VỤ
+                  TIỂU SỬ
                 </span>
                 <p className="text-xs text-[#aaa] leading-relaxed font-sans">{selectedProfileUser.bio || 'Chưa cập nhật tiểu sử.'}</p>
               </div>

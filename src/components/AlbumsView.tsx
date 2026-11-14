@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Plus, Disc, Play, Trash2, Music, ArrowLeft, Clock3, FolderPlus, 
-  Sparkles, Layers, Check, X
+  Sparkles, Layers, Check, X, Pencil, Image as ImageIcon
 } from 'lucide-react';
 import { Track, UserAlbum } from '../types';
 import { TrackTable } from './TrackTable';
@@ -12,6 +12,7 @@ interface AlbumsViewProps {
   albums: UserAlbum[];
   onCreateAlbum: (title: string, description: string) => void;
   onDeleteAlbum: (albumId: string) => void;
+  onUpdateAlbum?: (albumId: string, updates: Partial<UserAlbum>) => void;
   onRemoveTrackFromAlbum: (albumId: string, trackId: string) => void;
   onPlayTrack: (track: Track, albumTracks?: Track[]) => void;
   onPlayAlbum: (album: UserAlbum) => void;
@@ -28,6 +29,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
   albums,
   onCreateAlbum,
   onDeleteAlbum,
+  onUpdateAlbum,
   onRemoveTrackFromAlbum,
   onPlayTrack,
   onPlayAlbum,
@@ -44,6 +46,12 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
 
+  // Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editCoverArt, setEditCoverArt] = useState('');
+
   const selectedAlbum = albums.find(a => a.id === selectedAlbumId);
   const cleanAlbumTracks = useMemo(() => {
     return selectedAlbum ? deduplicateTracks(selectedAlbum.tracks || []) : [];
@@ -56,6 +64,24 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
     setNewTitle('');
     setNewDesc('');
     setIsCreateModalOpen(false);
+  };
+
+  const handleOpenEditModal = (album: UserAlbum) => {
+    setEditTitle(album.title);
+    setEditDesc(album.description || '');
+    setEditCoverArt(album.cover_art || '');
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAlbum || !editTitle.trim()) return;
+    onUpdateAlbum?.(selectedAlbum.id, {
+      title: editTitle.trim(),
+      description: editDesc.trim(),
+      cover_art: editCoverArt.trim() || null,
+    });
+    setIsEditModalOpen(false);
   };
 
   const formatTotalTime = (tracks: Track[]) => {
@@ -100,8 +126,8 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
 
             <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#888] mb-1.5 font-mono">
-                  {getTranslation(language, 'album.nameLabel')} <span style={{ color: accentColor }}>*</span>
+                <label className="block text-xs font-semibold text-[#aaa] mb-1.5">
+                  {getTranslation(language, 'album.nameLabel')} <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -109,14 +135,13 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder={getTranslation(language, 'album.namePlaceholder')}
-                  className="w-full px-3.5 py-2.5 bg-[#121218] border border-[#22222e] text-white rounded-xl text-xs outline-none transition-colors"
-                  style={{ borderColor: newTitle ? accentColor : undefined }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#14141c] border border-[#22222e] text-white text-xs focus:outline-none focus:border-white/40 transition-colors"
                   autoFocus
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#888] mb-1.5 font-mono">
+                <label className="block text-xs font-semibold text-[#aaa] mb-1.5">
                   {getTranslation(language, 'album.descLabel')}
                 </label>
                 <textarea
@@ -124,15 +149,15 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                   onChange={(e) => setNewDesc(e.target.value)}
                   placeholder={getTranslation(language, 'album.descPlaceholder')}
                   rows={3}
-                  className="w-full px-3.5 py-2.5 bg-[#121218] border border-[#22222e] text-white rounded-xl text-xs outline-none transition-colors resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#14141c] border border-[#22222e] text-white text-xs focus:outline-none focus:border-white/40 transition-colors resize-none"
                 />
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2.5">
+              <div className="flex items-center justify-end gap-2.5 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-[#14141c] hover:bg-[#1e1e28] text-xs font-semibold text-[#888] hover:text-white transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#888] hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   {getTranslation(language, 'album.cancel')}
                 </button>
@@ -142,11 +167,156 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                   style={{
                     backgroundColor: accentColor,
                     color: getContrastTextColor(accentColor),
-                    boxShadow: `0 0 12px ${accentColor}40`,
+                    boxShadow: `0 0 14px ${accentColor}40`,
                   }}
-                  className="px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 hover:opacity-90"
+                  className="px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-40 hover:opacity-90 shadow-md"
                 >
                   {getTranslation(language, 'album.submit')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL CHỈNH SỬA ALBUM (TITLE, DESCRIPTION, COVER ART) ──────── */}
+      {isEditModalOpen && selectedAlbum && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-[#0a0a0d] border border-[#1e1e28] rounded-2xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setIsEditModalOpen(false)}
+              className="absolute top-4 right-4 text-[#777] hover:text-white p-1 rounded-lg cursor-pointer transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-2.5 mb-5">
+              <div 
+                className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
+                style={{ 
+                  backgroundColor: accentColor, 
+                  color: getContrastTextColor(accentColor),
+                  boxShadow: `0 0 12px ${accentColor}40`
+                }}
+              >
+                <Pencil className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white tracking-tight">
+                  {getTranslation(language, 'album.editModalTitle')}
+                </h3>
+                <p className="text-[11px] text-[#777] font-mono">
+                  {getTranslation(language, 'album.editModalSubtitle')}
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              {/* Cover Art Preview & Input */}
+              <div>
+                <label className="block text-xs font-semibold text-[#aaa] mb-1.5 flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5" style={{ color: accentColor }} />
+                  <span>{getTranslation(language, 'album.coverArtLabel')}</span>
+                </label>
+
+                <div className="flex items-center gap-3.5 mb-2.5">
+                  <div className="w-16 h-16 rounded-xl bg-[#14141c] border border-[#222] overflow-hidden flex items-center justify-center flex-shrink-0">
+                    {editCoverArt.trim() ? (
+                      <img 
+                        src={editCoverArt} 
+                        alt="Preview" 
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500';
+                        }}
+                        className="w-full h-full object-cover" 
+                      />
+                    ) : (
+                      <Disc className="w-8 h-8 text-[#555]" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      type="url"
+                      value={editCoverArt}
+                      onChange={(e) => setEditCoverArt(e.target.value)}
+                      placeholder={getTranslation(language, 'album.coverArtPlaceholder')}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#14141c] border border-[#22222e] text-white text-xs focus:outline-none focus:border-white/40 transition-colors"
+                    />
+                  </div>
+                </div>
+
+                {/* Quick Pick from tracks in this album */}
+                {cleanAlbumTracks.some(t => t.cover_art) && (
+                  <div>
+                    <span className="text-[10px] text-[#777] font-mono block mb-1.5">
+                      {getTranslation(language, 'album.chooseFromTracks')}
+                    </span>
+                    <div className="flex items-center gap-2 overflow-x-auto py-1 no-scrollbar">
+                      {cleanAlbumTracks
+                        .filter(t => t.cover_art)
+                        .slice(0, 8)
+                        .map((t, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setEditCoverArt(t.cover_art || '')}
+                            className={`w-10 h-10 rounded-lg overflow-hidden border flex-shrink-0 cursor-pointer transition-transform hover:scale-105 ${
+                              editCoverArt === t.cover_art ? 'border-2' : 'border-white/10 hover:border-white/40'
+                            }`}
+                            style={editCoverArt === t.cover_art ? { borderColor: accentColor } : undefined}
+                          >
+                            <img src={t.cover_art || ''} alt={t.title} className="w-full h-full object-cover" />
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#aaa] mb-1.5">
+                  {getTranslation(language, 'album.nameLabel')} <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#14141c] border border-[#22222e] text-white text-xs focus:outline-none focus:border-white/40 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#aaa] mb-1.5">
+                  {getTranslation(language, 'album.descLabel')}
+                </label>
+                <textarea
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  rows={3}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#14141c] border border-[#22222e] text-white text-xs focus:outline-none focus:border-white/40 transition-colors resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#888] hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                  {getTranslation(language, 'album.cancel')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={!editTitle.trim()}
+                  style={{
+                    backgroundColor: accentColor,
+                    color: getContrastTextColor(accentColor),
+                    boxShadow: `0 0 14px ${accentColor}40`,
+                  }}
+                  className="px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-40 hover:opacity-90 shadow-md"
+                >
+                  {getTranslation(language, 'album.saveChanges')}
                 </button>
               </div>
             </form>
@@ -168,7 +338,15 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
           {/* Album Banner */}
           <div className="p-6 rounded-2xl bg-gradient-to-r from-[#0d0d12] via-[#09090c] to-black border border-[#1c1c24] flex flex-col sm:flex-row items-center gap-6 shadow-xl">
             <div className="w-36 h-36 rounded-2xl overflow-hidden bg-[#14141c] border border-[#262632] flex-shrink-0 flex items-center justify-center relative shadow-lg">
-              {selectedAlbum.tracks.length > 0 && selectedAlbum.tracks[0].cover_art ? (
+              {selectedAlbum.cover_art ? (
+                <img
+                  src={optimizeThumbnailUrl(selectedAlbum.cover_art, selectedAlbum.id)}
+                  alt={selectedAlbum.title}
+                  referrerPolicy="no-referrer"
+                  onError={(e) => handleImageError(e, selectedAlbum.id)}
+                  className="w-full h-full object-cover"
+                />
+              ) : selectedAlbum.tracks.length > 0 && selectedAlbum.tracks[0].cover_art ? (
                 <img
                   src={optimizeThumbnailUrl(selectedAlbum.tracks[0].cover_art, selectedAlbum.tracks[0].path_or_url || selectedAlbum.tracks[0].id)}
                   alt={selectedAlbum.title}
@@ -204,7 +382,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                 <span>{getTranslation(language, 'album.createdAt')} {new Date(selectedAlbum.created_at).toLocaleDateString()}</span>
               </div>
 
-              <div className="pt-3 flex items-center justify-center sm:justify-start gap-3">
+              <div className="pt-3 flex items-center justify-center sm:justify-start gap-3 flex-wrap">
                 <button
                   onClick={() => onPlayAlbum({ ...selectedAlbum, tracks: cleanAlbumTracks })}
                   disabled={cleanAlbumTracks.length === 0}
@@ -217,6 +395,14 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                 >
                   <Play className="w-4 h-4 fill-current ml-0.5" />
                   <span>{getTranslation(language, 'album.playAll')}</span>
+                </button>
+                <button
+                  onClick={() => handleOpenEditModal(selectedAlbum)}
+                  className="px-4 py-2.5 rounded-xl bg-[#14141c] hover:bg-[#1f1f2c] text-white border border-[#22222e] transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                  title={getTranslation(language, 'album.editAlbum')}
+                >
+                  <Pencil className="w-3.5 h-3.5" style={{ color: accentColor }} />
+                  <span>{getTranslation(language, 'album.editAlbum')}</span>
                 </button>
                 <button
                   onClick={() => {
@@ -374,7 +560,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {albums.map((album) => {
-                const coverArt = album.tracks.length > 0 ? album.tracks[0].cover_art : null;
+                const coverArt = album.cover_art || (album.tracks.length > 0 ? album.tracks[0].cover_art : null);
 
                 return (
                   <div
@@ -385,10 +571,10 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                     <div className="relative aspect-square w-full rounded-xl overflow-hidden mb-2.5 bg-[#14141c] border border-[#1e1e28]">
                       {coverArt ? (
                         <img
-                          src={optimizeThumbnailUrl(coverArt, album.tracks[0]?.path_or_url || album.tracks[0]?.id)}
+                          src={optimizeThumbnailUrl(coverArt, album.id)}
                           alt={album.title}
                           referrerPolicy="no-referrer"
-                          onError={(e) => handleImageError(e, album.tracks[0]?.path_or_url || album.tracks[0]?.id)}
+                          onError={(e) => handleImageError(e, album.id)}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
@@ -416,7 +602,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
                       </div>
                     </div>
 
-                    <p className="text-xs font-bold text-white truncate transition-colors" title={album.title}>
+                    <p className="text-xs font-bold text-white truncate transition-colors">
                       {album.title}
                     </p>
                     <p className="text-[11px] text-[#777] font-mono mt-0.5">
