@@ -624,6 +624,30 @@ async fn auth_start_google_oauth(
 }
 
 #[tauri::command]
+fn auth_import_user(
+    id: String,
+    username: String,
+    email: Option<String>,
+    password_hash: String,
+    salt: String,
+    display_name: String,
+    avatar: Option<String>,
+    db: State<'_, DatabaseManager>,
+) -> Result<User, String> {
+    db.import_user(&id, &username, email.as_deref(), &password_hash, &salt, &display_name, avatar.as_deref())
+}
+
+#[tauri::command]
+fn auth_hash_password(password: String, salt: String) -> String {
+    DatabaseManager::hash_password(&password, &salt)
+}
+
+#[tauri::command]
+fn auth_get_credentials(user_id: String, db: State<'_, DatabaseManager>) -> Option<(String, String)> {
+    db.get_user_credentials(&user_id)
+}
+
+#[tauri::command]
 fn save_text_file(path: String, content: String) -> Result<(), String> {
     std::fs::write(&path, content).map_err(|e| e.to_string())
 }
@@ -937,6 +961,9 @@ pub fn run() {
             auth_start_google_oauth,
             auth_get_current_user,
             auth_update_avatar,
+            auth_import_user,
+            auth_hash_password,
+            auth_get_credentials,
             save_text_file,
             read_text_file,
             db_get_favorites,

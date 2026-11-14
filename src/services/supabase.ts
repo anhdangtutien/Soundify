@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { UserAlbum, Track, HistoryItem } from '../types';
+import { invoke } from '@tauri-apps/api/core';
+import { UserAlbum, Track, HistoryItem, User } from '../types';
 
 // Default Supabase credentials (Can be overridden by user in Profile settings or .env)
 const DEFAULT_URL = import.meta.env.VITE_SUPABASE_URL || 'https://example-spytify.supabase.co';
@@ -55,12 +56,22 @@ CREATE TABLE IF NOT EXISTS public.spytify_profiles (
     id TEXT PRIMARY KEY,
     username TEXT,
     display_name TEXT,
+    email TEXT,
+    password_hash TEXT,
+    salt TEXT,
+    google_id TEXT,
     avatar TEXT,
     accent_color TEXT DEFAULT '#FF2A55',
     theme_mode TEXT DEFAULT 'dark',
     language TEXT DEFAULT 'vi',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
+
+-- Backward-compatibility migrations for existing tables
+ALTER TABLE public.spytify_profiles ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.spytify_profiles ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE public.spytify_profiles ADD COLUMN IF NOT EXISTS salt TEXT;
+ALTER TABLE public.spytify_profiles ADD COLUMN IF NOT EXISTS google_id TEXT;
 
 CREATE TABLE IF NOT EXISTS public.spytify_albums (
     id TEXT PRIMARY KEY,
@@ -137,10 +148,99 @@ export interface CloudUserData {
   albums: UserAlbum[];
   favorites: Track[];
   history?: HistoryItem[];
+  username?: string;
+  displayName?: string;
+  email?: string;
   avatar?: string;
   accentColor?: string;
   themeMode?: 'dark' | 'light';
   language?: string;
+}
+
+/**
+ * Registers / Syncs user account credentials to Supabase Cloud
+ */
+export async function cloudRegisterUser(
+  user: User,
+  email: string | null,
+  passwordHash: string,
+  salt: string
+): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client || !user) return false;
+
+  try {
+    const { error } = await client.from('spytify_profiles').upsert({
+      id: user.id,
+      username: user.username,
+      display_name: user.display_name,
+      email: email || null,
+      password_hash: passwordHash,
+      salt: salt,
+      avatar: user.avatar || null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'id' });
+
+    if (error) {
+      console.warn('Supabase cloudRegisterUser warning:', error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('Supabase cloudRegisterUser error:', err);
+    return false;
+  }
+}
+
+/**
+ * Authenticates user against Supabase Cloud when local device SQLite does not have the account
+ */
+export async function cloudLoginUser(identifier: string, passwordPlain: string): Promise<User | null> {
+  const client = getSupabaseClient();
+  if (!client || !identifier) return null;
+
+  try {
+    const cleanId = identifier.trim().toLowerCase();
+    const { data: profile, error } = await client
+      .from('spytify_profiles')
+      .select('*')
+      .or(`username.ilike.${cleanId},email.ilike.${cleanId}`)
+      .maybeSingle();
+
+    if (error || !profile) {
+      return null;
+    }
+
+    if (!profile.password_hash || !profile.salt) {
+      return null;
+    }
+
+    // Verify password hash
+    const computedHash = await invoke<string>('auth_hash_password', {
+      password: passwordPlain,
+      salt: profile.salt,
+    });
+
+    if (computedHash !== profile.password_hash) {
+      return null;
+    }
+
+    // Password matches! Import into local SQLite so it works offline
+    const importedUser = await invoke<User>('auth_import_user', {
+      id: profile.id,
+      username: profile.username || cleanId,
+      email: profile.email || null,
+      passwordHash: profile.password_hash,
+      salt: profile.salt,
+      displayName: profile.display_name || profile.username || cleanId,
+      avatar: profile.avatar || null,
+    });
+
+    return importedUser;
+  } catch (err) {
+    console.error('Supabase cloudLoginUser error:', err);
+    return null;
+  }
 }
 
 /**
@@ -152,15 +252,20 @@ export async function cloudSyncPush(userId: string, data: Partial<CloudUserData>
 
   try {
     // 1. Sync User Profile / Settings
-    if (data.avatar || data.accentColor || data.themeMode || data.language) {
-      await client.from('spytify_profiles').upsert({
-        id: userId,
-        avatar: data.avatar,
-        accent_color: data.accentColor,
-        theme_mode: data.themeMode,
-        language: data.language,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'id' });
+    const profilePayload: Record<string, any> = {
+      id: userId,
+      updated_at: new Date().toISOString(),
+    };
+    if (data.username) profilePayload.username = data.username;
+    if (data.displayName) profilePayload.display_name = data.displayName;
+    if (data.email) profilePayload.email = data.email;
+    if (data.avatar) profilePayload.avatar = data.avatar;
+    if (data.accentColor) profilePayload.accent_color = data.accentColor;
+    if (data.themeMode) profilePayload.theme_mode = data.themeMode;
+    if (data.language) profilePayload.language = data.language;
+
+    if (Object.keys(profilePayload).length > 2) {
+      await client.from('spytify_profiles').upsert(profilePayload, { onConflict: 'id' });
     }
 
     // 2. Sync Albums

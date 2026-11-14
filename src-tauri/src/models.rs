@@ -49,6 +49,8 @@ pub struct User {
     pub display_name: String,
     pub avatar: Option<String>,
     pub created_at: String,
+    #[serde(default)]
+    pub email: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

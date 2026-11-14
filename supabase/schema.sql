@@ -10,12 +10,22 @@ CREATE TABLE IF NOT EXISTS public.spytify_profiles (
     id TEXT PRIMARY KEY,
     username TEXT,
     display_name TEXT,
+    email TEXT,
+    password_hash TEXT,
+    salt TEXT,
+    google_id TEXT,
     avatar TEXT,
     accent_color TEXT DEFAULT '#FF2A55',
     theme_mode TEXT DEFAULT 'dark',
     language TEXT DEFAULT 'vi',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
+
+-- Backward-compatibility migrations for existing tables
+ALTER TABLE public.spytify_profiles ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.spytify_profiles ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE public.spytify_profiles ADD COLUMN IF NOT EXISTS salt TEXT;
+ALTER TABLE public.spytify_profiles ADD COLUMN IF NOT EXISTS google_id TEXT;
 
 -- 2. User Albums Table
 CREATE TABLE IF NOT EXISTS public.spytify_albums (

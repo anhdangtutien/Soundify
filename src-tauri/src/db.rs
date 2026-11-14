@@ -83,11 +83,20 @@ impl DatabaseManager {
         })
     }
 
-    fn hash_password(password: &str, salt: &str) -> String {
+    pub fn hash_password(password: &str, salt: &str) -> String {
         let mut hasher = Sha256::new();
         hasher.update(password.as_bytes());
         hasher.update(salt.as_bytes());
         format!("{:x}", hasher.finalize())
+    }
+
+    pub fn generate_deterministic_user_id(identifier: &str) -> String {
+        let clean = identifier.trim().to_lowercase();
+        let mut hasher = Sha256::new();
+        hasher.update(b"spytify_user_id_v2:");
+        hasher.update(clean.as_bytes());
+        let hex = format!("{:x}", hasher.finalize());
+        format!("usr_{}", &hex[..18])
     }
 
     pub fn register(
@@ -109,7 +118,11 @@ impl DatabaseManager {
 
         let salt = Uuid::new_v4().to_string();
         let password_hash = Self::hash_password(password, &salt);
-        let user_id = Uuid::new_v4().to_string();
+        
+        // Unified deterministic user ID based on email (or username) so it matches across all devices & Google login
+        let seed = email_clean.as_deref().unwrap_or(&username_clean);
+        let user_id = Self::generate_deterministic_user_id(seed);
+
         let disp_name = if display_name.trim().is_empty() {
             username.trim()
         } else {
@@ -127,6 +140,8 @@ impl DatabaseManager {
                 "Tên tài khoản này đã được sử dụng".to_string()
             } else if e.to_string().contains("UNIQUE constraint failed: users.email") {
                 "Email này đã được đăng ký tài khoản khác".to_string()
+            } else if e.to_string().contains("UNIQUE constraint failed: users.id") {
+                "Tài khoản hoặc email này đã tồn tại trên thiết bị".to_string()
             } else {
                 e.to_string()
             }
@@ -138,6 +153,7 @@ impl DatabaseManager {
             display_name: disp_name.to_string(),
             avatar: None,
             created_at: "Vừa xong".to_string(),
+            email: email_clean,
         })
     }
 
@@ -147,7 +163,7 @@ impl DatabaseManager {
 
         // Support login by either username OR email!
         let mut stmt = conn
-            .prepare("SELECT id, username, password_hash, salt, display_name, avatar, created_at FROM users WHERE username = ?1 OR email = ?1")
+            .prepare("SELECT id, username, password_hash, salt, display_name, avatar, created_at, email FROM users WHERE username = ?1 OR email = ?1")
             .map_err(|e| e.to_string())?;
 
         let user_row = stmt
@@ -160,11 +176,12 @@ impl DatabaseManager {
                     row.get::<_, String>(4)?,
                     row.get::<_, Option<String>>(5)?,
                     row.get::<_, String>(6)?,
+                    row.get::<_, Option<String>>(7)?,
                 ))
             })
             .map_err(|_| "Tài khoản / Email hoặc mật khẩu không chính xác".to_string())?;
 
-        let (id, uname, stored_hash, salt, display_name, avatar, created_at) = user_row;
+        let (id, uname, stored_hash, salt, display_name, avatar, created_at, email) = user_row;
         let input_hash = Self::hash_password(password, &salt);
 
         if input_hash != stored_hash {
@@ -177,6 +194,7 @@ impl DatabaseManager {
             display_name,
             avatar,
             created_at,
+            email,
         })
     }
 
@@ -187,29 +205,41 @@ impl DatabaseManager {
         display_name: &str,
         avatar: Option<&str>,
     ) -> Result<User, String> {
+        let clean_email = email.trim().to_lowercase();
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
 
         // 1. Check if user exists by google_id or email
         let mut stmt = conn
-            .prepare("SELECT id, username, display_name, avatar, created_at FROM users WHERE google_id = ?1 OR email = ?2")
+            .prepare("SELECT id, username, display_name, avatar, created_at, email FROM users WHERE google_id = ?1 OR email = ?2")
             .map_err(|e| e.to_string())?;
 
-        let existing = stmt.query_row(params![google_id, email], |row| {
+        let existing = stmt.query_row(params![google_id, clean_email], |row| {
             Ok(User {
                 id: row.get(0)?,
                 username: row.get(1)?,
                 display_name: row.get(2)?,
                 avatar: row.get(3)?,
                 created_at: row.get(4)?,
+                email: row.get(5)?,
             })
         });
 
         match existing {
-            Ok(user) => Ok(user),
+            Ok(mut user) => {
+                // Link google_id and update avatar/display_name if empty
+                let _ = conn.execute(
+                    "UPDATE users SET google_id = ?1, avatar = COALESCE(avatar, ?2) WHERE id = ?3",
+                    params![google_id, avatar, user.id],
+                );
+                if user.avatar.is_none() {
+                    user.avatar = avatar.map(|s| s.to_string());
+                }
+                Ok(user)
+            }
             Err(rusqlite::Error::QueryReturnedNoRows) => {
-                // 2. Create new user with Google account info
-                let user_id = Uuid::new_v4().to_string();
-                let username = email
+                // 2. Create new user with deterministic user_id based on email so it seamlessly matches other devices!
+                let user_id = Self::generate_deterministic_user_id(&clean_email);
+                let username = clean_email
                     .split('@')
                     .next()
                     .unwrap_or("google_user")
@@ -219,8 +249,12 @@ impl DatabaseManager {
                 let hash = "GOOGLE_OAUTH";
 
                 conn.execute(
-                    "INSERT INTO users (id, username, password_hash, salt, display_name, avatar, google_id, email) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-                    params![user_id, username, hash, salt, display_name, avatar, google_id, email],
+                    "INSERT INTO users (id, username, password_hash, salt, display_name, avatar, google_id, email)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+                     ON CONFLICT(id) DO UPDATE SET
+                        google_id = excluded.google_id,
+                        avatar = COALESCE(users.avatar, excluded.avatar)",
+                    params![user_id, username, hash, salt, display_name, avatar, google_id, clean_email],
                 )
                 .map_err(|e| e.to_string())?;
 
@@ -230,16 +264,60 @@ impl DatabaseManager {
                     display_name: display_name.to_string(),
                     avatar: avatar.map(|s| s.to_string()),
                     created_at: "Vừa xong".to_string(),
+                    email: Some(clean_email),
                 })
             }
             Err(e) => Err(e.to_string()),
         }
     }
 
+    pub fn import_user(
+        &self,
+        id: &str,
+        username: &str,
+        email: Option<&str>,
+        password_hash: &str,
+        salt: &str,
+        display_name: &str,
+        avatar: Option<&str>,
+    ) -> Result<User, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        conn.execute(
+            "INSERT INTO users (id, username, email, password_hash, salt, display_name, avatar)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+             ON CONFLICT(id) DO UPDATE SET
+                username = excluded.username,
+                email = excluded.email,
+                password_hash = excluded.password_hash,
+                salt = excluded.salt,
+                display_name = excluded.display_name,
+                avatar = COALESCE(users.avatar, excluded.avatar)",
+            params![id, username, email, password_hash, salt, display_name, avatar],
+        )
+        .map_err(|e| e.to_string())?;
+
+        Ok(User {
+            id: id.to_string(),
+            username: username.to_string(),
+            display_name: display_name.to_string(),
+            avatar: avatar.map(|s| s.to_string()),
+            created_at: "Đồng bộ từ Cloud".to_string(),
+            email: email.map(|s| s.to_string()),
+        })
+    }
+
+    pub fn get_user_credentials(&self, user_id: &str) -> Option<(String, String)> {
+        let conn = self.conn.lock().ok()?;
+        let mut stmt = conn.prepare("SELECT password_hash, salt FROM users WHERE id = ?1").ok()?;
+        stmt.query_row(params![user_id], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        }).ok()
+    }
+
     pub fn get_user_by_id(&self, user_id: &str) -> Result<Option<User>, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let mut stmt = conn
-            .prepare("SELECT id, username, display_name, avatar, created_at FROM users WHERE id = ?1")
+            .prepare("SELECT id, username, display_name, avatar, created_at, email FROM users WHERE id = ?1")
             .map_err(|e| e.to_string())?;
 
         let res = stmt.query_row(params![user_id], |row| {
@@ -249,6 +327,7 @@ impl DatabaseManager {
                 display_name: row.get(2)?,
                 avatar: row.get(3)?,
                 created_at: row.get(4)?,
+                email: row.get(5)?,
             })
         });
 
