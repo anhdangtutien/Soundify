@@ -2860,8 +2860,8 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
             themeMode === 'light' ? 'bg-white/98' : 'bg-[#0c0c14]/98'
           } ${
             showYoutubeVideo 
-              ? (isPlayerBarMinimized ? 'bottom-[236px]' : 'bottom-[296px]')
-              : (isPlayerBarMinimized ? 'bottom-[36px]' : 'bottom-[76px]')
+              ? (isPlayerBarMinimized ? 'bottom-[236px]' : 'bottom-[260px]')
+              : (isPlayerBarMinimized ? 'bottom-[36px]' : 'bottom-[60px]')
           } ${
             isNextTrackPopupCollapsed ? 'w-80' : 'w-88 max-w-[calc(100vw-3rem)]'
           }`}
@@ -3165,7 +3165,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
       {/* YouTube iframe — stable bottom-right positioning without jumping */}
       {ytVideoId && (
         <div
-          className={`fixed ${isPlayerBarMinimized ? 'bottom-[36px]' : 'bottom-24'} right-6 w-80 h-48 rounded-xl bg-black shadow-2xl border border-[#222] z-40 transition-all duration-300 overflow-hidden ${
+          className={`fixed ${isPlayerBarMinimized ? 'bottom-[36px]' : 'bottom-[60px]'} right-6 w-80 h-48 rounded-xl bg-black shadow-2xl border border-[#222] z-40 transition-all duration-300 overflow-hidden ${
             showYoutubeVideo && !isTrayMode
               ? 'opacity-100 scale-100 pointer-events-auto shadow-[0_16px_36px_rgba(0,0,0,0.9)]'
               : 'opacity-0 scale-95 pointer-events-none'
