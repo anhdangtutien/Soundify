@@ -140,12 +140,18 @@ export async function testSupabaseConnection(): Promise<{ success: boolean; mess
     return { success: false, message: 'Chưa cấu hình URL hoặc Anon Key hợp lệ.' };
   }
   try {
-    const { error } = await client.from('spytify_profiles').select('id').limit(1);
+    const { error } = await client.from('spytify_profiles').select('id, password_hash').limit(1);
     if (error) {
       if (error.code === '42P01' || error.message.includes('relation') || error.message.includes('does not exist')) {
         return {
           success: false,
           message: 'Kết nối được nhưng các bảng chưa được tạo. Hãy bấm "Sao chép mã SQL" và chạy trong Supabase SQL Editor.',
+        };
+      }
+      if (error.message.includes('password_hash') || error.code === 'PGRST204') {
+        return {
+          success: false,
+          message: 'Bảng spytify_profiles đang thiếu cột đồng bộ tài khoản (password_hash). Hãy chạy câu lệnh ALTER TABLE trong Supabase SQL Editor.',
         };
       }
       return { success: false, message: `Lỗi kết nối Supabase: ${error.message}` };
