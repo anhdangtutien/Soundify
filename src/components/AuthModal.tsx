@@ -487,7 +487,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
               <div>
                 <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#777] mb-1 font-mono">
-                  Máº­t kháº©u
+                  Mật khẩu
                 </label>
                 <div className="relative flex items-center">
                   <Lock className="w-4 h-4 text-[#555] absolute left-3 pointer-events-none" />
