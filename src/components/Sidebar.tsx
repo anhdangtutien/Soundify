@@ -197,12 +197,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <span 
             className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold border flex items-center gap-1"
             style={{ 
-              color: '#00E5FF', 
-              backgroundColor: '#00E5FF15', 
-              borderColor: '#00E5FF30' 
+              color: accentColor, 
+              backgroundColor: `${accentColor}18`, 
+              borderColor: `${accentColor}35` 
             }}
           >
-            <span className="w-1 h-1 rounded-full bg-[#00E5FF] animate-ping" />
+            <span className="w-1 h-1 rounded-full animate-ping" style={{ backgroundColor: accentColor }} />
             LIVE
           </span>
         )}

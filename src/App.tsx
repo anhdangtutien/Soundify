@@ -2755,16 +2755,16 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
             isNextTrackPopupCollapsed ? 'w-80' : 'w-88 max-w-[calc(100vw-3rem)]'
           }`}
           style={{
-            borderColor: `${accentColor}60`,
+            borderColor: `${activeAccentColor}60`,
             boxShadow: themeMode === 'light'
-              ? `0 12px 35px rgba(15, 23, 42, 0.14), 0 0 14px ${accentColor}25`
-              : `0 12px 35px rgba(0,0,0,0.8), 0 0 16px ${accentColor}30`
+              ? `0 12px 35px rgba(15, 23, 42, 0.14), 0 0 14px ${activeAccentColor}25`
+              : `0 12px 35px rgba(0,0,0,0.8), 0 0 16px ${activeAccentColor}30`
           }}
         >
           {isNextTrackPopupCollapsed && nextTrackPopup ? (
             <div className="flex items-center justify-between gap-2.5">
               <div className="flex items-center gap-2 overflow-hidden flex-1">
-                <span className="text-[10px] font-mono font-bold uppercase flex-shrink-0" style={{ color: accentColor }}>
+                <span className="text-[10px] font-mono font-bold uppercase flex-shrink-0" style={{ color: activeAccentColor }}>
                   {currentTrack ? `⏭ ${getTranslation(language, 'popup.nextTrack')}:` : '✨ AI MIX:'}
                 </span>
                 <span className="text-xs font-semibold text-white truncate" title={nextTrackPopup.title}>
@@ -2783,7 +2783,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                   className="p-1 text-[#888] hover:text-white cursor-pointer"
                   title={getTranslation(language, 'popup.playNow')}
                 >
-                  <Play className="w-3 h-3 fill-current" style={{ color: accentColor }} />
+                  <Play className="w-3 h-3 fill-current" style={{ color: activeAccentColor }} />
                 </button>
                 <button
                   onClick={() => setIsNextTrackPopupCollapsed(false)}
@@ -2811,7 +2811,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
               `}</style>
               {/* Header */}
               <div className="flex items-center justify-between border-b border-[#1c1c28] pb-1.5">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: accentColor }}>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: activeAccentColor }}>
                   <Sparkles className="w-3 h-3 animate-spin" />
                   {getTranslation(language, 'popup.aiAnalyzing')}
                 </span>
@@ -2829,7 +2829,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 <div
                   style={{
                     animation: 'spytifyPopupPulse 1.2s ease-in-out infinite',
-                    filter: `drop-shadow(0 4px 16px ${accentColor}80)`,
+                    filter: `drop-shadow(0 4px 16px ${activeAccentColor}80)`,
                   }}
                   className="w-12 h-12 rounded-2xl flex items-center justify-center bg-[#151520] border border-[#2a2a3e] p-2"
                 >
@@ -2863,14 +2863,14 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
               {/* Header */}
               <div className="flex items-center justify-between border-b border-[#1c1c28] pb-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: accentColor }}>
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: activeAccentColor }}>
                     <span className="animate-pulse">{currentTrack ? '⏭' : '✨'}</span>{' '}
                     {currentTrack ? getTranslation(language, 'popup.nextTrack') : getTranslation(language, 'popup.aiMixRecommend')}
                   </span>
                   {nextTrackPopup.isCountdown && typeof nextTrackPopup.remainingSecs === 'number' && (
                     <span 
                       className="text-[9px] font-mono px-1.5 py-0.5 rounded font-bold"
-                      style={{ backgroundColor: `${accentColor}25`, color: accentColor }}
+                      style={{ backgroundColor: `${activeAccentColor}25`, color: activeAccentColor }}
                     >
                       {getTranslation(language, 'popup.startsIn')} ~{nextTrackPopup.remainingSecs}s
                     </span>
@@ -2933,7 +2933,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                     }
                   }}
                   style={{
-                    backgroundColor: accentColor,
+                    backgroundColor: activeAccentColor,
                     color: '#ffffff',
                   }}
                   className="p-2 rounded-lg hover:scale-105 active:scale-95 transition-transform flex-shrink-0 cursor-pointer shadow-sm"
@@ -3003,13 +3003,13 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
           style={{
             backgroundColor: themeMode === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(14, 14, 20, 0.95)',
             color: themeMode === 'light' ? '#0f172a' : '#ffffff',
-            borderColor: `${accentColor}80`,
+            borderColor: `${activeAccentColor}80`,
             boxShadow: themeMode === 'light' 
-              ? `0 10px 30px rgba(0,0,0,0.15), 0 0 16px ${accentColor}40` 
-              : `0 10px 35px rgba(0,0,0,0.8), 0 0 20px ${accentColor}50`
+              ? `0 10px 30px rgba(0,0,0,0.15), 0 0 16px ${activeAccentColor}40` 
+              : `0 10px 35px rgba(0,0,0,0.8), 0 0 20px ${activeAccentColor}50`
           }}
         >
-          <CheckCircle2 className="w-4 h-4 flex-shrink-0 animate-pulse" style={{ color: accentColor }} />
+          <CheckCircle2 className="w-4 h-4 flex-shrink-0 animate-pulse" style={{ color: activeAccentColor }} />
           <span className="font-bold tracking-wide" style={{ color: themeMode === 'light' ? '#0f172a' : '#ffffff' }}>
             {statusMessage}
           </span>
@@ -3029,6 +3029,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
             onAddTrackToAlbum={handleAddTrackToAlbum}
             onCreateAlbum={handleCreateAlbum}
             language={language}
+            accentColor={activeAccentColor}
           />
 
           {/* Auth Modal */}
@@ -3169,11 +3170,11 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 {showLanguageDropdown && (
                   <>
                     <div 
-                      className="fixed inset-0 z-40" 
+                      className="fixed inset-0 z-40 bg-transparent" 
                       onClick={() => setShowLanguageDropdown(false)} 
                     />
                     <div
-                      className={`absolute left-0 top-full mt-2 w-48 py-1.5 rounded-xl border z-50 text-xs font-sans ${
+                      className={`absolute right-0 top-full mt-2 w-52 py-1.5 rounded-xl border z-50 text-xs font-sans ${
                         themeMode === 'light'
                           ? 'bg-white text-slate-900 border-slate-200 shadow-xl'
                           : 'bg-[#0e0e14] text-white border-[#222230] shadow-2xl'
@@ -3185,11 +3186,11 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                           : `0 16px 36px rgba(0,0,0,0.9), 0 0 16px ${activeAccentColor}25`
                       }}
                     >
-                      <div className={`px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider border-b mb-1 flex items-center justify-between ${
+                      <div className={`px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider border-b mb-1 flex items-center justify-between ${
                         themeMode === 'light' ? 'text-slate-400 border-slate-100' : 'text-[#666] border-[#1c1c28]'
                       }`}>
                         <span className="flex items-center gap-1.5" style={{ color: activeAccentColor }}>
-                          <Languages className="w-3 h-3" />
+                          <Languages className="w-3.5 h-3.5" />
                           {getTranslation(language, 'header.language')}
                         </span>
                         <span className={`text-[9px] font-mono ${themeMode === 'light' ? 'text-slate-400' : 'text-[#555]'}`}>
@@ -3215,18 +3216,27 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                                   : 'text-[#bbb] hover:bg-[#181824]'
                             }`}
                           >
-                            <div className="flex items-center gap-2.5 truncate">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${
-                                themeMode === 'light'
-                                  ? 'bg-slate-100 text-slate-700 border-slate-200'
-                                  : 'bg-[#181822] text-[#ccc] border-[#262636]'
-                              }`}>
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span 
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border flex-shrink-0 ${
+                                  isSel
+                                    ? ''
+                                    : themeMode === 'light'
+                                    ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                    : 'bg-[#181822] text-[#ccc] border-[#262636]'
+                                }`}
+                                style={isSel ? {
+                                  color: activeAccentColor,
+                                  borderColor: `${activeAccentColor}50`,
+                                  backgroundColor: `${activeAccentColor}18`
+                                } : undefined}
+                              >
                                 {l.tag}
                               </span>
                               <span className="truncate">{l.nativeName}</span>
                             </div>
                             {isSel && (
-                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: activeAccentColor }}></span>
+                              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: activeAccentColor }}></span>
                             )}
                           </button>
                         );
@@ -3293,12 +3303,12 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                   handleToggleFavorite(t);
                 }}
                 onTogglePlay={handleTogglePlay}
-                accentColor={accentColor}
+                accentColor={activeAccentColor}
                 language={language}
               />
             ) : currentView === 'library' ? (
               <HomeTrendingView
-                accentColor={accentColor}
+                accentColor={activeAccentColor}
                 language={language}
                 onPlaySearchResult={handlePlaySearchResult}
                 currentTrack={currentTrack}
@@ -3319,7 +3329,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 onOpenAuth={() => setIsAuthModalOpen(true)}
                 smartDjEnabled={smartDjEnabled}
                 onToggleSmartDj={() => setSmartDjEnabled(p => !p)}
-                accentColor={accentColor}
+                accentColor={activeAccentColor}
                 language={language}
               />
             ) : currentView === 'community' ? (
@@ -3361,7 +3371,8 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 onSearchOnline={handleSearchOnline}
                 localTracks={tracks}
                 onTrackSelect={handlePlayTrack}
-                accentColor={accentColor}
+                currentTrack={currentTrack}
+                accentColor={activeAccentColor}
               />
             ) : currentView === 'youtube' ? (
               <div>

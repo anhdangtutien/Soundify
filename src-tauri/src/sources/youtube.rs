@@ -173,20 +173,45 @@ fn parse_ytm_item(m: &Value) -> Option<SearchResult> {
         .pointer("/flexColumns/1/musicResponsiveListItemFlexColumnRenderer/text/runs")
         .and_then(|v| v.as_array())
     {
-        let parts: Vec<&str> = runs
-            .iter()
-            .filter_map(|r| r.get("text").and_then(|t| t.as_str()))
-            .filter(|&s| s.trim() != "•" && !s.trim().is_empty())
-            .collect();
+        let mut artist_parts: Vec<&str> = Vec::new();
+        let mut meta_parts: Vec<&str> = Vec::new();
+        let mut passed_bullet = false;
 
-        if let Some(&first) = parts.first() {
-            artist = first.to_string();
+        for r in runs {
+            if let Some(t) = r.get("text").and_then(|v| v.as_str()) {
+                let trimmed = t.trim();
+                if trimmed == "•" {
+                    passed_bullet = true;
+                    continue;
+                }
+                if trimmed.is_empty() {
+                    continue;
+                }
+                if !passed_bullet {
+                    artist_parts.push(trimmed);
+                } else {
+                    meta_parts.push(trimmed);
+                }
+            }
         }
-        for &part in parts.iter().skip(1) {
+
+        if !artist_parts.is_empty() {
+            // Join artists cleanly, e.g. ["Lady Gaga", "và", "Bruno Mars"] -> "Lady Gaga & Bruno Mars"
+            let joined = artist_parts.join(" ");
+            let clean_artist = joined
+                .replace(" và ", " & ")
+                .replace(" and ", " & ");
+            artist = clean_artist.trim().to_string();
+        }
+
+        for &part in &meta_parts {
             if part.contains(':') && part.chars().all(|c| c.is_ascii_digit() || c == ':') {
                 duration_secs = parse_duration_string(part);
             } else if album == "YouTube Music Hi-Fi" {
-                album = format!("{} • YT Music", part);
+                let lower = part.to_lowercase();
+                if lower != "và" && lower != "&" && lower != "and" && !lower.contains("views") && !lower.contains("lượt xem") {
+                    album = format!("{} • YT Music", part);
+                }
             }
         }
     }

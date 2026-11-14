@@ -10,6 +10,7 @@ import {
 import { Track, User, CommunityServer, CommunityChannel, CommunityMessage, StageSession, VoiceParticipant, CommunityUserProfile } from '../types';
 import { getSupabaseClient } from '../services/supabase';
 import { LanguageCode, getTranslation } from '../locales/i18n';
+import { getContrastTextColor } from '../utils/trackUtils';
 
 interface CommunityViewProps {
   currentUser: User | null;
@@ -1889,9 +1890,15 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             <button
               onClick={toggleMemberList}
               title={getTranslation(language, 'community.toggleMemberList')}
+              style={isMemberListVisible ? {
+                backgroundColor: `${accentColor}25`,
+                borderColor: `${accentColor}60`,
+                color: accentColor,
+                boxShadow: `0 0 10px ${accentColor}30`,
+              } : undefined}
               className={`p-2 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
                 isMemberListVisible
-                  ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-400 shadow-[0_0_10px_rgba(0,255,102,0.2)]'
+                  ? ''
                   : isLight
                   ? 'bg-[#ffffff] hover:bg-[#f1f5f9] border-[#cbd5e1] text-[#64748b] hover:text-[#0f172a]'
                   : 'bg-[#12121c] hover:bg-[#1a1a2a] border-[#222234] text-[#888899] hover:text-white'
@@ -1907,23 +1914,17 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
           <div className={`flex-1 flex flex-col p-6 items-center justify-between overflow-y-auto ${
             isLight ? 'bg-gradient-to-b from-[#f8fafc] to-[#f1f5f9]' : 'bg-gradient-to-b from-[#08080f] to-[#040407]'
           }`}>
-            <div className="text-center my-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-xs font-mono mb-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                {getTranslation(language, 'community.voiceHeader')}
-              </div>
-              <h2 className={`text-lg font-black tracking-tight ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>{getChannelName(selectedChannel)}</h2>
-              <p className={`text-xs font-mono mt-0.5 ${isLight ? 'text-[#64748b]' : 'text-[#777]'}`}>{getTranslation(language, 'community.voiceSubheader')}</p>
-            </div>
-
             {/* Participants Grid */}
             {(!isConnectedToCurrentVoice && voiceParticipants.filter(p => p.id !== myParticipantIdRef.current).length === 0) ? (
               <div className={`flex flex-col items-center justify-center p-8 rounded-2xl border text-center max-w-sm my-auto ${
                 isLight ? 'bg-[#ffffff] border-[#cbd5e1]' : 'bg-[#0c0c14] border-[#20202e]'
               }`}>
-                <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center mb-3 text-emerald-400 ${
-                  isLight ? 'bg-[#f1f5f9] border-[#cbd5e1]' : 'bg-[#141420] border-[#252536]'
-                }`}>
+                <div 
+                  className={`w-14 h-14 rounded-2xl border flex items-center justify-center mb-3 ${
+                    isLight ? 'bg-[#f1f5f9] border-[#cbd5e1]' : 'bg-[#141420] border-[#252536]'
+                  }`}
+                  style={{ color: accentColor }}
+                >
                   <Radio className="w-7 h-7" />
                 </div>
                 <h3 className={`text-sm font-bold mb-1 ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>{getTranslation(language, 'community.voiceEmpty')}</h3>
@@ -1932,14 +1933,18 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 </p>
                 <button
                   onClick={() => handleJoinVoiceCall()}
-                  className="py-2.5 px-6 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-emerald-400 hover:bg-emerald-300 transition-all flex items-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(0,255,102,0.3)] hover:scale-[1.02]"
+                  style={{
+                    backgroundColor: accentColor,
+                    boxShadow: `0 0 20px ${accentColor}40`,
+                  }}
+                  className="py-2.5 px-6 rounded-xl font-bold text-xs uppercase tracking-wider text-black hover:opacity-90 transition-all flex items-center gap-2 cursor-pointer hover:scale-[1.02]"
                 >
                   <PhoneCall className="w-4 h-4" />
                   <span>{getTranslation(language, 'community.joinVoice')}</span>
                 </button>
               </div>
             ) : (
-              <div className="w-full max-w-3xl flex flex-col items-center my-auto py-4">
+              <div className="w-full max-w-4xl flex flex-col items-center pt-2 pb-6">
                 <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {/* Current User Card */}
                   {isConnectedToCurrentVoice && (
@@ -2698,36 +2703,63 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             {/* Header */}
             <div className="flex items-center gap-3 mb-5">
               <div 
-                className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-base bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-base border"
+                style={{
+                  backgroundColor: `${accentColor}20`,
+                  color: accentColor,
+                  borderColor: `${accentColor}40`,
+                }}
               >
                 <Sliders className="w-5 h-5" />
               </div>
               <div>
                 <h3 className={`text-base font-black tracking-tight flex items-center gap-2 ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>
                   <span>{getTranslation(language, 'community.audioSettingsTitle')}</span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-950/50 border border-cyan-500/30 text-cyan-400">VOICE LAB</span>
+                  <span 
+                    className="text-[10px] font-mono px-2 py-0.5 rounded-full border font-bold"
+                    style={{
+                      backgroundColor: `${accentColor}18`,
+                      color: accentColor,
+                      borderColor: `${accentColor}40`,
+                    }}
+                  >
+                    VOICE LAB
+                  </span>
                 </h3>
-                <p className={`text-[11px] font-mono ${isLight ? 'text-[#64748b]' : 'text-[#777]'}`}>{getTranslation(language, 'community.audioSettingsSubtitle')}</p>
+                <p className={`text-[11px] font-mono ${isLight ? 'text-[#64748b]' : 'text-[#888899]'}`}>{getTranslation(language, 'community.audioSettingsSubtitle')}</p>
               </div>
             </div>
 
-            <div className="space-y-5">
+            <div className="space-y-4">
               {/* ──────── SECTION 1: MICROPHONE (ĐẦU VÀO) ──────── */}
-              <div className="p-4 rounded-xl bg-[#11111a] border border-[#1e1e2c]">
+              <div className={`p-4 rounded-xl border ${
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#13131e] border-[#222234]'
+              }`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Mic className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">{getTranslation(language, 'community.micVolume')}</span>
+                    <Mic className="w-4 h-4" style={{ color: accentColor }} />
+                    <span className={`text-xs font-bold uppercase tracking-wider font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                      {getTranslation(language, 'community.micVolume')}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded">
+                  <div className="flex items-center gap-1.5">
+                    <span 
+                      className="text-xs font-mono font-bold px-2 py-0.5 rounded border"
+                      style={{
+                        backgroundColor: `${accentColor}18`,
+                        borderColor: `${accentColor}40`,
+                        color: accentColor,
+                      }}
+                    >
                       {micVolume}%
                     </span>
                     <button
                       type="button"
                       onClick={() => handleMicVolumeChange(100)}
                       title="100%"
-                      className="p-1 rounded hover:bg-[#1c1c2a] text-[#777] hover:text-white text-[10px] font-mono transition-colors cursor-pointer flex items-center gap-1"
+                      className={`p-1 rounded text-[10px] font-mono transition-colors cursor-pointer flex items-center gap-1 border ${
+                        isLight ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700' : 'bg-[#1a1a26] hover:bg-[#242436] border-[#2a2a3e] text-[#aaa]'
+                      }`}
                     >
                       <RotateCcw className="w-3 h-3" />
                       <span>100%</span>
@@ -2744,29 +2776,35 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     step="1"
                     value={micVolume}
                     onChange={(e) => handleMicVolumeChange(parseInt(e.target.value, 10))}
-                    className="w-full h-2 bg-[#1c1c2a] rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    style={{ accentColor }}
+                    className="w-full h-2.5 rounded-lg appearance-none cursor-pointer bg-slate-200 dark:bg-[#1f1f2e]"
                   />
-                  <div className="flex justify-between text-[9px] font-mono text-[#555] mt-1">
+                  <div className="flex justify-between text-[10px] font-mono text-[#777] mt-1.5 font-semibold">
                     <span>0%</span>
-                    <span className="text-[#888]">100%</span>
+                    <span className="text-zinc-400">100%</span>
                     <span>200%</span>
                   </div>
                 </div>
 
                 {/* Live Mic Test Meter */}
-                <div className="pt-3 border-t border-[#1a1a26]">
+                <div className="pt-3 border-t border-slate-200 dark:border-[#1e1e2c]">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-mono text-[#888] flex items-center gap-1.5">
-                      <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                    <span className="text-[11px] font-mono text-zinc-400 flex items-center gap-1.5 font-bold">
+                      <Activity className="w-3.5 h-3.5" style={{ color: accentColor }} />
                       {getTranslation(language, 'community.testMic')}
                     </span>
                     <button
                       type="button"
                       onClick={isTestingMic ? stopMicTest : startMicTest}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold border transition-all cursor-pointer ${
+                      style={!isTestingMic ? {
+                        backgroundColor: `${accentColor}18`,
+                        borderColor: `${accentColor}45`,
+                        color: accentColor,
+                      } : undefined}
+                      className={`px-3 py-1 rounded-lg text-[10px] font-mono font-bold border transition-all cursor-pointer ${
                         isTestingMic
-                          ? 'bg-red-950/50 border-red-500/40 text-red-300 hover:bg-red-900'
-                          : 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60'
+                          ? 'bg-red-950/60 border-red-500/50 text-red-300 hover:bg-red-900 animate-pulse'
+                          : 'hover:opacity-90 shadow-sm'
                       }`}
                     >
                       {isTestingMic ? getTranslation(language, 'community.stopTestMic') : getTranslation(language, 'community.startTestMic')}
@@ -2774,7 +2812,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   </div>
 
                   {/* VU Level Bar */}
-                  <div className="h-3 bg-[#0a0a0f] border border-[#222230] rounded-full overflow-hidden p-0.5 relative">
+                  <div className="h-3.5 bg-black/60 border border-slate-300 dark:border-[#2a2a3e] rounded-full overflow-hidden p-0.5 relative">
                     <div 
                       className={`h-full rounded-full transition-all duration-75 ${
                         testMicLevel > 80 ? 'bg-gradient-to-r from-emerald-400 via-amber-400 to-red-500' : 'bg-gradient-to-r from-emerald-500 to-cyan-400'
@@ -2783,13 +2821,13 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     />
                     {/* Sensitivity Marker needle */}
                     <div 
-                      className="absolute top-0 bottom-0 w-0.5 bg-white/70"
+                      className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_4px_white]"
                       style={{ left: `${(micSensitivity / 50) * 100}%` }}
                       title={`Sensitivity: ${micSensitivity}`}
                     />
                   </div>
 
-                  <div className="flex items-center justify-between text-[10px] font-mono mt-1.5 text-[#666]">
+                  <div className="flex items-center justify-between text-[10px] font-mono mt-1.5 text-[#777]">
                     <span>
                       {isTestingMic ? (
                         testMicLevel > micSensitivity ? (
@@ -2804,15 +2842,15 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                         getTranslation(language, 'community.voiceTestPrompt')
                       )}
                     </span>
-                    <span>{getTranslation(language, 'community.activationThreshold', { level: micSensitivity })}</span>
+                    <span className="font-bold text-zinc-400">{getTranslation(language, 'community.activationThreshold', { level: micSensitivity })}</span>
                   </div>
                 </div>
 
                 {/* Voice Sensitivity Slider */}
-                <div className="pt-3 border-t border-[#1a1a26] mt-3">
+                <div className="pt-3 border-t border-slate-200 dark:border-[#1e1e2c] mt-3">
                   <div className="flex items-center justify-between mb-1.5 text-xs">
-                    <span className="text-[11px] font-mono text-[#aaa]">{getTranslation(language, 'community.noiseGate')}</span>
-                    <span className="text-xs font-mono font-bold text-cyan-400">{micSensitivity}</span>
+                    <span className="text-[11px] font-mono text-zinc-400">{getTranslation(language, 'community.noiseGate')}</span>
+                    <span className="text-xs font-mono font-bold" style={{ color: accentColor }}>{micSensitivity}</span>
                   </div>
                   <input
                     type="range"
@@ -2825,16 +2863,22 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                       setMicSensitivity(val);
                       localStorage.setItem('spytify_mic_sensitivity', String(val));
                     }}
-                    className="w-full h-1.5 bg-[#1c1c2a] rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                    style={{ accentColor }}
+                    className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-slate-200 dark:bg-[#1f1f2e]"
                   />
-                  <p className="text-[10px] text-[#555] font-mono mt-1">
+                  <p className="text-[10px] text-[#666] font-mono mt-1">
                     {getTranslation(language, 'community.noiseGateHint')}
                   </p>
                 </div>
 
                 {/* Audio Filters (Noise Suppression & Echo Cancellation) */}
-                <div className="pt-3 border-t border-[#1a1a26] mt-3 grid grid-cols-2 gap-2 text-xs">
-                  <label className="flex items-center gap-2 p-2 rounded-lg bg-[#0e0e16] border border-[#1c1c28] cursor-pointer hover:border-[#2a2a3e] transition-colors">
+                <div className="pt-3 border-t border-slate-200 dark:border-[#1e1e2c] mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <label 
+                    style={noiseSuppression ? { borderColor: `${accentColor}50`, backgroundColor: `${accentColor}10` } : undefined}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                      isLight ? 'bg-white border-slate-200' : 'bg-[#181826] border-[#252538]'
+                    }`}
+                  >
                     <input
                       type="checkbox"
                       checked={noiseSuppression}
@@ -2842,11 +2886,19 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                         setNoiseSuppression(e.target.checked);
                         localStorage.setItem('spytify_noise_suppression', String(e.target.checked));
                       }}
-                      className="accent-emerald-500 rounded"
+                      style={{ accentColor }}
+                      className="rounded"
                     />
-                    <span className="text-[11px] text-zinc-300 font-mono">{getTranslation(language, 'community.noiseSuppression')}</span>
+                    <span className={`text-[11px] font-mono font-semibold ${isLight ? 'text-slate-800' : 'text-zinc-200'}`}>
+                      {getTranslation(language, 'community.noiseSuppression')}
+                    </span>
                   </label>
-                  <label className="flex items-center gap-2 p-2 rounded-lg bg-[#0e0e16] border border-[#1c1c28] cursor-pointer hover:border-[#2a2a3e] transition-colors">
+                  <label 
+                    style={echoCancellation ? { borderColor: `${accentColor}50`, backgroundColor: `${accentColor}10` } : undefined}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                      isLight ? 'bg-white border-slate-200' : 'bg-[#181826] border-[#252538]'
+                    }`}
+                  >
                     <input
                       type="checkbox"
                       checked={echoCancellation}
@@ -2854,29 +2906,45 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                         setEchoCancellation(e.target.checked);
                         localStorage.setItem('spytify_echo_cancellation', String(e.target.checked));
                       }}
-                      className="accent-emerald-500 rounded"
+                      style={{ accentColor }}
+                      className="rounded"
                     />
-                    <span className="text-[11px] text-zinc-300 font-mono">{getTranslation(language, 'community.echoCancellation')}</span>
+                    <span className={`text-[11px] font-mono font-semibold ${isLight ? 'text-slate-800' : 'text-zinc-200'}`}>
+                      {getTranslation(language, 'community.echoCancellation')}
+                    </span>
                   </label>
                 </div>
               </div>
 
               {/* ──────── SECTION 2: SPEAKER & OUTPUT (ĐẦU RA) ──────── */}
-              <div className="p-4 rounded-xl bg-[#11111a] border border-[#1e1e2c]">
+              <div className={`p-4 rounded-xl border ${
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#13131e] border-[#222234]'
+              }`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Volume2 className="w-4 h-4 text-cyan-400" />
-                    <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">{getTranslation(language, 'community.speakerVolume')}</span>
+                    <Volume2 className="w-4 h-4" style={{ color: accentColor }} />
+                    <span className={`text-xs font-bold uppercase tracking-wider font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                      {getTranslation(language, 'community.speakerVolume')}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-500/30 px-2 py-0.5 rounded">
+                  <div className="flex items-center gap-1.5">
+                    <span 
+                      className="text-xs font-mono font-bold px-2 py-0.5 rounded border"
+                      style={{
+                        backgroundColor: `${accentColor}18`,
+                        borderColor: `${accentColor}40`,
+                        color: accentColor,
+                      }}
+                    >
                       {speakerVolume}%
                     </span>
                     <button
                       type="button"
                       onClick={() => handleSpeakerVolumeChange(100)}
                       title="100%"
-                      className="p-1 rounded hover:bg-[#1c1c2a] text-[#777] hover:text-white text-[10px] font-mono transition-colors cursor-pointer flex items-center gap-1"
+                      className={`p-1 rounded text-[10px] font-mono transition-colors cursor-pointer flex items-center gap-1 border ${
+                        isLight ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700' : 'bg-[#1a1a26] hover:bg-[#242436] border-[#2a2a3e] text-[#aaa]'
+                      }`}
                     >
                       <RotateCcw className="w-3 h-3" />
                       <span>100%</span>
@@ -2893,24 +2961,30 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     step="1"
                     value={speakerVolume}
                     onChange={(e) => handleSpeakerVolumeChange(parseInt(e.target.value, 10))}
-                    className="w-full h-2 bg-[#1c1c2a] rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                    style={{ accentColor }}
+                    className="w-full h-2.5 rounded-lg appearance-none cursor-pointer bg-slate-200 dark:bg-[#1f1f2e]"
                   />
-                  <div className="flex justify-between text-[9px] font-mono text-[#555] mt-1">
+                  <div className="flex justify-between text-[10px] font-mono text-[#777] mt-1.5 font-semibold">
                     <span>0%</span>
-                    <span className="text-[#888]">100%</span>
+                    <span className="text-zinc-400">100%</span>
                     <span>200%</span>
                   </div>
                 </div>
 
                 {/* Speaker Test Sound Button */}
-                <div className="pt-3 border-t border-[#1a1a26] flex items-center justify-between">
-                  <span className="text-[11px] font-mono text-[#888]"></span>
+                <div className="pt-3 border-t border-slate-200 dark:border-[#1e1e2c] flex items-center justify-between">
+                  <span className="text-[11px] font-mono text-[#777]">Âm lượng tai nghe / loa</span>
                   <button
                     type="button"
                     onClick={() => playSpeakerTestSound()}
-                    className="px-3 py-1.5 rounded-lg bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/40 text-cyan-300 font-mono text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-[1.02]"
+                    style={{
+                      backgroundColor: `${accentColor}18`,
+                      borderColor: `${accentColor}40`,
+                      color: accentColor,
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl border font-mono text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-[1.02]"
                   >
-                    <Volume1 className="w-3.5 h-3.5" />
+                    <Volume1 className="w-4 h-4" />
                     <span>{getTranslation(language, 'community.testSpeaker')}</span>
                   </button>
                 </div>
@@ -2918,7 +2992,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             </div>
 
             {/* Modal Footer */}
-            <div className="pt-4 mt-4 border-t border-[#1e1e2c] flex items-center justify-between">
+            <div className="pt-4 mt-5 border-t border-slate-200 dark:border-[#1e1e2c] flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => {
@@ -2927,7 +3001,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   setMicSensitivity(14);
                   localStorage.setItem('spytify_mic_sensitivity', '14');
                 }}
-                className="text-xs font-mono text-[#666] hover:text-[#aaa] transition-colors cursor-pointer"
+                className="text-xs font-mono text-[#777] hover:text-white transition-colors cursor-pointer"
               >
                 {getTranslation(language, 'community.resetDefaults')}
               </button>
@@ -2938,7 +3012,12 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   stopMicTest();
                   setIsAudioSettingsOpen(false);
                 }}
-                className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg hover:scale-[1.02]"
+                style={{
+                  backgroundColor: accentColor,
+                  color: getContrastTextColor(accentColor),
+                  boxShadow: `0 0 16px ${accentColor}40`,
+                }}
+                className="px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer hover:scale-[1.02]"
               >
                 Xong
               </button>

@@ -11,6 +11,7 @@ interface SearchViewProps {
   onSearchOnline: (query: string, source: string) => Promise<SearchResult[]>;
   localTracks: Track[];
   onTrackSelect: (track: Track) => void;
+  currentTrack?: Track | null;
   accentColor?: string;
   language?: LanguageCode;
 }
@@ -21,7 +22,8 @@ type Filter = 'all' | 'youtube' | 'soundcloud' | 'audius' | 'local';
 
 export const SearchView: React.FC<SearchViewProps> = ({ 
   onPlaySearchResult, onSearchOnline, localTracks, onTrackSelect,
-  accentColor = '#ff2a55',
+  currentTrack,
+  accentColor = '#00E5FF',
   language = 'vi',
 }) => {
   const [query, setQuery] = useState('');
@@ -306,7 +308,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
 
       {loading && (
         <div className="flex items-center gap-2 text-xs text-[#888] py-8">
-          <Loader2 className="w-4 h-4 animate-spin text-[#ff2a55]" />
+          <Loader2 className="w-4 h-4 animate-spin" style={{ color: accentColor }} />
           <span>{getTranslation(language, 'search.loading')}</span>
         </div>
       )}
@@ -318,34 +320,43 @@ export const SearchView: React.FC<SearchViewProps> = ({
             {getTranslation(language, 'nav.localMusic')} ({filteredLocal.length})
           </h3>
           <div className="space-y-1">
-            {filteredLocal.map(t => (
-              <div
-                key={t.id}
-                onClick={() => onTrackSelect(t)}
-                className="flex items-center justify-between p-2 rounded-lg bg-[#0c0c10] hover:bg-[#14141a] border border-[#161620] cursor-pointer group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg overflow-hidden bg-[#181820] flex-shrink-0 flex items-center justify-center text-[#555] border border-[#222]">
-                    {t.cover_art ? (
-                      <img
-                        src={optimizeThumbnailUrl(t.cover_art, t.path_or_url || t.id)}
-                        alt={t.title}
-                        referrerPolicy="no-referrer"
-                        onError={(e) => handleImageError(e, t.path_or_url || t.id)}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <Music className="w-4 h-4" />
-                    )}
+            {filteredLocal.map(t => {
+              const isActive = currentTrack?.id === t.id;
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => onTrackSelect(t)}
+                  style={isActive ? { borderColor: `${accentColor}70`, backgroundColor: `${accentColor}12` } : undefined}
+                  className="flex items-center justify-between p-2 rounded-lg bg-[#0c0c10] hover:bg-[#14141a] border border-[#161620] cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg overflow-hidden bg-[#181820] flex-shrink-0 flex items-center justify-center text-[#555] border border-[#222]">
+                      {t.cover_art ? (
+                        <img
+                          src={optimizeThumbnailUrl(t.cover_art, t.path_or_url || t.id)}
+                          alt={t.title}
+                          referrerPolicy="no-referrer"
+                          onError={(e) => handleImageError(e, t.path_or_url || t.id)}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Music className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p 
+                        className="text-xs font-semibold text-white transition-colors truncate"
+                        style={isActive ? { color: accentColor } : undefined}
+                      >
+                        {t.title}
+                      </p>
+                      <p className="text-[11px] text-[#777] truncate">{t.artist}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-white group-hover:text-[#ff2a55] transition-colors truncate">{t.title}</p>
-                    <p className="text-[11px] text-[#777] truncate">{t.artist}</p>
-                  </div>
+                  <Play className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <Play className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -357,45 +368,60 @@ export const SearchView: React.FC<SearchViewProps> = ({
             Online Results ({results.length})
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-            {results.map((r, i) => (
-              <div
-                key={i}
-                onClick={() => onPlaySearchResult(r)}
-                className="p-3 rounded-xl bg-[#09090c] hover:bg-[#121218] border border-[#161620] hover:border-[#ff2a55]/40 transition-all flex items-center gap-3 cursor-pointer group shadow-sm"
-              >
-                <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-[#16161e]">
-                  {r.thumbnail ? (
-                    <img
-                      src={optimizeThumbnailUrl(r.thumbnail, r.url_or_id)}
-                      alt={r.title}
-                      referrerPolicy="no-referrer"
-                      onError={(e) => handleImageError(e, r.url_or_id)}
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-[#555]">
-                      <Music className="w-4 h-4" />
+            {results.map((r, i) => {
+              const isMatchCurrent = currentTrack && (
+                r.url_or_id === currentTrack.path_or_url ||
+                r.title.toLowerCase().trim() === currentTrack.title.toLowerCase().trim()
+              );
+              return (
+                <div
+                  key={i}
+                  onClick={() => onPlaySearchResult(r)}
+                  style={isMatchCurrent ? {
+                    borderColor: `${accentColor}80`,
+                    boxShadow: `0 0 16px ${accentColor}30`,
+                    backgroundColor: `${accentColor}10`
+                  } : undefined}
+                  className="p-3 rounded-xl bg-[#09090c] hover:bg-[#121218] border border-[#161620] transition-all flex items-center gap-3 cursor-pointer group shadow-sm hover:border-zinc-500/40"
+                >
+                  <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-[#16161e]">
+                    {r.thumbnail ? (
+                      <img
+                        src={optimizeThumbnailUrl(r.thumbnail, r.url_or_id)}
+                        alt={r.title}
+                        referrerPolicy="no-referrer"
+                        onError={(e) => handleImageError(e, r.url_or_id)}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[#555]">
+                        <Music className="w-4 h-4" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Play className="w-4 h-4 fill-current text-white" />
                     </div>
-                  )}
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Play className="w-4 h-4 fill-current text-white" />
                   </div>
-                </div>
 
-                <div className="overflow-hidden flex-1">
-                  <p className="text-xs font-semibold text-white truncate group-hover:text-[#ff2a55] transition-colors" title={r.title}>
-                    {r.title}
-                  </p>
-                  <p className="text-[11px] text-[#8e8e9f] truncate mt-0.5">{r.artist}</p>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    {sourceIcon(r.source, true)}
-                    <span className="text-[10px] text-[#666] font-mono uppercase">{r.source}</span>
+                  <div className="overflow-hidden flex-1">
+                    <p 
+                      className="text-xs font-semibold text-white truncate transition-colors" 
+                      title={r.title}
+                      style={isMatchCurrent ? { color: accentColor } : undefined}
+                    >
+                      {r.title}
+                    </p>
+                    <p className="text-[11px] text-[#8e8e9f] truncate mt-0.5">{r.artist}</p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      {sourceIcon(r.source, true)}
+                      <span className="text-[10px] text-[#666] font-mono uppercase">{r.source}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

@@ -262,7 +262,13 @@ export const TrackTable: React.FC<TrackTableProps> = ({
 
               {/* Col 3: Album */}
               <div className="truncate text-[11px] text-[#666677] pr-3 font-mono">
-                {track.album || 'Unknown Album'}
+                {(() => {
+                  const alb = track.album?.trim() || '';
+                  if (!alb || alb === 'Unknown Album' || alb.startsWith('và •') || alb.startsWith('& •') || alb.startsWith('and •')) {
+                    return 'Single • YT Music';
+                  }
+                  return alb;
+                })()}
               </div>
 
               {/* Col 4: Source Badge */}
