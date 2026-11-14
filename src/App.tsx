@@ -21,7 +21,7 @@ import { checkGitHubUpdate, UpdateInfo, CURRENT_VERSION } from './services/updat
 import { cloudSyncPull, cloudSyncPush, isSupabaseConfigured, cloudRegisterUser } from './services/supabase';
 import { deduplicateTracks, optimizeThumbnailUrl, handleImageError } from './utils/trackUtils';
 import { Track, PlaybackStatus, SearchResult, ViewType, User, UserAlbum, RecommendationResult } from './types';
-import { FolderPlus, Disc, CheckCircle2, Tv, X, Radio, ArrowUpRight, LogIn, Sun, Moon, Music, Play, Globe, Languages, ChevronDown, ChevronUp, EyeOff, Sparkles } from 'lucide-react';
+import { FolderPlus, Disc, CheckCircle2, Tv, X, Radio, ArrowUpRight, LogIn, Sun, Moon, Music, Play, Globe, Languages, ChevronDown, ChevronUp, EyeOff, Sparkles, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './components/Icons';
 import { LanguageCode, SUPPORTED_LANGUAGES, getTranslation } from './locales/i18n';
 import spytifyLogo from './assets/spytify-logo.png';
@@ -141,6 +141,24 @@ export default function App() {
     showNotification(`${getTranslation(language, 'toast.colorUpdated')} ${newColor}`);
   };
 
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('spytify_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSidebarCollapse = () => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('spytify_sidebar_collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
   const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('spytify_theme_mode') as 'dark' | 'light') || 'dark';
   });
@@ -178,6 +196,14 @@ export default function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setShowLanguageDropdown(false);
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+        const target = e.target as HTMLElement | null;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+          return;
+        }
+        e.preventDefault();
+        toggleSidebarCollapse();
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
@@ -3041,12 +3067,25 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
           accentColor={accentColor}
           themeMode={themeMode}
           language={language}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={toggleSidebarCollapse}
         />
 
         <main className="flex-1 flex flex-col overflow-hidden bg-[#000000]">
           {/* Header Bar — Minimalist */}
-          <header className="h-12 px-6 flex items-center justify-between border-b border-[#141416] bg-black/95 backdrop-blur z-50">
-            <div className="flex items-center gap-2 text-xs font-medium text-[#888]">
+          <header className="h-12 px-4 sm:px-6 flex items-center justify-between border-b border-[#141416] bg-black/95 backdrop-blur z-50">
+            <div className="flex items-center gap-2.5 text-xs font-medium text-[#888]">
+              <button
+                onClick={toggleSidebarCollapse}
+                title={isSidebarCollapsed ? "Mở rộng thanh điều hướng (Ctrl+B)" : "Thu nhỏ thanh điều hướng (Ctrl+B)"}
+                className="p-1.5 rounded-lg bg-[#101014] hover:bg-[#1c1c24] border border-[#202028] text-[#888899] hover:text-white transition-all cursor-pointer flex items-center justify-center group"
+              >
+                {isSidebarCollapsed ? (
+                  <PanelLeftOpen className="w-4 h-4 text-[#00E5FF] group-hover:scale-110 transition-transform" />
+                ) : (
+                  <PanelLeftClose className="w-4 h-4 group-hover:text-white transition-colors" />
+                )}
+              </button>
               <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#666]">
                 {currentView === 'community'
                   ? 'TRẠM SÓNG & CỘNG ĐỒNG'
