@@ -971,6 +971,108 @@ async fn check_for_updates(current_build_date: Option<String>) -> Result<AppUpda
     })
 }
 
+#[derive(serde::Serialize, Clone)]
+struct UpdateProgressPayload {
+    percentage: u32,
+    downloaded_bytes: u64,
+    total_bytes: u64,
+    downloaded_mb: String,
+    total_mb: String,
+}
+
+#[tauri::command]
+async fn download_and_install_update(
+    app: tauri::AppHandle,
+    download_url: String,
+) -> Result<(), String> {
+    use std::io::Write;
+    use tauri::Emitter;
+
+    if download_url.is_empty() {
+        return Err("Đường dẫn tải bản cập nhật không hợp lệ.".to_string());
+    }
+
+    let client = reqwest::Client::builder()
+        .user_agent("Spytify-Desktop-App/0.1.2")
+        .timeout(std::time::Duration::from_secs(600))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let mut res = client
+        .get(&download_url)
+        .header("Accept", "application/octet-stream")
+        .send()
+        .await
+        .map_err(|e| format!("Không thể kết nối tải bản cập nhật: {}", e))?;
+
+    if !res.status().is_success() {
+        return Err(format!("Lỗi máy chủ tải file (HTTP {})", res.status()));
+    }
+
+    let total_bytes = res.content_length().unwrap_or(0);
+    let temp_dir = std::env::temp_dir();
+    let dest_path = temp_dir.join("Spytify_Update_Setup.exe");
+
+    let mut file = std::fs::File::create(&dest_path)
+        .map_err(|e| format!("Không thể tạo file tạm trong ổ đĩa: {}", e))?;
+
+    let mut downloaded: u64 = 0;
+    let mut last_percent: u32 = 0;
+
+    while let Some(chunk) = res.chunk().await.map_err(|e| format!("Lỗi khi đang tải file: {}", e))? {
+        file.write_all(&chunk)
+            .map_err(|e| format!("Lỗi ghi file vào ổ đĩa: {}", e))?;
+        downloaded += chunk.len() as u64;
+
+        if total_bytes > 0 {
+            let percentage = ((downloaded as f64 / total_bytes as f64) * 100.0) as u32;
+            if percentage != last_percent {
+                last_percent = percentage;
+                let payload = UpdateProgressPayload {
+                    percentage,
+                    downloaded_bytes: downloaded,
+                    total_bytes,
+                    downloaded_mb: format!("{:.1}", downloaded as f64 / 1_048_576.0),
+                    total_mb: format!("{:.1}", total_bytes as f64 / 1_048_576.0),
+                };
+                let _ = app.emit("update-download-progress", payload);
+            }
+        }
+    }
+
+    file.flush()
+        .map_err(|e| format!("Lỗi hoàn tất file cập nhật: {}", e))?;
+    drop(file);
+
+    let _ = app.emit("update-download-progress", UpdateProgressPayload {
+        percentage: 100,
+        downloaded_bytes: downloaded,
+        total_bytes: downloaded,
+        downloaded_mb: format!("{:.1}", downloaded as f64 / 1_048_576.0),
+        total_mb: format!("{:.1}", downloaded as f64 / 1_048_576.0),
+    });
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new(&dest_path)
+            .spawn()
+            .map_err(|e| format!("Không thể khởi chạy bộ cài đặt: {}", e))?;
+
+        let app_handle = app.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+            app_handle.exit(0);
+        });
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = std::process::Command::new("open").arg(&dest_path).spawn();
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let audio_manager = AudioPlayerManager::new();
@@ -1137,7 +1239,8 @@ pub fn run() {
             rust_ui_filter,
             rust_ui_search_online,
             rust_ui_play_index,
-            check_for_updates
+            check_for_updates,
+            download_and_install_update
         ])
         .run(tauri::generate_context!())
         .expect("error while running soundify application");
