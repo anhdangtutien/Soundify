@@ -43,6 +43,7 @@ export default function App() {
   const [repeatMode, setRepeatMode] = useState<'all' | 'one' | 'off'>('all'); // default: auto-play next
   const [isShuffle, setIsShuffle] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+  const [isPlayerBarOpenInCommunity, setIsPlayerBarOpenInCommunity] = useState(false);
 
   // Download & Offline Music Storage State
   const [downloadFolder, setDownloadFolder] = useState<string>(() => {
@@ -3075,17 +3076,6 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
           {/* Header Bar — Minimalist */}
           <header className="h-12 px-4 sm:px-6 flex items-center justify-between border-b border-[#141416] bg-black/95 backdrop-blur z-50">
             <div className="flex items-center gap-2.5 text-xs font-medium text-[#888]">
-              <button
-                onClick={toggleSidebarCollapse}
-                title={isSidebarCollapsed ? "Mở rộng thanh điều hướng (Ctrl+B)" : "Thu nhỏ thanh điều hướng (Ctrl+B)"}
-                className="p-1.5 rounded-lg bg-[#101014] hover:bg-[#1c1c24] border border-[#202028] text-[#888899] hover:text-white transition-all cursor-pointer flex items-center justify-center group"
-              >
-                {isSidebarCollapsed ? (
-                  <PanelLeftOpen className="w-4 h-4 text-[#00E5FF] group-hover:scale-110 transition-transform" />
-                ) : (
-                  <PanelLeftClose className="w-4 h-4 group-hover:text-white transition-colors" />
-                )}
-              </button>
               <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#666]">
                 {currentView === 'community'
                   ? 'TRẠM SÓNG & CỘNG ĐỒNG'
@@ -3485,10 +3475,39 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
         </main>
       </div>
 
+      {/* Bottom Hover Trigger Zone to Reveal Track Table / PlayerBar in Community View */}
+      {currentView === 'community' && !isPlayerBarOpenInCommunity && (
+        <div className="fixed bottom-0 left-0 right-0 h-10 flex items-end justify-center pointer-events-none z-50 group/bottom-trigger pb-1.5">
+          <div className="pointer-events-auto opacity-70 group-hover/bottom-trigger:opacity-100 group-hover/bottom-trigger:-translate-y-1 transition-all duration-300">
+            <button
+              onClick={() => setIsPlayerBarOpenInCommunity(true)}
+              title="Mở thanh phát nhạc (Track Table)"
+              className="px-4 py-1.5 rounded-full bg-[#0d0d16]/95 hover:bg-[#181826] border border-[#26263a] hover:border-[var(--accent-color,#00E5FF)]/50 text-white shadow-[0_4px_24px_rgba(0,0,0,0.8)] backdrop-blur-md text-xs font-semibold flex items-center gap-2.5 cursor-pointer transition-all hover:scale-105 active:scale-95"
+              style={{
+                boxShadow: isPlaying ? `0 0 16px ${accentColor}30, 0 4px 20px rgba(0,0,0,0.7)` : undefined,
+              }}
+            >
+              <div className="relative flex items-center justify-center">
+                <Disc className={`w-3.5 h-3.5 ${isPlaying ? 'animate-spin' : ''}`} style={{ color: accentColor }} />
+                {isPlaying && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 absolute -top-0.5 -right-0.5 animate-ping" />
+                )}
+              </div>
+              <span className="font-mono text-[11px] truncate max-w-[260px] text-zinc-300">
+                {currentTrack ? `${currentTrack.title} — ${currentTrack.artist}` : 'Mở thanh phát nhạc'}
+              </span>
+              <ChevronUp className="w-3.5 h-3.5 text-[#888899]" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Ultra Hi-Fi Player Bar */}
       <PlayerBar
         language={language}
         isCompact={currentView === 'community'}
+        isMinimized={currentView === 'community' && !isPlayerBarOpenInCommunity}
+        onMinimize={() => setIsPlayerBarOpenInCommunity(false)}
         currentTrack={currentTrack}
         upcomingTrack={effectiveUpcomingTrack}
         upcomingModeLabel={nextTrackPopup?.modeLabel || getPlaylistModeLabel(activeQueueContext)}

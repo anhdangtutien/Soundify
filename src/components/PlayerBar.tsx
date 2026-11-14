@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { 
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat,
   Volume2, VolumeX, Heart, Music, Sparkles, FolderPlus, Radio,
-  Download, Check, Loader2, Moon, Clock, Minus, Plus, Eye, EyeOff
+  Download, Check, Loader2, Moon, Clock, Minus, Plus, Eye, EyeOff,
+  ChevronDown
 } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { Track } from '../types';
@@ -46,6 +47,8 @@ interface PlayerBarProps {
   isNextTrackPopupEnabled?: boolean;
   onToggleNextTrackPopupEnabled?: () => void;
   isCompact?: boolean;
+  isMinimized?: boolean;
+  onMinimize?: () => void;
 }
 
 export const PlayerBar: React.FC<PlayerBarProps> = ({
@@ -66,6 +69,8 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   isNextTrackPopupEnabled = true,
   onToggleNextTrackPopupEnabled,
   isCompact = false,
+  isMinimized = false,
+  onMinimize,
 }) => {
   const [prevVolume, setPrevVolume] = useState(volume || 0.8);
   const [isDragging, setIsDragging] = useState(false);
@@ -197,7 +202,11 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
 
   return (
     <footer className={`bg-[#060608] border-t border-[#14141a] select-none z-50 relative transition-all duration-300 ease-in-out ${
-      isCompact ? 'h-[52px] px-4 flex items-center justify-between' : 'h-22 px-6 flex items-center justify-between'
+      isMinimized 
+        ? 'h-0 py-0 border-t-0 overflow-hidden opacity-0 pointer-events-none'
+        : isCompact 
+          ? 'h-[52px] px-4 flex items-center justify-between' 
+          : 'h-22 px-6 flex items-center justify-between'
     }`}>
       {/* Sleek Top-Edge Progress Bar in Compact Mode */}
       {isCompact && (
@@ -904,6 +913,17 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
             />
           </div>
         </div>
+
+        {/* Minimize Button in Compact / Community Mode */}
+        {onMinimize && (
+          <button
+            onClick={onMinimize}
+            title="Thu nhỏ thanh phát nhạc (Minimize)"
+            className="p-1.5 rounded-lg text-[#777] hover:text-white hover:bg-[#161622] transition-colors cursor-pointer flex items-center justify-center"
+          >
+            <ChevronDown className="w-4 h-4" />
+          </button>
+        )}
       </div>
     </footer>
   );

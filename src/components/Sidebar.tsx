@@ -151,15 +151,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       ) : (
         <div className="p-4 pb-3.5 flex items-center justify-between border-b border-[#141418]">
-          <div className="flex items-center gap-3">
+          <div 
+            onClick={handleToggle}
+            className="flex items-center gap-3 cursor-pointer group/brand"
+            title="Thu nhỏ thanh điều hướng (Ctrl+B)"
+          >
             <div 
-              className="w-9 h-9 rounded-xl overflow-hidden bg-[#101014] border border-[#262630] flex items-center justify-center flex-shrink-0"
+              className="w-9 h-9 rounded-xl overflow-hidden bg-[#101014] border border-[#262630] group-hover/brand:border-[#00E5FF]/60 flex items-center justify-center flex-shrink-0 transition-colors"
               style={{ boxShadow: `0 0 12px ${accentColor}35` }}
             >
               <img src={spytifyLogo} alt="Spytify" className="w-full h-full object-cover" />
             </div>
             <div>
-              <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
+              <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5 group-hover/brand:text-[#00E5FF] transition-colors">
                 <span>Spytify</span>
                 <span 
                   className="w-1.5 h-1.5 rounded-full animate-ping"
@@ -352,13 +356,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* App Version Tag Footer */}
       {isCollapsed ? (
         <div className="py-2.5 flex items-center justify-center border-t border-[#141418]">
-          <button
-            onClick={handleToggle}
-            title={`Mở rộng thanh điều hướng (v${CURRENT_VERSION})`}
-            className="p-1.5 rounded hover:bg-[#14141a] text-[#666] hover:text-white transition-colors cursor-pointer"
-          >
-            <PanelLeftOpen className="w-4 h-4 text-[#888899]" />
-          </button>
+          <span className="text-[9px] font-mono text-[#555] font-bold">v{CURRENT_VERSION}</span>
         </div>
       ) : (
         <div className="px-3.5 py-2 flex items-center justify-between text-[10px] font-mono text-[#555] border-t border-[#141418]">

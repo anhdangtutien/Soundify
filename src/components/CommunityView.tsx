@@ -217,6 +217,26 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
     }
   });
 
+  // ──────── MEMBER LIST VISIBILITY (DISCORD STYLE) ────────
+  const [isMemberListVisible, setIsMemberListVisible] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('spytify_member_list_visible');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleMemberList = () => {
+    setIsMemberListVisible(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('spytify_member_list_visible', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
   // Live Mic Test in Settings
   const [isTestingMic, setIsTestingMic] = useState(false);
   const [testMicLevel, setTestMicLevel] = useState(0);
@@ -1067,20 +1087,29 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-2.5 text-xs font-mono text-[#777]">
+          <div className="flex items-center gap-2 text-xs font-mono text-[#777]">
             <button
               onClick={() => setIsAudioSettingsOpen(true)}
               title="Cài đặt âm lượng Mic & Loa"
-              className="px-2 py-1 rounded-lg bg-[#12121c] hover:bg-[#1a1a2a] border border-[#222234] text-[#888899] hover:text-[#00E5FF] transition-all cursor-pointer flex items-center gap-1.5"
+              className="px-2.5 py-1.5 rounded-lg bg-[#12121c] hover:bg-[#1a1a2a] border border-[#222234] text-[#888899] hover:text-[#00E5FF] transition-all cursor-pointer flex items-center gap-1.5"
             >
               <Sliders className="w-3.5 h-3.5 text-emerald-400" />
               <span className="hidden sm:inline text-[10px] font-bold">Cài đặt Mic/Loa</span>
             </button>
 
-            <span className="flex items-center gap-1.5 text-emerald-400 bg-emerald-950/30 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[10px]">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              {onlineMembers.length} Mật vụ
-            </span>
+            {/* Discord-style Member List Toggle Button */}
+            <button
+              onClick={toggleMemberList}
+              title={isMemberListVisible ? "Thu nhỏ danh sách thành viên (Discord)" : "Hiện danh sách thành viên (Discord)"}
+              className={`p-1.5 px-2.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 ${
+                isMemberListVisible
+                  ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-400 shadow-[0_0_10px_rgba(0,255,102,0.2)]'
+                  : 'bg-[#12121c] hover:bg-[#1a1a2a] border-[#222234] text-[#888899] hover:text-white'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span className="text-[10px] font-bold">{onlineMembers.length}</span>
+            </button>
           </div>
         </div>
 
@@ -1115,23 +1144,23 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 </button>
               </div>
             ) : (
-              <div className="w-full max-w-2xl flex flex-col items-center my-auto py-4">
+              <div className="w-full max-w-3xl flex flex-col items-center my-auto py-4">
                 <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {/* Current User Card */}
                   {isConnectedToCurrentVoice && (
                     <div 
-                      className={`p-5 rounded-2xl bg-[#0e0e16] border transition-all duration-300 flex flex-col items-center justify-center relative shadow-lg ${
+                      className={`rounded-2xl bg-[#1e1f22] border-2 transition-all duration-300 flex flex-col items-center justify-center relative aspect-[4/3] shadow-xl overflow-hidden group ${
                         isUserSpeaking
-                          ? 'border-emerald-400 shadow-[0_0_20px_rgba(0,255,102,0.3)]'
-                          : 'border-cyan-500/50'
+                          ? 'border-emerald-500 shadow-[0_0_24px_rgba(0,255,102,0.35)]'
+                          : 'border-[#2b2d31]'
                       }`}
                     >
-                      <div className="relative mb-3">
+                      <div className="relative">
                         <div 
-                          className={`w-16 h-16 rounded-full overflow-hidden border-2 flex items-center justify-center text-lg font-bold text-white transition-all ${
+                          className={`w-20 h-20 rounded-full overflow-hidden border-2 flex items-center justify-center text-xl font-bold text-white transition-all ${
                             isUserSpeaking
-                              ? 'border-emerald-400 scale-105 shadow-[0_0_16px_#00FF66]'
-                              : 'border-cyan-400 bg-[#141424]'
+                              ? 'border-emerald-400 ring-4 ring-emerald-400/30 scale-105 shadow-[0_0_20px_#00FF66]'
+                              : 'border-white/20 bg-[#2b2d31]'
                           }`}
                         >
                           {currentUser?.avatar ? (
@@ -1140,29 +1169,23 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                             <span>{(currentUser?.display_name || 'B').charAt(0).toUpperCase()}</span>
                           )}
                         </div>
-                        {isMuted ? (
-                          <span className="absolute bottom-0 right-0 p-1 rounded-full bg-red-600 border-2 border-black text-white">
-                            <MicOff className="w-3 h-3" />
-                          </span>
-                        ) : (
-                          <span className="absolute bottom-0 right-0 p-1 rounded-full bg-emerald-500 border-2 border-black text-black">
-                            <Mic className="w-3 h-3" />
+                        {isMuted && (
+                          <span className="absolute bottom-0 right-0 p-1.5 rounded-full bg-red-600 border-2 border-black text-white shadow-md">
+                            <MicOff className="w-3.5 h-3.5" />
                           </span>
                         )}
                       </div>
 
-                      <p className="text-xs font-bold text-white tracking-wide truncate max-w-[120px]">
-                        {currentUser?.display_name || 'Bạn'} (Bạn)
-                      </p>
-                      <p className="text-[10px] text-[#666] font-mono">
-                        {isMuted ? 'Đã tắt mic' : isUserSpeaking ? 'Đang nói...' : 'Đang lắng nghe'}
-                      </p>
-
-                      {isUserSpeaking && (
-                        <span className="mt-2 text-[9px] font-mono font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/20 px-2 py-0.5 rounded-full animate-pulse">
-                          🎙️ Đang nói...
+                      {/* Discord Bottom-left Tag */}
+                      <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-sm border border-white/10 max-w-[85%] truncate">
+                        <span className="text-xs font-bold text-white tracking-wide truncate">
+                          {currentUser?.display_name || 'Bạn'}
                         </span>
-                      )}
+                        <span className="text-[10px] text-zinc-400 font-mono">(Bạn)</span>
+                        {isUserSpeaking && (
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping ml-1" />
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -1172,68 +1195,61 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     .map(vp => (
                       <div 
                         key={vp.id}
-                        className={`p-5 rounded-2xl bg-[#0e0e16] border transition-all duration-300 flex flex-col items-center justify-center relative shadow-lg ${
+                        className={`rounded-2xl bg-[#1e1f22] border-2 transition-all duration-300 flex flex-col items-center justify-center relative aspect-[4/3] shadow-xl overflow-hidden group ${
                           vp.isSpeaking 
-                            ? 'border-emerald-400 shadow-[0_0_20px_rgba(0,255,102,0.25)]' 
-                            : 'border-[#1e1e28]'
+                            ? 'border-emerald-500 shadow-[0_0_24px_rgba(0,255,102,0.35)]' 
+                            : 'border-[#2b2d31]'
                         }`}
                       >
-                        <div className="relative mb-3">
+                        <div className="relative">
                           <div 
-                            className={`w-16 h-16 rounded-full overflow-hidden border-2 flex items-center justify-center text-lg font-bold text-white transition-all ${
+                            className={`w-20 h-20 rounded-full overflow-hidden border-2 flex items-center justify-center text-xl font-bold text-white transition-all ${
                               vp.isSpeaking 
-                                ? 'border-emerald-400 scale-105 shadow-[0_0_16px_#00FF66]' 
-                                : 'border-white/20 bg-[#161622]'
+                                ? 'border-emerald-400 ring-4 ring-emerald-400/30 scale-105 shadow-[0_0_20px_#00FF66]' 
+                                : 'border-white/20 bg-[#2b2d31]'
                             }`}
                           >
                             {vp.name.charAt(0).toUpperCase()}
                           </div>
-                          {vp.isMuted ? (
-                            <span className="absolute bottom-0 right-0 p-1 rounded-full bg-red-600 border-2 border-black text-white">
-                              <MicOff className="w-3 h-3" />
-                            </span>
-                          ) : vp.isSpeaking ? (
-                            <span className="absolute bottom-0 right-0 p-1 rounded-full bg-emerald-500 border-2 border-black text-black">
-                              <Activity className="w-3 h-3 animate-pulse" />
-                            </span>
-                          ) : null}
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <p className="text-xs font-bold text-white tracking-wide truncate max-w-[120px]">{vp.name}</p>
-                          {vp.isHost && (
-                            <span className="text-[8px] font-mono font-bold text-amber-400 bg-amber-400/10 px-1 py-0.2 rounded">
-                              DJ
+                          {vp.isMuted && (
+                            <span className="absolute bottom-0 right-0 p-1.5 rounded-full bg-red-600 border-2 border-black text-white shadow-md">
+                              <MicOff className="w-3.5 h-3.5" />
                             </span>
                           )}
                         </div>
-                        <p className="text-[10px] text-[#666] font-mono">@{vp.username}</p>
 
-                        {vp.isSpeaking && (
-                          <span className="mt-2 text-[9px] font-mono font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/20 px-2 py-0.5 rounded-full animate-pulse">
-                            🎙️ Đang nói...
-                          </span>
-                        )}
+                        {/* Discord Bottom-left Tag */}
+                        <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-sm border border-white/10 max-w-[85%] truncate">
+                          <span className="text-xs font-bold text-white tracking-wide truncate">{vp.name}</span>
+                          {vp.isHost && (
+                            <span className="text-[8px] font-mono font-bold text-amber-400 bg-amber-400/20 px-1 py-0.2 rounded border border-amber-400/30">
+                              DJ
+                            </span>
+                          )}
+                          {vp.isSpeaking && (
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping ml-1" />
+                          )}
+                        </div>
                       </div>
                     ))}
                 </div>
 
                 {/* Helpful DJ Invite Hint */}
                 {voiceParticipants.filter(p => p.id !== myParticipantIdRef.current).length === 0 && (
-                  <p className="text-[11px] text-[#666] font-mono mt-4 text-center">
+                  <p className="text-[11px] text-[#777] font-mono mt-4 text-center">
                     💡 <span className="text-zinc-400">Gợi ý:</span> Nhấn chuột phải vào <span className="text-amber-400 font-bold">DJ CyberHawk</span> ở danh sách thành viên bên phải để gọi DJ vào trò chuyện cùng bạn!
                   </p>
                 )}
               </div>
             )}
 
-            {/* In-Call Controls Bottom Bar */}
-            <div className="w-full max-w-md p-3 rounded-2xl bg-[#0f0f18] border border-[#222234] shadow-2xl flex flex-col items-center justify-center gap-2.5">
+            {/* In-Call Controls Bottom Dock — Discord Signature Floating Dock */}
+            <div className="my-2 z-10">
               {!isConnectedToCurrentVoice ? (
-                <>
+                <div className="p-3 px-6 rounded-2xl bg-[#111214]/90 border border-[#26282c] shadow-2xl flex flex-col items-center gap-2">
                   <button
                     onClick={() => handleJoinVoiceCall()}
-                    className="w-full py-3 px-6 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-emerald-400 hover:bg-emerald-300 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(0,255,102,0.4)] hover:scale-[1.02]"
+                    className="py-2.5 px-6 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-emerald-400 hover:bg-emerald-300 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(0,255,102,0.4)] hover:scale-[1.02]"
                   >
                     <PhoneCall className="w-4 h-4" />
                     <span>Kết nối lại hội thoại</span>
@@ -1246,45 +1262,49 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     <Sliders className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Kiểm tra & Cài đặt âm lượng Mic / Loa</span>
                   </button>
-                </>
+                </div>
               ) : (
-                <div className="flex items-center gap-2.5 w-full justify-between">
+                <div className="p-2 px-4 rounded-full bg-[#111214]/90 border border-[#26282c] shadow-[0_12px_40px_rgba(0,0,0,0.7)] backdrop-blur-xl flex items-center gap-3">
+                  {/* Mic Toggle Button */}
                   <button
                     onClick={handleToggleMute}
-                    className={`flex-1 py-2.5 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                    title={isMuted ? 'Mở Mic (Unmute)' : 'Tắt Mic (Mute)'}
+                    className={`w-11 h-11 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md ${
                       isMuted 
-                        ? 'bg-red-950/60 border-red-500/50 text-red-300' 
-                        : 'bg-[#181824] border-[#2c2c3e] text-white hover:bg-[#222232]'
+                        ? 'bg-red-600 hover:bg-red-500 text-white' 
+                        : 'bg-[#2b2d31] hover:bg-[#35373c] text-white hover:text-emerald-400'
                     }`}
                   >
-                    {isMuted ? <MicOff className="w-4 h-4 text-red-400" /> : <Mic className="w-4 h-4 text-emerald-400" />}
-                    <span>{isMuted ? 'Mở Mic' : 'Tắt Mic'}</span>
+                    {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5 text-emerald-400" />}
                   </button>
 
+                  {/* Deafen Toggle Button */}
                   <button
                     onClick={handleToggleDeafen}
-                    className={`flex-1 py-2.5 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                    title={isDeafened ? 'Bật Loa (Undeafen)' : 'Tắt Loa (Deafen)'}
+                    className={`w-11 h-11 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md ${
                       isDeafened 
-                        ? 'bg-red-950/60 border-red-500/50 text-red-300' 
-                        : 'bg-[#181824] border-[#2c2c3e] text-white hover:bg-[#222232]'
+                        ? 'bg-red-600 hover:bg-red-500 text-white' 
+                        : 'bg-[#2b2d31] hover:bg-[#35373c] text-white hover:text-cyan-400'
                     }`}
                   >
-                    {isDeafened ? <VolumeX className="w-4 h-4 text-red-400" /> : <Headphones className="w-4 h-4 text-cyan-400" />}
-                    <span>{isDeafened ? 'Bật Loa' : 'Tắt Loa'}</span>
+                    {isDeafened ? <VolumeX className="w-5 h-5" /> : <Headphones className="w-5 h-5 text-cyan-400" />}
                   </button>
 
+                  {/* Audio Settings Button */}
                   <button
                     onClick={() => setIsAudioSettingsOpen(true)}
-                    className="p-2.5 rounded-xl bg-[#181824] hover:bg-[#222232] border border-[#2c2c3e] text-zinc-300 hover:text-[#00E5FF] transition-all cursor-pointer flex items-center justify-center"
-                    title="Cài đặt âm lượng Mic & Loa"
+                    className="w-11 h-11 rounded-full bg-[#2b2d31] hover:bg-[#35373c] text-zinc-300 hover:text-[#00E5FF] transition-all cursor-pointer flex items-center justify-center shadow-md"
+                    title="Cài đặt Mic & Loa"
                   >
-                    <Settings className="w-4 h-4" />
+                    <Sliders className="w-5 h-5 text-emerald-400" />
                   </button>
 
+                  {/* Disconnect Red Button */}
                   <button
                     onClick={handleLeaveVoiceCall}
-                    className="py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md"
-                    title="Rời khỏi phòng thoại"
+                    className="px-5 h-11 rounded-full bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg hover:scale-105 active:scale-95"
+                    title="Rời khỏi phòng thoại (Disconnect)"
                   >
                     <PhoneOff className="w-4 h-4" />
                     <span>Rời phòng</span>
@@ -1482,10 +1502,25 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       </div>
 
       {/* ──────────────── 4. ONLINE MEMBERS LIST (RIGHT RAIL) ──────────────── */}
-      <div className="w-48 bg-[#07070b] border-l border-[#15151e] flex flex-col p-3 overflow-y-auto no-scrollbar hidden md:flex flex-shrink-0 text-xs select-none">
-        <p className="text-[10px] font-mono font-bold text-[#555] uppercase tracking-wider mb-2">
-          TRỰC TUYẾN — {onlineMembers.length}
-        </p>
+      <div 
+        className={`bg-[#07070b] border-l border-[#15151e] flex flex-col overflow-y-auto no-scrollbar text-xs select-none transition-all duration-300 ease-in-out ${
+          isMemberListVisible 
+            ? 'w-52 p-3 opacity-100 flex-shrink-0' 
+            : 'w-0 p-0 border-l-0 opacity-0 overflow-hidden pointer-events-none'
+        }`}
+      >
+        <div className="flex items-center justify-between mb-2.5 pb-1 border-b border-[#14141e]">
+          <p className="text-[10px] font-mono font-bold text-[#666] uppercase tracking-wider">
+            TRỰC TUYẾN — {onlineMembers.length}
+          </p>
+          <button
+            onClick={toggleMemberList}
+            title="Thu gọn danh sách thành viên (Discord)"
+            className="p-1 rounded hover:bg-[#161622] text-[#666] hover:text-white transition-colors cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
         <div className="space-y-1">
           {onlineMembers.map(mem => (
             <div 
