@@ -6,6 +6,7 @@ import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { ViewType, User } from '../types';
 import spytifyLogo from '../assets/spytify-logo.png';
 import { LanguageCode, getTranslation } from '../locales/i18n';
+import { CURRENT_VERSION } from '../services/updater';
 
 interface SidebarProps {
   currentView: ViewType;
@@ -82,12 +83,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 style={{ backgroundColor: accentColor }}
               ></span>
             </h1>
-            <p 
-              className="text-[10px] font-mono tracking-wider font-bold"
-              style={{ color: accentColor }}
-            >
-              SPY MUSIC
-            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <p 
+                className="text-[10px] font-mono tracking-wider font-bold"
+                style={{ color: accentColor }}
+              >
+                SPY MUSIC
+              </p>
+              <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#13131c] text-[#888899] border border-[#22222e]">
+                v{CURRENT_VERSION}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -196,6 +202,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="transition-all">{getTranslation(language, 'profile.loginBtn')}</span>
           </button>
         )}
+      </div>
+
+      {/* App Version Tag Footer */}
+      <div className="px-3.5 py-2 flex items-center justify-between text-[10px] font-mono text-[#555] border-t border-[#141418]">
+        <span className="text-[#666]">Spytify Client</span>
+        <button
+          onClick={() => onViewChange('profile')}
+          title="Bấm để kiểm tra cập nhật & xem chi tiết phiên bản"
+          className="px-1.5 py-0.5 rounded bg-[#101014] hover:bg-[#181822] border border-[#202028] text-[#888] hover:text-white transition-colors cursor-pointer font-bold text-[9px]"
+        >
+          v{CURRENT_VERSION}
+        </button>
       </div>
     </aside>
   );

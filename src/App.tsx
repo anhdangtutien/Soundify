@@ -16,7 +16,7 @@ import { AlbumsView } from './components/AlbumsView';
 import { AddToAlbumModal } from './components/AddToAlbumModal';
 import { SplashScreen } from './components/SplashScreen';
 import { UpdateModal } from './components/UpdateModal';
-import { checkGitHubUpdate, UpdateInfo } from './services/updater';
+import { checkGitHubUpdate, UpdateInfo, CURRENT_VERSION } from './services/updater';
 import { cloudSyncPull, cloudSyncPush, isSupabaseConfigured, cloudRegisterUser } from './services/supabase';
 import { deduplicateTracks, optimizeThumbnailUrl, handleImageError } from './utils/trackUtils';
 import { Track, PlaybackStatus, SearchResult, ViewType, User, UserAlbum, RecommendationResult } from './types';
@@ -3048,6 +3048,16 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
             <div className="flex items-center gap-2.5 text-xs font-medium text-white">
               <img src="/spytify-logo.png" alt="Spytify" className="w-5 h-5 rounded-md object-cover border border-[#262632]" />
               <span className="tracking-tight font-bold">Spytify</span>
+              <span 
+                className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors"
+                style={{
+                  backgroundColor: `${accentColor}18`,
+                  color: accentColor,
+                  borderColor: `${accentColor}35`,
+                }}
+              >
+                v{CURRENT_VERSION}
+              </span>
             </div>
             <div className="flex items-center gap-2.5">
               {/* Quick Language Switcher Dropdown */}
