@@ -17,6 +17,7 @@ interface CommunityViewProps {
   onPlayTrack: (track: Track) => void;
   accentColor?: string;
   language?: LanguageCode;
+  themeMode?: 'dark' | 'light';
 }
 
 // Gentle Discord-style connection and disconnection sounds
@@ -140,7 +141,9 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   onPlayTrack,
   accentColor = '#FF2A55',
   language = 'vi',
+  themeMode = 'dark',
 }) => {
+  const isLight = themeMode === 'light';
   // Load custom servers from localStorage
   const [servers, setServers] = useState<CommunityServer[]>(() => {
     try {
@@ -817,19 +820,21 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   const isConnectedToCurrentVoice = connectedVoiceChannel === selectedChannel.id;
 
   return (
-    <div className="flex-1 flex h-full bg-[#07070a] select-none text-white overflow-hidden font-sans">
+    <div className={`flex-1 flex h-full select-none overflow-hidden font-sans ${isLight ? 'bg-[#f8fafc] text-[#0f172a]' : 'bg-[#07070a] text-white'}`}>
       {/* ──────────────── 1. DISCORD-STYLE SERVER RAIL (FAR LEFT) ──────────────── */}
-      <div className="w-16 bg-[#040407] border-r border-[#14141c] flex flex-col items-center py-3 gap-2.5 flex-shrink-0 z-20">
+      <div className={`w-16 flex flex-col items-center py-3 gap-2.5 flex-shrink-0 z-20 border-r ${isLight ? 'bg-[#f1f5f9] border-[#e2e8f0]' : 'bg-[#040407] border-[#14141c]'}`}>
         <button
           onClick={() => handleSelectServer(servers[0])}
-          className="w-11 h-11 rounded-2xl bg-[#0e0e16] border border-[#222230] hover:border-white/40 flex items-center justify-center text-white cursor-pointer transition-all hover:rounded-xl shadow-md group relative"
+          className={`w-11 h-11 rounded-2xl border flex items-center justify-center cursor-pointer transition-all hover:rounded-xl shadow-md group relative ${
+            isLight ? 'bg-[#ffffff] border-[#cbd5e1] text-[#0f172a]' : 'bg-[#0e0e16] border-[#222230] text-white hover:border-white/40'
+          }`}
           title="Spytify Hub"
         >
-          <Radio className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
-          <span className="absolute -left-1 w-1 h-5 rounded-r-full bg-white opacity-0 group-hover:opacity-100 transition-opacity"></span>
+          <Radio className="w-5 h-5 group-hover:scale-110 transition-transform" style={{ color: accentColor }} />
+          <span className="absolute -left-1 w-1 h-5 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: accentColor }}></span>
         </button>
 
-        <div className="w-8 h-[1px] bg-[#1a1a24] my-1" />
+        <div className={`w-8 h-[1px] my-1 ${isLight ? 'bg-[#e2e8f0]' : 'bg-[#1a1a24]'}`} />
 
         {/* Server Icons List */}
         <div className="flex-1 w-full flex flex-col items-center gap-2 overflow-y-auto no-scrollbar">
@@ -839,8 +844,9 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               <div key={srv.id} className="relative group flex items-center justify-center w-full">
                 <span 
                   className={`absolute left-0 w-1 rounded-r-full transition-all duration-200 ${
-                    isSelected ? 'h-8 bg-white' : 'h-2 bg-zinc-600 opacity-0 group-hover:opacity-100'
+                    isSelected ? 'h-8' : 'h-2 bg-zinc-600 opacity-0 group-hover:opacity-100'
                   }`}
+                  style={{ backgroundColor: isSelected ? accentColor : undefined }}
                 />
                 
                 <button
@@ -848,12 +854,14 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   className={`w-11 h-11 flex items-center justify-center text-base font-bold cursor-pointer transition-all duration-200 shadow-md ${
                     isSelected 
                       ? 'rounded-xl border' 
+                      : isLight 
+                      ? 'rounded-3xl hover:rounded-xl bg-[#ffffff] border border-[#cbd5e1] text-[#334155] hover:text-[#0f172a]'
                       : 'rounded-3xl hover:rounded-xl bg-[#0e0e14] border border-[#1e1e28] hover:border-white/30 text-zinc-300 hover:text-white'
                   }`}
                   style={{
-                    backgroundColor: isSelected ? `${srv.accent_color}25` : undefined,
-                    borderColor: isSelected ? srv.accent_color : undefined,
-                    color: isSelected ? srv.accent_color : undefined,
+                    backgroundColor: isSelected ? `${accentColor}25` : undefined,
+                    borderColor: isSelected ? accentColor : undefined,
+                    color: isSelected ? accentColor : undefined,
                   }}
                   title={srv.name}
                 >
@@ -866,7 +874,11 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
           {/* NÚT "+" ĐỂ MỞ BẢNG TỰ TẠO SERVER */}
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="w-11 h-11 rounded-3xl hover:rounded-xl bg-[#0e0e14] hover:bg-emerald-950/40 border border-[#20202a] hover:border-emerald-500/50 text-[#666] hover:text-emerald-400 flex items-center justify-center transition-all cursor-pointer mt-1 group"
+            className={`w-11 h-11 rounded-3xl hover:rounded-xl border flex items-center justify-center transition-all cursor-pointer mt-1 group ${
+              isLight 
+                ? 'bg-[#ffffff] border-[#cbd5e1] text-[#64748b] hover:text-[#0f172a] hover:border-emerald-500'
+                : 'bg-[#0e0e14] hover:bg-emerald-950/40 border-[#20202a] hover:border-emerald-500/50 text-[#666] hover:text-emerald-400'
+            }`}
             title={getTranslation(language, 'community.createServer')}
           >
             <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
@@ -875,26 +887,26 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       </div>
 
       {/* ──────────────── 2. CHANNELS LIST COLUMN ──────────────── */}
-      <div className="w-56 bg-[#09090e] border-r border-[#15151e] flex flex-col flex-shrink-0 z-10">
+      <div className={`w-56 flex flex-col flex-shrink-0 z-10 border-r ${isLight ? 'bg-[#f8fafc] border-[#e2e8f0]' : 'bg-[#09090e] border-[#15151e]'}`}>
         {/* Server Header */}
-        <div className="p-3.5 border-b border-[#15151e] flex items-center justify-between">
+        <div className={`p-3.5 border-b flex items-center justify-between ${isLight ? 'border-[#e2e8f0]' : 'border-[#15151e]'}`}>
           <div className="truncate">
-            <h2 className="text-xs font-black tracking-tight text-white flex items-center gap-1.5 truncate">
+            <h2 className={`text-xs font-black tracking-tight flex items-center gap-1.5 truncate ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>
               <span>{selectedServer.name}</span>
               {selectedServer.badge && (
                 <span 
                   className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold tracking-wider uppercase border"
                   style={{
-                    backgroundColor: `${selectedServer.accent_color}18`,
-                    color: selectedServer.accent_color,
-                    borderColor: `${selectedServer.accent_color}35`,
+                    backgroundColor: `${accentColor}18`,
+                    color: accentColor,
+                    borderColor: `${accentColor}35`,
                   }}
                 >
                   {selectedServer.badge}
                 </span>
               )}
             </h2>
-            <p className="text-[10px] text-[#777] font-mono truncate mt-0.5">{selectedServer.description}</p>
+            <p className={`text-[10px] font-mono truncate mt-0.5 ${isLight ? 'text-[#64748b]' : 'text-[#777]'}`}>{selectedServer.description}</p>
           </div>
         </div>
 
@@ -902,7 +914,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
         <div className="flex-1 overflow-y-auto p-2 space-y-4 text-xs font-sans">
           {/* Text Channels Group */}
           <div>
-            <p className="text-[10px] font-mono font-bold text-[#555] uppercase tracking-wider px-2 mb-1 flex items-center gap-1.5">
+            <p className={`text-[10px] font-mono font-bold uppercase tracking-wider px-2 mb-1 flex items-center gap-1.5 ${isLight ? 'text-[#64748b]' : 'text-[#555]'}`}>
               <MessageSquare className="w-3 h-3 text-[#444]" />
               {getTranslation(language, 'community.textChannels')}
             </p>
@@ -917,8 +929,8 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                       onClick={() => handleSelectChannel(channel)}
                       className={`w-full px-2.5 py-1.5 rounded-lg flex items-center gap-2 text-left cursor-pointer transition-colors ${
                         isCur
-                          ? 'bg-[#151520] text-white font-semibold'
-                          : 'text-[#888899] hover:text-white hover:bg-[#0e0e14]'
+                          ? isLight ? 'bg-[#e2e8f0] text-[#0f172a] font-semibold' : 'bg-[#151520] text-white font-semibold'
+                          : isLight ? 'text-[#64748b] hover:text-[#0f172a] hover:bg-[#edf2f7]' : 'text-[#888899] hover:text-white hover:bg-[#0e0e14]'
                       }`}
                     >
                       <Hash className="w-3.5 h-3.5 text-[#666]" />
@@ -931,7 +943,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
 
           {/* Voice Call Channels Group */}
           <div>
-            <p className="text-[10px] font-mono font-bold text-[#555] uppercase tracking-wider px-2 mb-1 flex items-center gap-1.5">
+            <p className={`text-[10px] font-mono font-bold uppercase tracking-wider px-2 mb-1 flex items-center gap-1.5 ${isLight ? 'text-[#64748b]' : 'text-[#555]'}`}>
               <Mic className="w-3 h-3 text-[#444]" />
               {getTranslation(language, 'community.voiceChannels')}
             </p>
@@ -950,12 +962,12 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                         onClick={() => handleSelectChannel(channel)}
                         className={`w-full px-2.5 py-1.5 rounded-lg flex items-center justify-between text-left cursor-pointer transition-colors ${
                           isCur
-                            ? 'bg-[#161624] text-white font-semibold'
-                            : 'text-[#888899] hover:text-white hover:bg-[#0e0e14]'
+                            ? isLight ? 'bg-[#e2e8f0] text-[#0f172a] font-semibold' : 'bg-[#161624] text-white font-semibold'
+                            : isLight ? 'text-[#64748b] hover:text-[#0f172a] hover:bg-[#edf2f7]' : 'text-[#888899] hover:text-white hover:bg-[#0e0e14]'
                         }`}
                       >
                         <div className="flex items-center gap-2 truncate">
-                          <Volume2 className="w-3.5 h-3.5" style={{ color: isVoiceActive ? '#00FF66' : selectedServer.accent_color }} />
+                          <Volume2 className="w-3.5 h-3.5" style={{ color: isVoiceActive ? '#00FF66' : accentColor }} />
                           <span className="truncate">{getChannelName(channel)}</span>
                         </div>
                         {isVoiceActive ? (
@@ -964,7 +976,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                             {getTranslation(language, 'community.connected')}
                           </span>
                         ) : (
-                          <span className="text-[9px] font-mono text-[#666] bg-[#121218] px-1.5 py-0.2 rounded border border-[#202028]">
+                          <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded border ${isLight ? 'bg-[#ffffff] text-[#64748b] border-[#cbd5e1]' : 'bg-[#121218] text-[#666] border-[#202028]'}`}>
                             {totalVoiceCount} {getTranslation(language, 'community.members')}
                           </span>
                         )}
@@ -974,7 +986,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                       {(isVoiceActive || otherVoiceParticipants.length > 0) && (
                         <div className="pl-6 space-y-1 py-0.5">
                           {isVoiceActive && (
-                            <div className="flex items-center gap-1.5 text-[11px] text-emerald-300 font-semibold">
+                            <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-semibold">
                               <div className="relative">
                                 <span className="w-4 h-4 rounded-full bg-emerald-950 border border-emerald-400 text-[9px] font-bold flex items-center justify-center text-white">
                                   {(currentUser?.display_name || 'B').charAt(0)}
@@ -989,9 +1001,9 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                           )}
 
                           {otherVoiceParticipants.map(vp => (
-                            <div key={vp.id} className="flex items-center gap-1.5 text-[11px] text-[#aaa]">
+                            <div key={vp.id} className={`flex items-center gap-1.5 text-[11px] ${isLight ? 'text-[#475569]' : 'text-[#aaa]'}`}>
                               <div className="relative">
-                                <span className="w-4 h-4 rounded-full bg-[#161622] border border-white/20 text-[9px] font-bold flex items-center justify-center text-white">
+                                <span className={`w-4 h-4 rounded-full border text-[9px] font-bold flex items-center justify-center ${isLight ? 'bg-[#e2e8f0] border-[#cbd5e1] text-[#0f172a]' : 'bg-[#161622] border-white/20 text-white'}`}>
                                   {vp.name.charAt(0)}
                                 </span>
                                 {vp.isSpeaking && (
@@ -1018,7 +1030,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
 
         {/* Persistent Bottom Voice Status Bar */}
         {connectedVoiceChannel && (
-          <div className="p-2.5 border-t border-[#181824] bg-[#0c0c14] flex flex-col gap-2 animate-in fade-in duration-200">
+          <div className={`p-2.5 border-t flex flex-col gap-2 animate-in fade-in duration-200 ${isLight ? 'bg-[#f1f5f9] border-[#e2e8f0]' : 'bg-[#0c0c14] border-[#181824]'}`}>
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-1.5">
                 <Signal className="w-3.5 h-3.5 text-emerald-400" />
@@ -1027,7 +1039,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     {getTranslation(language, 'community.callConnected')}
                     <span className="text-[8px] text-[#666]">18ms</span>
                   </p>
-                  <p className="text-[9px] text-[#888] font-mono truncate max-w-[120px]">
+                  <p className={`text-[9px] font-mono truncate max-w-[120px] ${isLight ? 'text-[#64748b]' : 'text-[#888]'}`}>
                     {selectedServer.channels.find(c => c.id === connectedVoiceChannel) ? getChannelName(selectedServer.channels.find(c => c.id === connectedVoiceChannel)!) : getTranslation(language, 'community.voiceChannelFallback')}
                   </p>
                 </div>
@@ -1048,6 +1060,8 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 className={`flex-1 py-1 px-2 rounded-md border text-[10px] font-mono flex items-center justify-center gap-1 transition-colors cursor-pointer ${
                   isMuted 
                     ? 'bg-red-950/40 border-red-500/40 text-red-300' 
+                    : isLight 
+                    ? 'bg-[#ffffff] border-[#cbd5e1] text-[#334155] hover:text-[#0f172a]'
                     : 'bg-[#151522] border-[#262638] text-zinc-300 hover:text-white'
                 }`}
               >
@@ -1060,6 +1074,8 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 className={`flex-1 py-1 px-2 rounded-md border text-[10px] font-mono flex items-center justify-center gap-1 transition-colors cursor-pointer ${
                   isDeafened 
                     ? 'bg-red-950/40 border-red-500/40 text-red-300' 
+                    : isLight 
+                    ? 'bg-[#ffffff] border-[#cbd5e1] text-[#334155] hover:text-[#0f172a]'
                     : 'bg-[#151522] border-[#262638] text-zinc-300 hover:text-white'
                 }`}
               >
@@ -1070,7 +1086,11 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               <button
                 onClick={() => setIsAudioSettingsOpen(true)}
                 title={getTranslation(language, 'community.audioSettingsTitle')}
-                className="p-1.5 rounded-md bg-[#151522] hover:bg-[#202030] border border-[#262638] text-[#888899] hover:text-[#00E5FF] transition-colors cursor-pointer"
+                className={`p-1.5 rounded-md border transition-colors cursor-pointer ${
+                  isLight 
+                    ? 'bg-[#ffffff] hover:bg-[#edf2f7] border-[#cbd5e1] text-[#64748b] hover:text-[#0f172a]' 
+                    : 'bg-[#151522] hover:bg-[#202030] border-[#262638] text-[#888899] hover:text-[#00E5FF]'
+                }`}
               >
                 <Settings className="w-3 h-3" />
               </button>
@@ -1080,9 +1100,9 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       </div>
 
       {/* ──────────────── 3. MAIN CONTENT (CHAT / VOICE / STAGE) ──────────────── */}
-      <div className="flex-1 flex flex-col h-full bg-[#0a0a0f] overflow-hidden">
+      <div className={`flex-1 flex flex-col h-full overflow-hidden ${isLight ? 'bg-[#ffffff]' : 'bg-[#0a0a0f]'}`}>
         {/* Channel Header Bar */}
-        <div className="h-12 px-4 border-b border-[#151520] bg-black/50 backdrop-blur flex items-center justify-between flex-shrink-0">
+        <div className={`h-12 px-4 border-b flex items-center justify-between flex-shrink-0 ${isLight ? 'bg-[#ffffff]/80 backdrop-blur border-[#e2e8f0]' : 'bg-black/50 backdrop-blur border-[#151520]'}`}>
           <div className="flex items-center gap-2 truncate">
             {isVoice ? (
               <Mic className="w-4 h-4 text-emerald-400" />
@@ -1091,11 +1111,11 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             ) : (
               <Hash className="w-4 h-4 text-[#777]" />
             )}
-            <h3 className="text-xs font-bold text-white tracking-wide truncate">{getChannelName(selectedChannel)}</h3>
+            <h3 className={`text-xs font-bold tracking-wide truncate ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>{getChannelName(selectedChannel)}</h3>
             {selectedChannel.topic && (
               <>
-                <span className="text-[#333]">|</span>
-                <p className="text-[11px] text-[#777] font-mono truncate hidden sm:block">{getChannelTopic(selectedChannel)}</p>
+                <span className={isLight ? 'text-[#cbd5e1]' : 'text-[#333]'}>|</span>
+                <p className={`text-[11px] font-mono truncate hidden sm:block ${isLight ? 'text-[#64748b]' : 'text-[#777]'}`}>{getChannelTopic(selectedChannel)}</p>
               </>
             )}
           </div>
@@ -1108,6 +1128,8 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               className={`p-2 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
                 isMemberListVisible
                   ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-400 shadow-[0_0_10px_rgba(0,255,102,0.2)]'
+                  : isLight
+                  ? 'bg-[#ffffff] hover:bg-[#f1f5f9] border-[#cbd5e1] text-[#64748b] hover:text-[#0f172a]'
                   : 'bg-[#12121c] hover:bg-[#1a1a2a] border-[#222234] text-[#888899] hover:text-white'
               }`}
             >
@@ -1118,24 +1140,30 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
 
         {/* ──────── 3A. DISCORD VOICE CALL ROOM VIEW ──────── */}
         {isVoice ? (
-          <div className="flex-1 flex flex-col p-6 items-center justify-between overflow-y-auto bg-gradient-to-b from-[#08080f] to-[#040407]">
+          <div className={`flex-1 flex flex-col p-6 items-center justify-between overflow-y-auto ${
+            isLight ? 'bg-gradient-to-b from-[#f8fafc] to-[#f1f5f9]' : 'bg-gradient-to-b from-[#08080f] to-[#040407]'
+          }`}>
             <div className="text-center my-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-xs font-mono mb-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                 {getTranslation(language, 'community.voiceHeader')}
               </div>
-              <h2 className="text-lg font-black tracking-tight text-white">{getChannelName(selectedChannel)}</h2>
-              <p className="text-xs text-[#777] font-mono mt-0.5">{getTranslation(language, 'community.voiceSubheader')}</p>
+              <h2 className={`text-lg font-black tracking-tight ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>{getChannelName(selectedChannel)}</h2>
+              <p className={`text-xs font-mono mt-0.5 ${isLight ? 'text-[#64748b]' : 'text-[#777]'}`}>{getTranslation(language, 'community.voiceSubheader')}</p>
             </div>
 
             {/* Participants Grid */}
             {(!isConnectedToCurrentVoice && voiceParticipants.filter(p => p.id !== myParticipantIdRef.current).length === 0) ? (
-              <div className="flex flex-col items-center justify-center p-8 rounded-2xl bg-[#0c0c14] border border-[#20202e] text-center max-w-sm my-auto">
-                <div className="w-14 h-14 rounded-2xl bg-[#141420] border border-[#252536] flex items-center justify-center mb-3 text-emerald-400">
+              <div className={`flex flex-col items-center justify-center p-8 rounded-2xl border text-center max-w-sm my-auto ${
+                isLight ? 'bg-[#ffffff] border-[#cbd5e1]' : 'bg-[#0c0c14] border-[#20202e]'
+              }`}>
+                <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center mb-3 text-emerald-400 ${
+                  isLight ? 'bg-[#f1f5f9] border-[#cbd5e1]' : 'bg-[#141420] border-[#252536]'
+                }`}>
                   <Radio className="w-7 h-7" />
                 </div>
-                <h3 className="text-sm font-bold text-white mb-1">{getTranslation(language, 'community.voiceEmpty')}</h3>
-                <p className="text-[11px] text-[#777] font-mono mb-4 leading-relaxed">
+                <h3 className={`text-sm font-bold mb-1 ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>{getTranslation(language, 'community.voiceEmpty')}</h3>
+                <p className={`text-[11px] font-mono mb-4 leading-relaxed ${isLight ? 'text-[#64748b]' : 'text-[#777]'}`}>
                   {getTranslation(language, 'community.voiceEmptyHint')}
                 </p>
                 <button
@@ -1152,18 +1180,18 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   {/* Current User Card */}
                   {isConnectedToCurrentVoice && (
                     <div 
-                      className={`rounded-2xl bg-[#1e1f22] border-2 transition-all duration-300 flex flex-col items-center justify-center relative aspect-[4/3] shadow-xl overflow-hidden group ${
+                      className={`rounded-2xl border-2 transition-all duration-300 flex flex-col items-center justify-center relative aspect-[4/3] shadow-xl overflow-hidden group ${
                         isUserSpeaking
                           ? 'border-emerald-500 shadow-[0_0_24px_rgba(0,255,102,0.35)]'
-                          : 'border-[#2b2d31]'
+                          : isLight ? 'bg-[#ffffff] border-[#cbd5e1]' : 'bg-[#1e1f22] border-[#2b2d31]'
                       }`}
                     >
                       <div className="relative">
                         <div 
-                          className={`w-20 h-20 rounded-full overflow-hidden border-2 flex items-center justify-center text-xl font-bold text-white transition-all ${
+                          className={`w-20 h-20 rounded-full overflow-hidden border-2 flex items-center justify-center text-xl font-bold transition-all ${
                             isUserSpeaking
-                              ? 'border-emerald-400 ring-4 ring-emerald-400/30 scale-105 shadow-[0_0_20px_#00FF66]'
-                              : 'border-white/20 bg-[#2b2d31]'
+                              ? 'border-emerald-400 ring-4 ring-emerald-400/30 scale-105 shadow-[0_0_20px_#00FF66] text-white'
+                              : isLight ? 'border-[#cbd5e1] bg-[#f1f5f9] text-[#0f172a]' : 'border-white/20 bg-[#2b2d31] text-white'
                           }`}
                         >
                           {currentUser?.avatar ? (
@@ -1180,11 +1208,13 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                       </div>
 
                       {/* Discord Bottom-left Tag */}
-                      <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-sm border border-white/10 max-w-[85%] truncate">
-                        <span className="text-xs font-bold text-white tracking-wide truncate">
+                      <div className={`absolute bottom-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md backdrop-blur-sm border max-w-[85%] truncate ${
+                        isLight ? 'bg-[#ffffff]/90 border-[#cbd5e1]' : 'bg-black/75 border-white/10'
+                      }`}>
+                        <span className={`text-xs font-bold tracking-wide truncate ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>
                           {currentUser?.display_name || getTranslation(language, 'community.you')}
                         </span>
-                        <span className="text-[10px] text-zinc-400 font-mono">({getTranslation(language, 'community.you')})</span>
+                        <span className={`text-[10px] font-mono ${isLight ? 'text-[#64748b]' : 'text-zinc-400'}`}>({getTranslation(language, 'community.you')})</span>
                         {isUserSpeaking && (
                           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping ml-1" />
                         )}
@@ -1198,18 +1228,18 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     .map(vp => (
                       <div 
                         key={vp.id}
-                        className={`rounded-2xl bg-[#1e1f22] border-2 transition-all duration-300 flex flex-col items-center justify-center relative aspect-[4/3] shadow-xl overflow-hidden group ${
+                        className={`rounded-2xl border-2 transition-all duration-300 flex flex-col items-center justify-center relative aspect-[4/3] shadow-xl overflow-hidden group ${
                           vp.isSpeaking 
                             ? 'border-emerald-500 shadow-[0_0_24px_rgba(0,255,102,0.35)]' 
-                            : 'border-[#2b2d31]'
+                            : isLight ? 'bg-[#ffffff] border-[#cbd5e1]' : 'bg-[#1e1f22] border-[#2b2d31]'
                         }`}
                       >
                         <div className="relative">
                           <div 
-                            className={`w-20 h-20 rounded-full overflow-hidden border-2 flex items-center justify-center text-xl font-bold text-white transition-all ${
+                            className={`w-20 h-20 rounded-full overflow-hidden border-2 flex items-center justify-center text-xl font-bold transition-all ${
                               vp.isSpeaking 
-                                ? 'border-emerald-400 ring-4 ring-emerald-400/30 scale-105 shadow-[0_0_20px_#00FF66]' 
-                                : 'border-white/20 bg-[#2b2d31]'
+                                ? 'border-emerald-400 ring-4 ring-emerald-400/30 scale-105 shadow-[0_0_20px_#00FF66] text-white' 
+                                : isLight ? 'border-[#cbd5e1] bg-[#f1f5f9] text-[#0f172a]' : 'border-white/20 bg-[#2b2d31] text-white'
                             }`}
                           >
                             {vp.name.charAt(0).toUpperCase()}
@@ -1385,9 +1415,11 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             )}
 
             {/* Messages Stream */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 custom-scrollbar">
+            <div className={`flex-1 overflow-y-auto p-4 space-y-3.5 custom-scrollbar ${isLight ? 'bg-[#ffffff]' : 'bg-[#0a0a0f]'}`}>
               {messages.map(msg => (
-                <div key={msg.id} className="flex items-start gap-3 group hover:bg-[#101016]/40 -mx-2 px-2 py-1 rounded-lg transition-colors">
+                <div key={msg.id} className={`flex items-start gap-3 -mx-2 px-2 py-1 rounded-lg transition-colors ${
+                  isLight ? 'hover:bg-[#f1f5f9]' : 'hover:bg-[#101016]/40'
+                }`}>
                   <div 
                     className="w-8 h-8 rounded-lg overflow-hidden border border-white/10 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5"
                     style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
@@ -1401,24 +1433,28 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
 
                   <div className="flex-1 overflow-hidden">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-xs font-bold text-white hover:underline cursor-pointer">
+                      <span className={`text-xs font-bold hover:underline cursor-pointer ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>
                         {msg.display_name}
                       </span>
-                      <span className="text-[10px] text-[#555] font-mono">@{msg.username}</span>
-                      <span className="text-[10px] text-[#444] font-mono">{msg.created_at}</span>
+                      <span className={`text-[10px] font-mono ${isLight ? 'text-[#64748b]' : 'text-[#555]'}`}>@{msg.username}</span>
+                      <span className={`text-[10px] font-mono ${isLight ? 'text-[#94a3b8]' : 'text-[#444]'}`}>{msg.created_at}</span>
                     </div>
 
                     {msg.content && (
-                      <p className="text-xs text-[#ddd] leading-relaxed break-words font-sans">
+                      <p className={`text-xs leading-relaxed break-words font-sans ${isLight ? 'text-[#334155]' : 'text-[#ddd]'}`}>
                         {msg.content}
                       </p>
                     )}
 
                     {/* Embedded Track Card */}
                     {msg.track_embed && (
-                      <div className="mt-2 max-w-sm p-2.5 rounded-xl bg-[#12121c] border border-[#222234] hover:border-white/30 transition-colors flex items-center justify-between gap-3 shadow-md">
+                      <div className={`mt-2 max-w-sm p-2.5 rounded-xl border transition-colors flex items-center justify-between gap-3 shadow-md ${
+                        isLight ? 'bg-[#ffffff] border-[#cbd5e1] hover:border-[#94a3b8]' : 'bg-[#12121c] border-[#222234] hover:border-white/30'
+                      }`}>
                         <div className="flex items-center gap-2.5 truncate">
-                          <div className="w-9 h-9 rounded-lg overflow-hidden bg-[#1a1a26] flex items-center justify-center flex-shrink-0">
+                          <div className={`w-9 h-9 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0 ${
+                            isLight ? 'bg-[#f1f5f9]' : 'bg-[#1a1a26]'
+                          }`}>
                             {msg.track_embed.cover_art ? (
                               <img src={msg.track_embed.cover_art} alt="cover" className="w-full h-full object-cover" />
                             ) : (
@@ -1426,14 +1462,16 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                             )}
                           </div>
                           <div className="truncate">
-                            <p className="text-xs font-bold text-white truncate">{msg.track_embed.title}</p>
-                            <p className="text-[10px] text-[#888] font-mono truncate">{msg.track_embed.artist}</p>
+                            <p className={`text-xs font-bold truncate ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>{msg.track_embed.title}</p>
+                            <p className={`text-[10px] font-mono truncate ${isLight ? 'text-[#64748b]' : 'text-[#888]'}`}>{msg.track_embed.artist}</p>
                           </div>
                         </div>
 
                         <button
                           onClick={() => onPlayTrack(msg.track_embed!)}
-                          className="p-2 rounded-lg bg-white/10 hover:bg-white text-white hover:text-black transition-all cursor-pointer flex-shrink-0"
+                          className={`p-2 rounded-lg transition-all cursor-pointer flex-shrink-0 ${
+                            isLight ? 'bg-[#f1f5f9] hover:bg-[#0f172a] text-[#0f172a] hover:text-white' : 'bg-white/10 hover:bg-white text-white hover:text-black'
+                          }`}
                           title="Phát bài này"
                         >
                           <Play className="w-3.5 h-3.5 fill-current" />
@@ -1447,12 +1485,14 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             </div>
 
             {/* Message Input Box */}
-            <div className="p-3 border-t border-[#151520] bg-[#07070a] flex-shrink-0">
+            <div className={`p-3 border-t flex-shrink-0 ${isLight ? 'bg-[#ffffff] border-[#e2e8f0]' : 'bg-[#07070a] border-[#151520]'}`}>
               {attachCurrentTrack && currentTrack && (
-                <div className="mb-2 p-1.5 px-3 rounded-lg bg-[#12121a] border border-[#242434] text-xs font-mono text-[#aaa] flex items-center justify-between">
+                <div className={`mb-2 p-1.5 px-3 rounded-lg border text-xs font-mono flex items-center justify-between ${
+                  isLight ? 'bg-[#f8fafc] border-[#cbd5e1] text-[#334155]' : 'bg-[#12121a] border-[#242434] text-[#aaa]'
+                }`}>
                   <span className="flex items-center gap-2 truncate text-cyan-400">
                     <Music className="w-3.5 h-3.5" />
-                    {getTranslation(language, 'community.attachTrack')} <b className="text-white truncate">{currentTrack.title} - {currentTrack.artist}</b>
+                    {getTranslation(language, 'community.attachTrack')} <b className={`truncate ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>{currentTrack.title} - {currentTrack.artist}</b>
                   </span>
                   <button 
                     onClick={() => setAttachCurrentTrack(false)} 
@@ -1471,6 +1511,8 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     className={`p-2 rounded-xl border transition-colors cursor-pointer flex-shrink-0 ${
                       attachCurrentTrack 
                         ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300' 
+                        : isLight 
+                        ? 'bg-[#f1f5f9] border-[#cbd5e1] text-[#64748b] hover:text-[#0f172a]' 
                         : 'bg-[#101016] border-[#222230] text-[#777] hover:text-white'
                     }`}
                     title={getTranslation(language, 'community.attachTrackTooltip')}
@@ -1484,7 +1526,11 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   value={inputText}
                   onChange={e => setInputText(e.target.value)}
                   placeholder={getTranslation(language, 'community.sendMessageTo', { channel: selectedChannel.name })}
-                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-[#101018] text-white text-xs border border-[#222232] focus:border-white/50 outline-none transition-colors font-sans"
+                  className={`flex-1 px-3.5 py-2.5 rounded-xl text-xs border outline-none transition-colors font-sans ${
+                    isLight 
+                      ? 'bg-[#f8fafc] text-[#0f172a] border-[#cbd5e1] placeholder-[#94a3b8] focus:border-[#64748b]' 
+                      : 'bg-[#101018] text-white border-[#222232] placeholder-[#666] focus:border-white/50'
+                  }`}
                 />
 
                 <button
@@ -1506,20 +1552,24 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
 
       {/* ──────────────── 4. ONLINE MEMBERS LIST (RIGHT RAIL) ──────────────── */}
       <div 
-        className={`bg-[#07070b] border-l border-[#15151e] flex flex-col overflow-y-auto no-scrollbar text-xs select-none transition-all duration-300 ease-in-out ${
+        className={`border-l flex flex-col overflow-y-auto no-scrollbar text-xs select-none transition-all duration-300 ease-in-out ${
+          isLight ? 'bg-[#f8fafc] border-[#e2e8f0]' : 'bg-[#07070b] border-[#15151e]'
+        } ${
           isMemberListVisible 
             ? 'w-52 p-3 opacity-100 flex-shrink-0' 
             : 'w-0 p-0 border-l-0 opacity-0 overflow-hidden pointer-events-none'
         }`}
       >
-        <div className="flex items-center justify-between mb-2.5 pb-1 border-b border-[#14141e]">
-          <p className="text-[10px] font-mono font-bold text-[#666] uppercase tracking-wider">
+        <div className={`flex items-center justify-between mb-2.5 pb-1 border-b ${isLight ? 'border-[#e2e8f0]' : 'border-[#14141e]'}`}>
+          <p className={`text-[10px] font-mono font-bold uppercase tracking-wider ${isLight ? 'text-[#64748b]' : 'text-[#666]'}`}>
             {getTranslation(language, 'community.online')} — {onlineMembers.length}
           </p>
           <button
             onClick={toggleMemberList}
             title={getTranslation(language, 'community.toggleMemberList')}
-            className="p-1 rounded hover:bg-[#161622] text-[#666] hover:text-white transition-colors cursor-pointer"
+            className={`p-1 rounded transition-colors cursor-pointer ${
+              isLight ? 'hover:bg-[#e2e8f0] text-[#64748b] hover:text-[#0f172a]' : 'hover:bg-[#161622] text-[#666] hover:text-white'
+            }`}
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -1536,11 +1586,15 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   member: mem,
                 });
               }}
-              className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#12121c] transition-colors cursor-pointer group"
+              className={`flex items-center gap-2 p-1.5 rounded-lg transition-colors cursor-pointer group ${
+                isLight ? 'hover:bg-[#e2e8f0]' : 'hover:bg-[#12121c]'
+              }`}
             >
               <div className="relative flex-shrink-0">
                 <div 
-                  className="w-7 h-7 rounded-lg bg-[#14141e] border border-white/10 flex items-center justify-center font-bold text-[10px] text-white"
+                  className={`w-7 h-7 rounded-lg border flex items-center justify-center font-bold text-[10px] ${
+                    isLight ? 'bg-[#ffffff] border-[#cbd5e1] text-[#0f172a]' : 'bg-[#14141e] border-white/10 text-white'
+                  }`}
                 >
                   {mem.name.charAt(0).toUpperCase()}
                 </div>
@@ -1548,7 +1602,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               </div>
               <div className="truncate flex-1 min-w-0">
                 <div className="flex items-center gap-1">
-                  <span className="text-xs font-semibold text-zinc-300 truncate">{mem.name}</span>
+                  <span className={`text-xs font-semibold truncate ${isLight ? 'text-[#0f172a]' : 'text-zinc-300'}`}>{mem.name}</span>
                   {mem.isHost && (
                     <span className="text-[8px] font-mono font-bold text-amber-400 bg-amber-400/10 px-1 py-0.2 rounded flex-shrink-0">
                       DJ
@@ -1589,17 +1643,21 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       {/* ──────────────── MEMBER CONTEXT MENU (CHUỘT PHẢI ĐỂ MỜI DJ VÀO CHAT) ──────────────── */}
       {memberMenu && (
         <div 
-          className="fixed z-50 w-52 bg-[#0e0e18] border border-[#26263a] rounded-xl shadow-2xl py-1 text-xs text-white backdrop-blur-md animate-in fade-in duration-150"
+          className={`fixed z-50 w-52 rounded-xl shadow-2xl py-1 text-xs backdrop-blur-md animate-in fade-in duration-150 border ${
+            isLight ? 'bg-[#ffffff] border-[#cbd5e1] text-[#0f172a]' : 'bg-[#0e0e18] border-[#26263a] text-white'
+          }`}
           style={{ top: memberMenu.y, left: memberMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="px-3 py-1.5 border-b border-[#1c1c28] flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-[#181826] border border-white/20 flex items-center justify-center font-bold text-[10px] text-white">
+          <div className={`px-3 py-1.5 border-b flex items-center gap-2 ${isLight ? 'border-[#e2e8f0]' : 'border-[#1c1c28]'}`}>
+            <div className={`w-6 h-6 rounded-full border flex items-center justify-center font-bold text-[10px] ${
+              isLight ? 'bg-[#f1f5f9] border-[#cbd5e1] text-[#0f172a]' : 'bg-[#181826] border-white/20 text-white'
+            }`}>
               {memberMenu.member.name.charAt(0)}
             </div>
             <div className="truncate flex-1">
-              <p className="font-bold text-white truncate text-[11px]">{memberMenu.member.name}</p>
-              <p className="text-[9px] text-emerald-400 font-mono">{memberMenu.member.role}</p>
+              <p className={`font-bold truncate text-[11px] ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>{memberMenu.member.name}</p>
+              <p className="text-[9px] text-emerald-500 font-mono">{memberMenu.member.role}</p>
             </div>
           </div>
 
@@ -1607,7 +1665,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             {voiceParticipants.some(p => p.id === memberMenu.member.id) ? (
               <button
                 onClick={() => handleRemoveMemberFromVoice(memberMenu.member.id)}
-                className="w-full px-2.5 py-1.5 rounded-lg hover:bg-red-950/40 text-red-300 flex items-center gap-2 text-left cursor-pointer transition-colors"
+                className="w-full px-2.5 py-1.5 rounded-lg hover:bg-red-950/40 text-red-400 flex items-center gap-2 text-left cursor-pointer transition-colors"
               >
                 <PhoneOff className="w-3.5 h-3.5 text-red-400" />
                 <span>{getTranslation(language, 'community.removeFromVoice')}</span>
@@ -1615,7 +1673,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             ) : (
               <button
                 onClick={() => handleInviteMemberToVoice(memberMenu.member)}
-                className="w-full px-2.5 py-1.5 rounded-lg hover:bg-emerald-950/40 text-emerald-300 flex items-center gap-2 text-left cursor-pointer transition-colors"
+                className="w-full px-2.5 py-1.5 rounded-lg hover:bg-emerald-950/40 text-emerald-500 flex items-center gap-2 text-left cursor-pointer transition-colors"
               >
                 <PhoneCall className="w-3.5 h-3.5 text-emerald-400" />
                 <span>{memberMenu.member.isHost ? getTranslation(language, 'community.callDj') : getTranslation(language, 'community.inviteToVoice')}</span>
@@ -1627,7 +1685,9 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 setInputText(prev => `${prev}@${memberMenu.member.name} `);
                 setMemberMenu(null);
               }}
-              className="w-full px-2.5 py-1.5 rounded-lg hover:bg-[#161624] text-zinc-300 hover:text-white flex items-center gap-2 text-left cursor-pointer transition-colors"
+              className={`w-full px-2.5 py-1.5 rounded-lg flex items-center gap-2 text-left cursor-pointer transition-colors ${
+                isLight ? 'hover:bg-[#f1f5f9] text-[#334155] hover:text-[#0f172a]' : 'hover:bg-[#161624] text-zinc-300 hover:text-white'
+              }`}
             >
               <MessageSquare className="w-3.5 h-3.5 text-[#888]" />
               <span>{getTranslation(language, 'community.mentionInChat')}</span>
@@ -1800,14 +1860,18 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       {/* ──────────────── 6. MODAL CÀI ĐẶT ÂM LƯỢNG MIC & LOA (VOICE AUDIO SETTINGS) ──────────────── */}
       {isAudioSettingsOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-[#0c0c14] border border-[#222234] rounded-2xl p-6 shadow-2xl relative text-white max-h-[90vh] overflow-y-auto">
+          <div className={`w-full max-w-lg border rounded-2xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto ${
+            isLight ? 'bg-[#ffffff] border-[#cbd5e1] text-[#0f172a]' : 'bg-[#0c0c14] border-[#222234] text-white'
+          }`}>
             {/* Close Button */}
             <button
               onClick={() => {
                 stopMicTest();
                 setIsAudioSettingsOpen(false);
               }}
-              className="absolute top-4 right-4 p-1.5 rounded-full text-[#666] hover:text-white hover:bg-[#181824] transition-colors cursor-pointer"
+              className={`absolute top-4 right-4 p-1.5 rounded-full transition-colors cursor-pointer ${
+                isLight ? 'text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9]' : 'text-[#666] hover:text-white hover:bg-[#181824]'
+              }`}
             >
               <X className="w-4 h-4" />
             </button>
@@ -1820,11 +1884,11 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 <Sliders className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-black tracking-tight text-white flex items-center gap-2">
+                <h3 className={`text-base font-black tracking-tight flex items-center gap-2 ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>
                   <span>{getTranslation(language, 'community.audioSettingsTitle')}</span>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-950/50 border border-cyan-500/30 text-cyan-400">VOICE LAB</span>
                 </h3>
-                <p className="text-[11px] text-[#777] font-mono">{getTranslation(language, 'community.audioSettingsSubtitle')}</p>
+                <p className={`text-[11px] font-mono ${isLight ? 'text-[#64748b]' : 'text-[#777]'}`}>{getTranslation(language, 'community.audioSettingsSubtitle')}</p>
               </div>
             </div>
 

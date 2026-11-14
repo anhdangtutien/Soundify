@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Activity, Radio, Sparkles } from 'lucide-react';
+import { Activity, Radio } from 'lucide-react';
 import { LanguageCode, getTranslation } from '../locales/i18n';
 
 interface AudioVisualizerProps {
@@ -9,6 +9,7 @@ interface AudioVisualizerProps {
   source?: string;
   audioElement?: HTMLAudioElement | null;
   currentTime?: number;
+  themeMode?: 'dark' | 'light';
 }
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -18,11 +19,7 @@ const SOURCE_LABELS: Record<string, string> = {
   local: 'Local File',
 };
 
-const NUM_BARS = 36;
-const BAR_WIDTH = 3.8;
-const BAR_SPACING = 3;
-
-// Global singleton Web Audio Analyser to safely attach without multiple source errors
+// Global singleton Web Audio Analyser
 let sharedAudioCtx: AudioContext | null = null;
 let sharedAnalyser: AnalyserNode | null = null;
 let connectedElement: HTMLAudioElement | null = null;
@@ -39,7 +36,7 @@ function setupAudioAnalyser(audioEl?: HTMLAudioElement | null): AnalyserNode | n
     if (!sharedAnalyser) {
       sharedAnalyser = sharedAudioCtx.createAnalyser();
       sharedAnalyser.fftSize = 256;
-      sharedAnalyser.smoothingTimeConstant = 0.78;
+      sharedAnalyser.smoothingTimeConstant = 0.82;
     }
     if (connectedElement !== audioEl) {
       try {
@@ -55,67 +52,24 @@ function setupAudioAnalyser(audioEl?: HTMLAudioElement | null): AnalyserNode | n
   }
 }
 
-// 36 Distinct Acoustic Frequency Bands with realistic studio acoustic characteristics
-// (Sub-bass, Bass kick, Snare body, Vocal resonance, Presence, Hi-hat shimmer)
-const BAND_PROFILES = [
-  // 1. Sub-Bass (0 - 4): 20Hz - 60Hz. Heavy downbeat kick pulse, high amplitude
-  { freqMult: 3.8, speed: 2.1, maxAmp: 0.95, phase: 0.1, isKick: true,  eq: 1.05 },
-  { freqMult: 4.4, speed: 2.3, maxAmp: 0.92, phase: 0.6, isKick: true,  eq: 1.02 },
-  { freqMult: 5.1, speed: 2.0, maxAmp: 0.88, phase: 1.2, isKick: true,  eq: 1.00 },
-  { freqMult: 5.9, speed: 2.5, maxAmp: 0.85, phase: 1.8, isKick: true,  eq: 0.98 },
-  { freqMult: 6.8, speed: 2.2, maxAmp: 0.82, phase: 2.4, isKick: false, eq: 0.95 },
-  // 2. Punch & Bassline (5 - 9): 60Hz - 250Hz. Bass guitar, 808 glide, body punch
-  { freqMult: 7.6,  speed: 3.1, maxAmp: 0.80, phase: 0.9, isKick: false, eq: 0.95 },
-  { freqMult: 8.7,  speed: 3.4, maxAmp: 0.76, phase: 1.5, isKick: false, eq: 0.92 },
-  { freqMult: 9.9,  speed: 3.2, maxAmp: 0.74, phase: 2.2, isKick: false, eq: 0.90 },
-  { freqMult: 11.2, speed: 3.7, maxAmp: 0.71, phase: 2.9, isKick: false, eq: 0.88 },
-  { freqMult: 12.6, speed: 3.5, maxAmp: 0.68, phase: 3.6, isKick: false, eq: 0.86 },
-  // 3. Low Mids & Snare (10 - 15): 250Hz - 800Hz. Snare snap, piano low, vocal chest
-  { freqMult: 14.2, speed: 4.2, maxAmp: 0.68, phase: 0.5, isSnare: true,  eq: 0.88 },
-  { freqMult: 15.9, speed: 4.6, maxAmp: 0.65, phase: 1.3, isSnare: true,  eq: 0.90 },
-  { freqMult: 17.8, speed: 4.4, maxAmp: 0.64, phase: 2.1, isSnare: true,  eq: 0.92 },
-  { freqMult: 19.8, speed: 4.8, maxAmp: 0.62, phase: 2.8, isSnare: true,  eq: 0.93 },
-  { freqMult: 22.0, speed: 5.1, maxAmp: 0.60, phase: 3.5, isSnare: true,  eq: 0.95 },
-  { freqMult: 24.3, speed: 5.5, maxAmp: 0.58, phase: 4.2, isSnare: false, eq: 0.96 },
-  // 4. Vocal & Lead Mids (16 - 22): 800Hz - 2.5kHz. Synth melody, vocal consonants
-  { freqMult: 26.8, speed: 5.9, maxAmp: 0.58, phase: 0.7, isSnare: false, eq: 0.98 },
-  { freqMult: 29.5, speed: 6.3, maxAmp: 0.56, phase: 1.6, isSnare: false, eq: 1.00 },
-  { freqMult: 32.4, speed: 6.1, maxAmp: 0.54, phase: 2.4, isSnare: false, eq: 1.02 },
-  { freqMult: 35.5, speed: 6.6, maxAmp: 0.53, phase: 3.2, isSnare: false, eq: 1.04 },
-  { freqMult: 38.8, speed: 7.0, maxAmp: 0.52, phase: 3.9, isSnare: false, eq: 1.06 },
-  { freqMult: 42.3, speed: 7.4, maxAmp: 0.50, phase: 4.7, isSnare: false, eq: 1.08 },
-  { freqMult: 46.0, speed: 7.8, maxAmp: 0.49, phase: 5.4, isSnare: false, eq: 1.10 },
-  // 5. Presence & Treble (23 - 28): 2.5kHz - 6kHz. Guitars, crispness, percussion
-  { freqMult: 50.0, speed: 8.4, maxAmp: 0.48, phase: 0.8, isHat: true, eq: 1.14 },
-  { freqMult: 54.3, speed: 8.9, maxAmp: 0.47, phase: 1.7, isHat: true, eq: 1.18 },
-  { freqMult: 58.9, speed: 9.3, maxAmp: 0.46, phase: 2.6, isHat: true, eq: 1.22 },
-  { freqMult: 63.8, speed: 9.8, maxAmp: 0.45, phase: 3.4, isHat: true, eq: 1.26 },
-  { freqMult: 69.0, speed: 10.3, maxAmp: 0.44, phase: 4.2, isHat: true, eq: 1.30 },
-  { freqMult: 74.5, speed: 10.8, maxAmp: 0.43, phase: 5.0, isHat: true, eq: 1.34 },
-  // 6. Brilliance & Air (29 - 35): 6kHz - 16kHz. Fast metallic hi-hats, cymbals, air
-  { freqMult: 80.4,  speed: 11.5, maxAmp: 0.44, phase: 0.4, isHat: true, eq: 1.38 },
-  { freqMult: 86.7,  speed: 12.2, maxAmp: 0.43, phase: 1.5, isHat: true, eq: 1.42 },
-  { freqMult: 93.4,  speed: 13.0, maxAmp: 0.41, phase: 2.6, isHat: true, eq: 1.46 },
-  { freqMult: 100.6, speed: 13.8, maxAmp: 0.40, phase: 3.7, isHat: true, eq: 1.50 },
-  { freqMult: 108.3, speed: 14.6, maxAmp: 0.38, phase: 4.8, isHat: true, eq: 1.54 },
-  { freqMult: 116.5, speed: 15.4, maxAmp: 0.36, phase: 5.8, isHat: true, eq: 1.58 },
-  { freqMult: 125.2, speed: 16.3, maxAmp: 0.34, phase: 1.0, isHat: true, eq: 1.62 }
-];
-
 export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   isPlaying,
   language = 'vi',
-  accentColor = '#ff2a55',
+  accentColor = '#00E5FF',
   source,
   audioElement,
   currentTime = 0,
+  themeMode = 'dark',
 }) => {
+  const isLight = themeMode === 'light';
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const heightsRef = useRef<number[]>(new Array(NUM_BARS).fill(2));
-  const peaksRef = useRef<number[]>(new Array(NUM_BARS).fill(2));
-  const peakHoldRef = useRef<number[]>(new Array(NUM_BARS).fill(0));
   const freqDataRef = useRef<Uint8Array | null>(null);
-  const timeOffsetRef = useRef(0);
+  
+  // Smooth energy & amplitude physics for decay and idle breathing
+  const energyRef = useRef(0.1);
+  const bassRef = useRef(0.1);
+  const trebleRef = useRef(0.1);
+  const phaseRef = useRef(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -128,147 +82,181 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
       freqDataRef.current = new Uint8Array(analyser.frequencyBinCount);
     }
 
-    // Dynamic vertical gradient with bright neon cap
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, '#ffffff');
-    gradient.addColorStop(0.25, accentColor);
-    gradient.addColorStop(0.7, `${accentColor}bb`);
-    gradient.addColorStop(1, `${accentColor}25`);
-
-    const drawFrame = (playing: boolean, timeSecs: number) => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      let hasRealFreq = false;
-      if (playing && analyser && freqDataRef.current) {
-        analyser.getByteFrequencyData(freqDataRef.current as any);
-        let energySum = 0;
-        for (let i = 0; i < 24; i++) energySum += freqDataRef.current[i];
-        if (energySum > 15) hasRealFreq = true;
-      }
-
-      // Rhythm clock parameters (~124 BPM rhythm feel)
-      const bpm = 124;
-      const beatRate = bpm / 60; // ~2.06 beats per second
-      const beatPhase = (timeSecs * beatRate) % 1.0;
-      // Kick transient curve on downbeats (1 and 3)
-      const kickPulse = Math.pow(Math.max(0, 1 - beatPhase * 3.8), 2.2);
-      // Snare transient on backbeats (2 and 4)
-      const snarePhase = (timeSecs * beatRate + 0.5) % 1.0;
-      const snarePulse = Math.pow(Math.max(0, 1 - snarePhase * 4.2), 2.0);
-      // 16th-note hi-hat flutter
-      const hatPhase = (timeSecs * beatRate * 4.0) % 1.0;
-      const hatFlutter = Math.pow(Math.max(0, 1 - hatPhase * 2.8), 1.8);
-
-      for (let i = 0; i < NUM_BARS; i++) {
-        const x = i * (BAR_WIDTH + BAR_SPACING) + 6;
-        let targetHeight = 2;
-
-        if (playing) {
-          if (hasRealFreq && freqDataRef.current) {
-            // Map 36 bars logarithmically across 128 FFT bins
-            const binIdx = Math.min(
-              freqDataRef.current.length - 1,
-              Math.floor(Math.pow(i / NUM_BARS, 1.45) * (freqDataRef.current.length - 1))
-            );
-            const rawVal = freqDataRef.current[binIdx] / 255;
-            // High-frequency compensation EQ slope (Pink noise tilt)
-            const eqGain = 0.85 + (i / NUM_BARS) * 0.95;
-            targetHeight = Math.max(3, rawVal * eqGain * (canvas.height - 4));
-          } else {
-            // Realistic Multi-Band Acoustic DSP Engine
-            const band = BAND_PROFILES[i];
-            
-            // Primary rhythmic wave per band
-            const wave1 = Math.sin(timeSecs * band.speed + band.phase) * 0.5 + 0.5;
-            // Secondary harmonic overtone
-            const wave2 = Math.cos(timeSecs * (band.speed * 1.6) + band.phase * 2.1) * 0.3 + 0.3;
-            // High frequency micro-jitter for live organic texture
-            const jitter = Math.sin(timeSecs * (band.speed * 3.3) + i * 2.7) * 0.15 + 0.15;
-
-            let amp = (wave1 * 0.6 + wave2 * 0.3 + jitter * 0.1) * band.maxAmp;
-
-            // Inject musical transients based on frequency zone
-            if (band.isKick) {
-              amp += kickPulse * 0.55;
-            }
-            if (band.isSnare) {
-              amp += snarePulse * 0.45;
-            }
-            if (band.isHat) {
-              amp += hatFlutter * 0.38;
-            }
-
-            // Natural bass-heavy spectral slope
-            const spectralCurve = 1.0 - (i / NUM_BARS) * 0.28;
-            const normalized = Math.min(1.0, Math.max(0.08, amp * band.eq * spectralCurve));
-            targetHeight = Math.max(3, normalized * (canvas.height - 4));
-          }
-        }
-
-        // ─── Studio Ballistics Physics (Fast Attack & Exponential Decay) ───
-        const prevHeight = heightsRef.current[i] || 2;
-        let newHeight: number;
-        if (targetHeight > prevHeight) {
-          // Instant Attack (shoots up dynamically)
-          newHeight = prevHeight * 0.22 + targetHeight * 0.78;
-        } else {
-          // Smooth Viscous Decay (gravity falloff)
-          newHeight = Math.max(2, prevHeight * 0.84);
-        }
-        heightsRef.current[i] = newHeight;
-
-        // ─── Floating Peak Hold Caps with Gravity Drop ───
-        const currentPeak = peaksRef.current[i] || 2;
-        let holdCount = peakHoldRef.current[i] || 0;
-        let nextPeak = currentPeak;
-
-        if (newHeight >= currentPeak) {
-          nextPeak = newHeight;
-          holdCount = 8; // Hold at the peak for ~8 frames before falling
-        } else if (holdCount > 0) {
-          holdCount -= 1;
-        } else {
-          // Falling with realistic gravity
-          nextPeak = Math.max(newHeight, currentPeak - 0.75);
-        }
-
-        peaksRef.current[i] = nextPeak;
-        peakHoldRef.current[i] = holdCount;
-
-        // ─── Render Bar ───
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.roundRect(x, canvas.height - newHeight, BAR_WIDTH, newHeight, [1.5, 1.5, 0.5, 0.5]);
-        ctx.fill();
-
-        // ─── Render Floating Peak Cap Dot ───
-        if (playing && nextPeak > 4) {
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(x, Math.max(0, canvas.height - nextPeak - 1.2), BAR_WIDTH, 1.2);
-        }
-      }
-    };
-
-    if (!isPlaying) {
-      heightsRef.current.fill(2);
-      peaksRef.current.fill(2);
-      drawFrame(false, 0);
-      return;
-    }
-
     let animationId = 0;
     let lastTime = performance.now();
-    const FRAME_INTERVAL = 1000 / 60; // Smooth 60fps display
+    const FRAME_INTERVAL = 1000 / 60; // 60fps smooth physics
 
     const renderLoop = (now: number) => {
       animationId = requestAnimationFrame(renderLoop);
       if (document.hidden || document.documentElement.classList.contains('app-minimized')) return;
       if (now - lastTime < FRAME_INTERVAL) return;
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
       lastTime = now;
 
-      timeOffsetRef.current += 0.022;
-      const currentSecs = currentTime > 0 ? currentTime : timeOffsetRef.current;
-      drawFrame(true, currentSecs);
+      const width = canvas.width;
+      const height = canvas.height;
+      const midY = height / 2;
+
+      ctx.clearRect(0, 0, width, height);
+
+      // ─── Audio Data or Synthesis Sampling ───
+      let targetEnergy = 0.08; // Idle breathing baseline
+      let targetBass = 0.05;
+      let targetTreble = 0.05;
+
+      if (isPlaying) {
+        let hasRealFreq = false;
+        if (analyser && freqDataRef.current) {
+          analyser.getByteFrequencyData(freqDataRef.current as any);
+          let sum = 0;
+          let bSum = 0;
+          let tSum = 0;
+          const len = Math.min(64, freqDataRef.current.length);
+          for (let i = 0; i < len; i++) {
+            const val = freqDataRef.current[i];
+            sum += val;
+            if (i < 8) bSum += val;
+            if (i > 24) tSum += val;
+          }
+          if (sum > 20) {
+            hasRealFreq = true;
+            targetEnergy = Math.min(1.0, (sum / len) / 180);
+            targetBass = Math.min(1.0, (bSum / 8) / 190);
+            targetTreble = Math.min(1.0, (tSum / (len - 24)) / 160);
+          }
+        }
+
+        if (!hasRealFreq) {
+          // Acoustic rhythm synthesis (124 BPM)
+          const timeSecs = currentTime > 0 ? currentTime : now / 1000;
+          const beatPhase = (timeSecs * 2.06) % 1.0;
+          const kick = Math.pow(Math.max(0, 1 - beatPhase * 3.5), 2.2);
+          const snarePhase = (timeSecs * 2.06 + 0.5) % 1.0;
+          const snare = Math.pow(Math.max(0, 1 - snarePhase * 4.0), 2.0);
+          const flutter = Math.sin(timeSecs * 14) * 0.2 + 0.2;
+
+          targetBass = 0.25 + kick * 0.65;
+          targetTreble = 0.2 + snare * 0.5 + flutter * 0.3;
+          targetEnergy = Math.min(1.0, targetBass * 0.6 + targetTreble * 0.4);
+        }
+      }
+
+      // ─── Smooth Exponential Decay / Ballistics ───
+      // When stopping, energy gently decays into the relaxing idle wave (never cuts abruptly)
+      const attackSpeed = 0.35;
+      const decaySpeed = isPlaying ? 0.08 : 0.035; // gentle, graceful falloff when stopped
+
+      energyRef.current += (targetEnergy - energyRef.current) * (targetEnergy > energyRef.current ? attackSpeed : decaySpeed);
+      bassRef.current += (targetBass - bassRef.current) * (targetBass > bassRef.current ? attackSpeed : decaySpeed);
+      trebleRef.current += (targetTreble - trebleRef.current) * (targetTreble > trebleRef.current ? attackSpeed : decaySpeed);
+
+      const speedMult = isPlaying ? (1.8 + energyRef.current * 2.5) : 0.85;
+      phaseRef.current += dt * speedMult;
+      const phase = phaseRef.current;
+      const amp = energyRef.current * (height * 0.42);
+
+      // ─── Multi-Layer Fluid Waveform Rendering ───
+      const points = 70;
+      const step = width / (points - 1);
+
+      // Layer 1: Ambient Under-Glow Translucent Area Fill
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+      bgGrad.addColorStop(0, `${accentColor}30`);
+      bgGrad.addColorStop(0.5, `${accentColor}12`);
+      bgGrad.addColorStop(1, `${accentColor}00`);
+
+      ctx.beginPath();
+      ctx.moveTo(0, height);
+
+      for (let i = 0; i < points; i++) {
+        const x = i * step;
+        const normX = i / (points - 1);
+        // Window function so ends smoothly taper to zero at edges
+        const edgeWindow = Math.sin(normX * Math.PI);
+
+        const w1 = Math.sin(normX * 9.0 - phase * 3.2);
+        const w2 = Math.cos(normX * 17.0 + phase * 2.1) * (0.35 + trebleRef.current * 0.45);
+        const w3 = Math.sin(normX * 4.0 - phase * 1.5) * (0.5 + bassRef.current * 0.6);
+
+        const yOffset = (w1 * 0.5 + w2 * 0.3 + w3 * 0.4) * amp * edgeWindow;
+        const y = midY + yOffset;
+
+        if (i === 0) {
+          ctx.lineTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+
+      ctx.lineTo(width, height);
+      ctx.closePath();
+      ctx.fillStyle = bgGrad;
+      ctx.fill();
+
+      // Layer 2: Secondary Harmonic Wave (Ghost wave with 35% opacity)
+      ctx.save();
+      ctx.beginPath();
+      ctx.strokeStyle = `${accentColor}55`;
+      ctx.lineWidth = 1.2;
+      for (let i = 0; i < points; i++) {
+        const x = i * step;
+        const normX = i / (points - 1);
+        const edgeWindow = Math.sin(normX * Math.PI);
+        const waveGhost = Math.sin(normX * 13.0 + phase * 2.6) * Math.cos(normX * 5.0 - phase);
+        const y = midY + waveGhost * (amp * 0.7) * edgeWindow;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      // Layer 3: Primary Neon Crest Wave with Glow
+      ctx.save();
+      ctx.shadowColor = accentColor;
+      ctx.shadowBlur = isPlaying ? 9 : 4;
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = 2.0;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      ctx.beginPath();
+      for (let i = 0; i < points; i++) {
+        const x = i * step;
+        const normX = i / (points - 1);
+        const edgeWindow = Math.sin(normX * Math.PI);
+
+        const w1 = Math.sin(normX * 9.0 - phase * 3.2);
+        const w2 = Math.cos(normX * 17.0 + phase * 2.1) * (0.35 + trebleRef.current * 0.45);
+        const w3 = Math.sin(normX * 4.0 - phase * 1.5) * (0.5 + bassRef.current * 0.6);
+
+        const yOffset = (w1 * 0.5 + w2 * 0.3 + w3 * 0.4) * amp * edgeWindow;
+        const y = midY + yOffset;
+
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      // Layer 4: Bright Peak Center Accent
+      if (isPlaying && energyRef.current > 0.4) {
+        ctx.save();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        for (let i = Math.floor(points * 0.3); i <= Math.floor(points * 0.7); i++) {
+          const x = i * step;
+          const normX = i / (points - 1);
+          const edgeWindow = Math.sin(normX * Math.PI);
+          const w1 = Math.sin(normX * 9.0 - phase * 3.2);
+          const w2 = Math.cos(normX * 17.0 + phase * 2.1) * (0.35 + trebleRef.current * 0.45);
+          const y = midY + (w1 * 0.5 + w2 * 0.3) * amp * edgeWindow;
+          if (i === Math.floor(points * 0.3)) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
     };
 
     animationId = requestAnimationFrame(renderLoop);
@@ -278,34 +266,45 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   const sourceLabel = source ? SOURCE_LABELS[source] || source.toUpperCase() : '—';
 
   return (
-    <div className="w-full bg-[#09090d] border border-[#161622] rounded-xl px-4 py-2 flex items-center justify-between mb-3.5 select-none shadow-sm backdrop-blur">
+    <div className={`w-full rounded-xl px-4 py-2 flex items-center justify-between mb-3.5 select-none shadow-sm backdrop-blur transition-colors ${
+      isLight 
+        ? 'bg-[#ffffff]/90 border border-[#e2e8f0] shadow-sm' 
+        : 'bg-[#09090d] border border-[#161622]'
+    }`}>
       <div className="flex items-center gap-3">
         <div 
-          className="w-7 h-7 rounded-lg flex items-center justify-center border"
+          className="w-7 h-7 rounded-lg flex items-center justify-center border transition-all"
           style={{
             backgroundColor: `${accentColor}18`,
             borderColor: `${accentColor}35`,
             color: accentColor,
+            boxShadow: isPlaying ? `0 0 10px ${accentColor}30` : undefined,
           }}
         >
           <Activity className={`w-3.5 h-3.5 ${isPlaying ? 'animate-pulse' : ''}`} />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-white font-bold tracking-tight">
+          <span className={`text-xs font-bold tracking-tight ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>
             {isPlaying ? getTranslation(language, 'visualizer.playing') : getTranslation(language, 'visualizer.idle')}
           </span>
-          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#13131c] text-zinc-400 border border-white/10">
+          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded border ${
+            isLight 
+              ? 'bg-[#f1f5f9] text-[#475569] border-[#cbd5e1]' 
+              : 'bg-[#13131c] text-zinc-400 border-white/10'
+          }`}>
             {sourceLabel}
           </span>
           <span className="hidden md:inline-flex items-center gap-1 text-[9px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-500/20 px-1.5 py-0.2 rounded">
             <Radio className="w-2.5 h-2.5 animate-pulse" />
-            HI-FI FFT 60FPS
+            FLUID WAVEFORM 60FPS
           </span>
         </div>
       </div>
 
       <div className="flex items-center gap-2.5">
-        <div className="hidden sm:flex items-center gap-4 text-[9px] font-mono font-bold text-[#666] tracking-wider uppercase pr-1">
+        <div className={`hidden sm:flex items-center gap-4 text-[9px] font-mono font-bold tracking-wider uppercase pr-1 ${
+          isLight ? 'text-[#94a3b8]' : 'text-[#666]'
+        }`}>
           <span className="hover:text-emerald-400 transition-colors">BASS</span>
           <span className="hover:text-cyan-400 transition-colors">MID</span>
           <span className="hover:text-amber-400 transition-colors">TREBLE</span>

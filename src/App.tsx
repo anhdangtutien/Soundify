@@ -44,13 +44,23 @@ export default function App() {
   const [isShuffle, setIsShuffle] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [isPlayerBarMinimized, setIsPlayerBarMinimized] = useState(false);
+  const userManuallyMinimizedRef = useRef(false);
+  const previousViewRef = useRef(currentView);
 
   // Auto-collapse sidebar & minimize playerbar when entering Stations & Chat
+  // Auto-restore playerbar when leaving Stations & Chat (unless user manually minimized)
   useEffect(() => {
     if (currentView === 'community') {
       setIsSidebarCollapsed(true);
-      setIsPlayerBarMinimized(true);
+      if (!userManuallyMinimizedRef.current) {
+        setIsPlayerBarMinimized(true);
+      }
+    } else if (previousViewRef.current === 'community') {
+      if (!userManuallyMinimizedRef.current) {
+        setIsPlayerBarMinimized(false);
+      }
     }
+    previousViewRef.current = currentView;
   }, [currentView]);
 
   // Download & Offline Music Storage State
@@ -1895,7 +1905,6 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
   // ─── AUDIUS & LOCAL HTML5 audio element (Native decoding for MP3, M4A, WebM, etc.) ───
   useEffect(() => {
     const audio = new Audio();
-    audio.crossOrigin = "anonymous";
     onlineAudioRef.current = audio;
     const onTimeUpdate = () => {
       if (
@@ -2257,8 +2266,10 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
       // Play direct 320kbps Open Stream via HTML5 Audio
       if (onlineAudioRef.current) {
         onlineAudioRef.current.pause();
+        onlineAudioRef.current.removeAttribute('crossorigin');
         onlineAudioRef.current.src = track.path_or_url;
         onlineAudioRef.current.volume = volume;
+        onlineAudioRef.current.load();
         onlineAudioRef.current.play()
           .then(() => {
             isPlayingRef.current = true;
@@ -2266,8 +2277,24 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
             showNotification(`▶ Audius Hi-Fi 320K: ${track.title}`);
           })
           .catch((err) => {
-            console.error(err);
-            showNotification(getTranslation(language, 'toast.audiusError'));
+            console.warn('Audius direct play error, trying discovery fallback:', err);
+            // Fallback node URL
+            if (track.path_or_url.includes('discoveryprovider.audius.co') && onlineAudioRef.current) {
+              const fallbackUrl = track.path_or_url.replace('discoveryprovider.audius.co', 'api.audius.co');
+              onlineAudioRef.current.src = fallbackUrl;
+              onlineAudioRef.current.load();
+              onlineAudioRef.current.play()
+                .then(() => {
+                  isPlayingRef.current = true;
+                  setIsPlaying(true);
+                  showNotification(`▶ Audius Hi-Fi 320K: ${track.title}`);
+                })
+                .catch(() => {
+                  showNotification(getTranslation(language, 'toast.audiusError'));
+                });
+            } else {
+              showNotification(getTranslation(language, 'toast.audiusError'));
+            }
           });
       }
     }
@@ -3208,6 +3235,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 source={currentTrack?.source} 
                 audioElement={onlineAudioRef.current}
                 currentTime={currentTime}
+                themeMode={themeMode}
               />
             )}
 
@@ -3266,6 +3294,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 onPlayTrack={handlePlayTrack}
                 accentColor={accentColor}
                 language={language}
+                themeMode={themeMode}
               />
             ) : currentView === 'profile' ? (
               <ProfileView
@@ -3502,9 +3531,15 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
       {/* Ultra Hi-Fi Player Bar */}
       <PlayerBar
         language={language}
-        isCompact={currentView === 'community'}
+        isCompact={true}
         isMinimized={isPlayerBarMinimized}
-        onToggleMinimize={() => setIsPlayerBarMinimized(p => !p)}
+        onToggleMinimize={() => {
+          setIsPlayerBarMinimized(prev => {
+            const next = !prev;
+            userManuallyMinimizedRef.current = next;
+            return next;
+          });
+        }}
         currentTrack={currentTrack}
         upcomingTrack={effectiveUpcomingTrack}
         upcomingModeLabel={nextTrackPopup?.modeLabel || getPlaylistModeLabel(activeQueueContext)}

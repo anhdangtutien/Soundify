@@ -268,7 +268,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
       )}
 
       {/* Left: Track Info — Spy Minimalist style */}
-      <div className={`flex items-center ${isCompact ? 'gap-2.5 w-1/4 min-w-[180px] max-w-[280px]' : 'gap-3.5 w-1/4 min-w-[220px]'}`}>
+      <div className={`flex items-center ${isCompact ? 'gap-2 w-1/4 min-w-[200px] max-w-[340px]' : 'gap-3.5 w-1/4 min-w-[220px]'}`}>
         {currentTrack ? (
           <>
             <div className={`${isCompact ? 'w-8 h-8 rounded-md' : 'w-12 h-12 rounded-lg'} overflow-hidden bg-[#101014] flex-shrink-0 border border-[#202028] relative group shadow-sm transition-all`}>
@@ -307,7 +307,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                 <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current' : ''}`} />
               </button>
 
-              {onAddToAlbum && !isCompact && (
+              {onAddToAlbum && (
                 <button
                   onClick={onAddToAlbum}
                   title={getTranslation(language, 'player.addToAlbum')}
@@ -317,7 +317,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                 </button>
               )}
 
-              {onDownload && !isCompact && (
+              {onDownload && (
                 <button
                   onClick={() => onDownload(currentTrack)}
                   disabled={isDownloading || currentTrack.source === 'local' || Boolean(currentTrack.is_downloaded)}
