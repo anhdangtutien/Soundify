@@ -85,20 +85,6 @@ const BUILTIN_SERVERS: CommunityServer[] = [
       { id: 'ch_club_stage', name: 'rave-stage-club', type: 'stage', topic: 'Sân khấu Club Bass Boosted' },
     ],
   },
-  {
-    id: 'srv_vpop_lounge',
-    name: 'V-Pop Quán Quân',
-    description: 'Cộng đồng yêu nhạc Việt, Hit V-Pop, Ballad và Rap Việt thịnh hành.',
-    icon: '🔥',
-    badge: 'HOT',
-    accent_color: '#FF2A55',
-    channels: [
-      { id: 'ch_vpop_gen', name: 'tro-chuyen', type: 'text', topic: 'Tán gẫu và bàn luận âm nhạc Việt' },
-      { id: 'ch_vpop_share', name: 'de-xuat-bai-hat', type: 'text', topic: 'Gợi ý bài hát yêu thích' },
-      { id: 'ch_vpop_voice', name: 'Phòng Tán Gẫu Mic', type: 'voice', topic: 'Bật mic trò chuyện cùng các fan nhạc Việt' },
-      { id: 'ch_vpop_stage', name: 'live-lounge', type: 'stage', topic: 'Phòng nghe nhạc cùng nhau' },
-    ],
-  },
 ];
 
 // Server Template Presets for Custom Server Creator
