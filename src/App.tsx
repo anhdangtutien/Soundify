@@ -19,7 +19,7 @@ import { SplashScreen } from './components/SplashScreen';
 import { UpdateModal } from './components/UpdateModal';
 import { checkGitHubUpdate, UpdateInfo, CURRENT_VERSION } from './services/updater';
 import { cloudSyncPull, cloudSyncPush, isSupabaseConfigured, cloudRegisterUser } from './services/supabase';
-import { deduplicateTracks, optimizeThumbnailUrl, handleImageError } from './utils/trackUtils';
+import { deduplicateTracks, optimizeThumbnailUrl, handleImageError, sanitizeTrackTitle } from './utils/trackUtils';
 import { Track, PlaybackStatus, SearchResult, ViewType, User, UserAlbum, RecommendationResult } from './types';
 import { FolderPlus, Disc, CheckCircle2, Tv, X, Radio, ArrowUpRight, LogIn, Sun, Moon, Music, Play, Globe, Languages, ChevronDown, ChevronUp, EyeOff, Sparkles, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './components/Icons';
@@ -2808,10 +2808,12 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
       {/* ─── NEXT TRACK POPUP (SMOOTH PLAYBACK FLOATING WIDGET) ── */}
       {!isTrayMode && (nextTrackPopup || (isAiLoadingNext && currentTrack)) && isNextTrackPopupEnabled && (
         <div 
-          className={`fixed right-6 z-50 p-3.5 rounded-2xl backdrop-blur-xl border shadow-2xl flex flex-col gap-2.5 transition-all duration-300 ${
-            themeMode === 'light' ? 'bg-white/95' : 'bg-[#0c0c14]/95'
+          className={`fixed right-6 z-50 p-3.5 rounded-2xl border shadow-2xl flex flex-col gap-2.5 transition-all duration-300 ${
+            themeMode === 'light' ? 'bg-white/98' : 'bg-[#0c0c14]/98'
           } ${
-            showYoutubeVideo ? 'bottom-[300px]' : 'bottom-24'
+            showYoutubeVideo 
+              ? (isPlayerBarMinimized ? 'bottom-[220px]' : 'bottom-[300px]')
+              : (isPlayerBarMinimized ? 'bottom-13' : 'bottom-24')
           } ${
             isNextTrackPopupCollapsed ? 'w-80' : 'w-88 max-w-[calc(100vw-3rem)]'
           }`}
@@ -2829,7 +2831,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                   {currentTrack ? `⏭ ${getTranslation(language, 'popup.nextTrack')}:` : '✨ AI MIX:'}
                 </span>
                 <span className="text-xs font-semibold text-white truncate" title={nextTrackPopup.title}>
-                  {nextTrackPopup.title}
+                  {sanitizeTrackTitle(nextTrackPopup.title)}
                 </span>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
@@ -2976,7 +2978,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 </div>
                 <div className="flex-1 overflow-hidden">
                   <p className="text-xs font-bold text-white truncate" title={nextTrackPopup.title}>
-                    {nextTrackPopup.title}
+                    {sanitizeTrackTitle(nextTrackPopup.title)}
                   </p>
                   <p className="text-[11px] text-[#8e8e9f] truncate">
                     {nextTrackPopup.artist}

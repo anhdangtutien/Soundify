@@ -96,10 +96,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             />
           )}
           {view === 'community' && (
-            <span 
-              className="absolute top-2 right-2.5 w-1.5 h-1.5 rounded-full animate-ping" 
-              style={{ backgroundColor: accentColor }}
-            />
+            <span className="absolute top-2 right-2.5 flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: accentColor }} />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ backgroundColor: accentColor }} />
+            </span>
           )}
           {view === 'ai_mix' && (
             <span 

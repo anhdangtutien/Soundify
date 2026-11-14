@@ -5,7 +5,7 @@ import {
   Mic, MicOff, PhoneCall, PhoneOff, VolumeX, Signal, Shield,
   X, Sparkles, Palette, Check, Settings, Sliders, Volume1, RotateCcw, CheckCircle2,
   MoreVertical, UserPlus, UserCheck, Heart, UserMinus, Trash2, Copy, Crown, Info,
-  Search, ShieldAlert
+  Search, ShieldAlert, AlertCircle
 } from 'lucide-react';
 import { Track, User, CommunityServer, CommunityChannel, CommunityMessage, StageSession, VoiceParticipant, CommunityUserProfile } from '../types';
 import { getSupabaseClient } from '../services/supabase';
@@ -379,6 +379,8 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       role: string;
       listening: string | null;
       isHost?: boolean;
+      status?: string;
+      listeningTrack?: Track | null;
     };
   } | null>(null);
 
@@ -438,7 +440,13 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   const [registeredUsers, setRegisteredUsers] = useState<CommunityUserProfile[]>(() => {
     try {
       const saved = localStorage.getItem('spytify_registered_users');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed: CommunityUserProfile[] = JSON.parse(saved);
+        // Exclude fake/injected custom users from earlier searches
+        const filtered = parsed.filter(u => !u.id.startsWith('usr_custom_') && u.username !== 'a');
+        localStorage.setItem('spytify_registered_users', JSON.stringify(filtered));
+        return filtered;
+      }
     } catch {}
     return INITIAL_USERS;
   });
@@ -447,9 +455,23 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   const [followingUserIds, setFollowingUserIds] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem('spytify_user_following');
-      if (saved) return new Set(JSON.parse(saved));
+      if (saved) {
+        const parsed: string[] = JSON.parse(saved);
+        const filtered = parsed.filter(id => !id.startsWith('usr_custom_'));
+        localStorage.setItem('spytify_user_following', JSON.stringify(filtered));
+        return new Set(filtered);
+      }
     } catch {}
     return new Set(['usr_host', 'usr_agent_01']);
+  });
+
+  // Individual user volume scaling (Discord-style: 0% - 200%, default 100%)
+  const [userVolumes, setUserVolumes] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem('spytify_user_volumes');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {};
   });
 
   const [isFriendsTabActive, setIsFriendsTabActive] = useState(false);
@@ -457,6 +479,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   const [friendSearchQuery, setFriendSearchQuery] = useState('');
   const [addFriendInput, setAddFriendInput] = useState('');
   const [addFriendMessage, setAddFriendMessage] = useState<string | null>(null);
+  const [addFriendError, setAddFriendError] = useState<string | null>(null);
   const [selectedProfileUser, setSelectedProfileUser] = useState<CommunityUserProfile | null>(null);
 
   // ──────── SERVER SETTINGS STATE ────────
@@ -490,41 +513,70 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
     return followingUserIds.has(user.id) && Boolean(user.followsCurrentUser);
   };
 
-  const handleAddFriend = (e: React.FormEvent) => {
+  const handleAddFriend = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAddFriendMessage(null);
+    setAddFriendError(null);
+
     const cleanHandle = addFriendInput.trim().replace(/^@/, '').toLowerCase();
     if (!cleanHandle) return;
 
-    let target = registeredUsers.find(u => u.username.toLowerCase() === cleanHandle || u.display_name.toLowerCase() === cleanHandle);
+    // Check if adding self
+    if (currentUser && (currentUser.username?.toLowerCase() === cleanHandle || currentUser.display_name?.toLowerCase() === cleanHandle)) {
+      setAddFriendError('Bạn không thể tự kết bạn với chính mình!');
+      setTimeout(() => setAddFriendError(null), 3500);
+      return;
+    }
+
+    // 1. Check in known registered users
+    let target = registeredUsers.find(u => 
+      !u.id.startsWith('usr_custom_') && 
+      (u.username.toLowerCase() === cleanHandle || u.display_name.toLowerCase() === cleanHandle)
+    );
+
+    // 2. Query Supabase Cloud Database for real users
     if (!target) {
-      target = {
-        id: `usr_custom_${Date.now()}`,
-        username: cleanHandle,
-        display_name: addFriendInput.trim(),
-        avatar: null,
-        role: 'AGENT',
-        status: 'online',
-        bio: 'Mật vụ Spytify mới kết nối.',
-        listening: 'Die With A Smile - Lady Gaga & Bruno Mars',
-        listeningTrack: {
-          id: 'yt_die_smile',
-          title: 'Die With A Smile',
-          artist: 'Lady Gaga & Bruno Mars',
-          album: 'Billboard Hot 100 #1',
-          duration_secs: 251,
-          path_or_url: 'kPa7bsKwL-c',
-          source: 'youtube',
-          cover_art: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
-        },
-        isHost: false,
-        followsCurrentUser: true,
-        joinedAt: new Date().toISOString().split('T')[0],
-      };
-      setRegisteredUsers(prev => {
-        const next = [...prev, target!];
-        localStorage.setItem('spytify_registered_users', JSON.stringify(next));
-        return next;
-      });
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { data } = await client
+            .from('spytify_profiles')
+            .select('id, username, display_name, avatar')
+            .or(`username.ilike.${cleanHandle},display_name.ilike.${cleanHandle}`)
+            .limit(1);
+
+          if (data && data.length > 0) {
+            const p = data[0];
+            target = {
+              id: p.id,
+              username: p.username || cleanHandle,
+              display_name: p.display_name || p.username || cleanHandle,
+              avatar: p.avatar || null,
+              role: 'AGENT',
+              status: 'online',
+              bio: 'Mật vụ Spytify từ hệ thống đám mây.',
+              listening: null,
+              isHost: false,
+              followsCurrentUser: true,
+              joinedAt: new Date().toISOString().split('T')[0],
+            };
+            setRegisteredUsers(prev => {
+              const next = [...prev.filter(u => u.id !== target!.id), target!];
+              localStorage.setItem('spytify_registered_users', JSON.stringify(next));
+              return next;
+            });
+          }
+        } catch (err) {
+          console.error('Supabase user search failed:', err);
+        }
+      }
+    }
+
+    // 3. If STILL not found: STRICT REJECTION! Do NOT invent fake users!
+    if (!target) {
+      setAddFriendError(`Người dùng @${cleanHandle} không tồn tại trên hệ thống Spytify!`);
+      setTimeout(() => setAddFriendError(null), 3500);
+      return;
     }
 
     setFollowingUserIds(prev => {
@@ -534,7 +586,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       return next;
     });
 
-    setAddFriendMessage(`Đã kết bạn thành công với @${cleanHandle}! Hai bạn giờ là Bạn Bè.`);
+    setAddFriendMessage(`Đã kết bạn thành công với ${target.display_name} (@${target.username})!`);
     setAddFriendInput('');
     setTimeout(() => setAddFriendMessage(null), 3500);
   };
@@ -1432,8 +1484,15 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                           <span className="truncate">{getChannelName(channel)}</span>
                         </div>
                         {isVoiceActive ? (
-                          <span className="flex items-center gap-1 text-[9px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-500/20 px-1.5 py-0.2 rounded">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                          <span 
+                            className="flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.2 rounded border"
+                            style={{
+                              color: accentColor,
+                              backgroundColor: `${accentColor}18`,
+                              borderColor: `${accentColor}40`,
+                            }}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full animate-ping" style={{ backgroundColor: accentColor }} />
                             {getTranslation(language, 'community.connected')}
                           </span>
                         ) : (
@@ -1447,13 +1506,19 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                       {(isVoiceActive || otherVoiceParticipants.length > 0) && (
                         <div className="pl-6 space-y-1 py-0.5">
                           {isVoiceActive && (
-                            <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-semibold">
+                            <div className="flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: accentColor }}>
                               <div className="relative">
-                                <span className="w-4 h-4 rounded-full bg-emerald-950 border border-emerald-400 text-[9px] font-bold flex items-center justify-center text-white">
+                                <span 
+                                  className="w-4 h-4 rounded-full border text-[9px] font-bold flex items-center justify-center text-white"
+                                  style={{
+                                    backgroundColor: `${accentColor}30`,
+                                    borderColor: accentColor,
+                                  }}
+                                >
                                   {(currentUser?.display_name || 'B').charAt(0)}
                                 </span>
                                 {isUserSpeaking && (
-                                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full animate-ping" style={{ backgroundColor: accentColor }} />
                                 )}
                               </div>
                               <span className="truncate">{currentUser?.display_name || getTranslation(language, 'community.you')} ({getTranslation(language, 'community.you')})</span>
@@ -1462,13 +1527,32 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                           )}
 
                           {otherVoiceParticipants.map(vp => (
-                            <div key={vp.id} className={`flex items-center gap-1.5 text-[11px] ${isLight ? 'text-[#475569]' : 'text-[#aaa]'}`}>
+                            <div 
+                              key={vp.id} 
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                setMemberMenu({
+                                  x: Math.min(e.clientX, window.innerWidth - 240),
+                                  y: Math.min(e.clientY, window.innerHeight - 300),
+                                  member: {
+                                    id: vp.id,
+                                    name: vp.name,
+                                    role: vp.isHost ? 'DJ / HOST' : 'MEMBER',
+                                    isHost: vp.isHost,
+                                    status: 'online',
+                                    listening: vp.isHost ? 'After Dark - Mr.Kitty' : null,
+                                    listeningTrack: vp.isHost ? DEFAULT_DJ_TRACK : null,
+                                  },
+                                });
+                              }}
+                              className={`flex items-center gap-1.5 text-[11px] p-0.5 rounded hover:bg-white/5 cursor-pointer ${isLight ? 'text-[#475569]' : 'text-[#aaa]'}`}
+                            >
                               <div className="relative">
                                 <span className={`w-4 h-4 rounded-full border text-[9px] font-bold flex items-center justify-center ${isLight ? 'bg-[#e2e8f0] border-[#cbd5e1] text-[#0f172a]' : 'bg-[#161622] border-white/20 text-white'}`}>
                                   {vp.name.charAt(0)}
                                 </span>
                                 {vp.isSpeaking && (
-                                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full animate-ping" style={{ backgroundColor: accentColor }} />
                                 )}
                               </div>
                               <span className="truncate">{vp.name}</span>
@@ -1677,6 +1761,13 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-400 text-xs font-mono flex items-center gap-2 animate-in fade-in">
                       <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
                       <span>{addFriendMessage}</span>
+                    </div>
+                  )}
+
+                  {addFriendError && (
+                    <div className="p-3 rounded-xl bg-red-950/40 border border-red-500/40 text-red-400 text-xs font-mono flex items-center gap-2 animate-in fade-in">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                      <span>{addFriendError}</span>
                     </div>
                   )}
 
@@ -1915,61 +2006,121 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             isLight ? 'bg-gradient-to-b from-[#f8fafc] to-[#f1f5f9]' : 'bg-gradient-to-b from-[#08080f] to-[#040407]'
           }`}>
             {/* Participants Grid */}
-            {(!isConnectedToCurrentVoice && voiceParticipants.filter(p => p.id !== myParticipantIdRef.current).length === 0) ? (
-              <div className={`flex flex-col items-center justify-center p-8 rounded-2xl border text-center max-w-sm my-auto ${
-                isLight ? 'bg-[#ffffff] border-[#cbd5e1]' : 'bg-[#0c0c14] border-[#20202e]'
-              }`}>
-                <div 
-                  className={`w-14 h-14 rounded-2xl border flex items-center justify-center mb-3 ${
-                    isLight ? 'bg-[#f1f5f9] border-[#cbd5e1]' : 'bg-[#141420] border-[#252536]'
-                  }`}
-                  style={{ color: accentColor }}
-                >
-                  <Radio className="w-7 h-7" />
-                </div>
-                <h3 className={`text-sm font-bold mb-1 ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>{getTranslation(language, 'community.voiceEmpty')}</h3>
-                <p className={`text-[11px] font-mono mb-4 leading-relaxed ${isLight ? 'text-[#64748b]' : 'text-[#777]'}`}>
-                  {getTranslation(language, 'community.voiceEmptyHint')}
-                </p>
-                <button
-                  onClick={() => handleJoinVoiceCall()}
-                  style={{
-                    backgroundColor: accentColor,
-                    boxShadow: `0 0 20px ${accentColor}40`,
-                  }}
-                  className="py-2.5 px-6 rounded-xl font-bold text-xs uppercase tracking-wider text-black hover:opacity-90 transition-all flex items-center gap-2 cursor-pointer hover:scale-[1.02]"
-                >
-                  <PhoneCall className="w-4 h-4" />
-                  <span>{getTranslation(language, 'community.joinVoice')}</span>
-                </button>
-              </div>
-            ) : (
-              <div className="w-full max-w-4xl flex flex-col items-center pt-2 pb-6">
-                <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  {/* Current User Card */}
-                  {isConnectedToCurrentVoice && (
+            <div className="w-full max-w-4xl flex flex-col items-center pt-2 pb-6">
+              <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {/* Current User Card */}
+                {isConnectedToCurrentVoice && (
+                  <div 
+                    className={`rounded-2xl border-2 transition-all duration-300 flex flex-col items-center justify-center relative aspect-[4/3] shadow-xl overflow-hidden group ${
+                      isLight ? 'bg-[#ffffff] border-[#cbd5e1]' : 'bg-[#1e1f22] border-[#2b2d31]'
+                    }`}
+                    style={isUserSpeaking ? {
+                      borderColor: accentColor,
+                      boxShadow: `0 0 24px ${accentColor}50`
+                    } : undefined}
+                  >
+                    <div className="relative">
+                      <div 
+                        className={`w-20 h-20 rounded-full overflow-hidden border-2 flex items-center justify-center text-xl font-bold transition-all ${
+                          isLight ? 'border-[#cbd5e1] bg-[#f1f5f9] text-[#0f172a]' : 'border-white/20 bg-[#2b2d31] text-white'
+                        }`}
+                        style={isUserSpeaking ? {
+                          borderColor: accentColor,
+                          boxShadow: `0 0 20px ${accentColor}70`,
+                        } : undefined}
+                      >
+                        {currentUser?.avatar ? (
+                          <img src={currentUser.avatar} alt="avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{(currentUser?.display_name || 'B').charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+                      {isMuted && (
+                        <span className="absolute bottom-0 right-0 p-1.5 rounded-full bg-red-600 border-2 border-black text-white shadow-md">
+                          <MicOff className="w-3.5 h-3.5" />
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Discord Bottom-left Tag */}
+                    <div className={`absolute bottom-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md border max-w-[85%] truncate ${
+                      isLight ? 'bg-[#ffffff]/95 border-[#cbd5e1]' : 'bg-black/85 border-white/10'
+                    }`}>
+                      <span className={`text-xs font-bold tracking-wide truncate ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>
+                        {currentUser?.display_name || getTranslation(language, 'community.you')}
+                      </span>
+                      <span className={`text-[10px] font-mono ${isLight ? 'text-[#64748b]' : 'text-zinc-400'}`}>({getTranslation(language, 'community.you')})</span>
+                      {isUserSpeaking && (
+                        <span className="w-2 h-2 rounded-full animate-ping ml-1" style={{ backgroundColor: accentColor }} />
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Other Invited / Real Participants */}
+                {voiceParticipants
+                  .filter(vp => vp.id !== myParticipantIdRef.current)
+                  .map(vp => (
                     <div 
-                      className={`rounded-2xl border-2 transition-all duration-300 flex flex-col items-center justify-center relative aspect-[4/3] shadow-xl overflow-hidden group ${
-                        isUserSpeaking
-                          ? 'border-emerald-500 shadow-[0_0_24px_rgba(0,255,102,0.35)]'
-                          : isLight ? 'bg-[#ffffff] border-[#cbd5e1]' : 'bg-[#1e1f22] border-[#2b2d31]'
+                      key={vp.id}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setMemberMenu({
+                          x: Math.min(e.clientX, window.innerWidth - 240),
+                          y: Math.min(e.clientY, window.innerHeight - 300),
+                          member: {
+                            id: vp.id,
+                            name: vp.name,
+                            role: vp.isHost ? 'DJ / HOST' : 'MEMBER',
+                            isHost: vp.isHost,
+                            status: 'online',
+                            listening: vp.isHost ? 'After Dark - Mr.Kitty' : null,
+                            listeningTrack: vp.isHost ? DEFAULT_DJ_TRACK : null,
+                          },
+                        });
+                      }}
+                      className={`rounded-2xl border-2 transition-all duration-300 flex flex-col items-center justify-center relative aspect-[4/3] shadow-xl overflow-hidden group cursor-pointer ${
+                        isLight ? 'bg-[#ffffff] border-[#cbd5e1]' : 'bg-[#1e1f22] border-[#2b2d31]'
                       }`}
+                      style={vp.isSpeaking ? {
+                        borderColor: accentColor,
+                        boxShadow: `0 0 24px ${accentColor}50`
+                      } : undefined}
                     >
+                      {/* Discord Music Bot Stream Banner */}
+                      {vp.isHost && (
+                        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10 pointer-events-auto">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePlayMemberTrack({ listeningTrack: DEFAULT_DJ_TRACK });
+                            }}
+                            title="Bấm để nghe cùng bot phát nhạc!"
+                            className="px-2 py-1 rounded-lg bg-black/80 border text-[10px] font-mono font-bold flex items-center gap-1.5 cursor-pointer hover:scale-105 transition-transform"
+                            style={{ borderColor: `${accentColor}50`, color: accentColor }}
+                          >
+                            <Play className="w-3 h-3 fill-current" />
+                            <span className="truncate max-w-[130px] text-white">After Dark</span>
+                          </button>
+                          <span className="text-[9px] font-mono text-zinc-300 bg-black/75 px-1.5 py-0.5 rounded border border-white/10">
+                            {userVolumes[vp.id] ?? 100}% Vol
+                          </span>
+                        </div>
+                      )}
+
                       <div className="relative">
                         <div 
                           className={`w-20 h-20 rounded-full overflow-hidden border-2 flex items-center justify-center text-xl font-bold transition-all ${
-                            isUserSpeaking
-                              ? 'border-emerald-400 ring-4 ring-emerald-400/30 scale-105 shadow-[0_0_20px_#00FF66] text-white'
-                              : isLight ? 'border-[#cbd5e1] bg-[#f1f5f9] text-[#0f172a]' : 'border-white/20 bg-[#2b2d31] text-white'
+                            isLight ? 'border-[#cbd5e1] bg-[#f1f5f9] text-[#0f172a]' : 'border-white/20 bg-[#2b2d31] text-white'
                           }`}
+                          style={vp.isSpeaking ? {
+                            borderColor: accentColor,
+                            boxShadow: `0 0 20px ${accentColor}70`,
+                          } : undefined}
                         >
-                          {currentUser?.avatar ? (
-                            <img src={currentUser.avatar} alt="avatar" className="w-full h-full object-cover" />
-                          ) : (
-                            <span>{(currentUser?.display_name || 'B').charAt(0).toUpperCase()}</span>
-                          )}
+                          {vp.name.charAt(0).toUpperCase()}
                         </div>
-                        {isMuted && (
+                        {vp.isMuted && (
                           <span className="absolute bottom-0 right-0 p-1.5 rounded-full bg-red-600 border-2 border-black text-white shadow-md">
                             <MicOff className="w-3.5 h-3.5" />
                           </span>
@@ -1977,73 +2128,36 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                       </div>
 
                       {/* Discord Bottom-left Tag */}
-                      <div className={`absolute bottom-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md backdrop-blur-sm border max-w-[85%] truncate ${
-                        isLight ? 'bg-[#ffffff]/90 border-[#cbd5e1]' : 'bg-black/75 border-white/10'
-                      }`}>
-                        <span className={`text-xs font-bold tracking-wide truncate ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>
-                          {currentUser?.display_name || getTranslation(language, 'community.you')}
-                        </span>
-                        <span className={`text-[10px] font-mono ${isLight ? 'text-[#64748b]' : 'text-zinc-400'}`}>({getTranslation(language, 'community.you')})</span>
-                        {isUserSpeaking && (
-                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping ml-1" />
+                      <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/85 border border-white/10 max-w-[85%] truncate">
+                        <span className="text-xs font-bold text-white tracking-wide truncate">{vp.name}</span>
+                        {vp.isHost ? (
+                          <span 
+                            className="text-[8px] font-mono font-bold px-1.5 py-0.2 rounded border flex items-center gap-1"
+                            style={{ color: accentColor, backgroundColor: `${accentColor}20`, borderColor: `${accentColor}50` }}
+                          >
+                            <Radio className="w-2.5 h-2.5 animate-pulse" />
+                            BOT
+                          </span>
+                        ) : (
+                          <span className="text-[8px] font-mono text-zinc-400">
+                            {userVolumes[vp.id] ?? 100}%
+                          </span>
+                        )}
+                        {vp.isSpeaking && (
+                          <span className="w-2 h-2 rounded-full animate-ping ml-1" style={{ backgroundColor: accentColor }} />
                         )}
                       </div>
                     </div>
-                  )}
-
-                  {/* Other Invited / Real Participants */}
-                  {voiceParticipants
-                    .filter(vp => vp.id !== myParticipantIdRef.current)
-                    .map(vp => (
-                      <div 
-                        key={vp.id}
-                        className={`rounded-2xl border-2 transition-all duration-300 flex flex-col items-center justify-center relative aspect-[4/3] shadow-xl overflow-hidden group ${
-                          vp.isSpeaking 
-                            ? 'border-emerald-500 shadow-[0_0_24px_rgba(0,255,102,0.35)]' 
-                            : isLight ? 'bg-[#ffffff] border-[#cbd5e1]' : 'bg-[#1e1f22] border-[#2b2d31]'
-                        }`}
-                      >
-                        <div className="relative">
-                          <div 
-                            className={`w-20 h-20 rounded-full overflow-hidden border-2 flex items-center justify-center text-xl font-bold transition-all ${
-                              vp.isSpeaking 
-                                ? 'border-emerald-400 ring-4 ring-emerald-400/30 scale-105 shadow-[0_0_20px_#00FF66] text-white' 
-                                : isLight ? 'border-[#cbd5e1] bg-[#f1f5f9] text-[#0f172a]' : 'border-white/20 bg-[#2b2d31] text-white'
-                            }`}
-                          >
-                            {vp.name.charAt(0).toUpperCase()}
-                          </div>
-                          {vp.isMuted && (
-                            <span className="absolute bottom-0 right-0 p-1.5 rounded-full bg-red-600 border-2 border-black text-white shadow-md">
-                              <MicOff className="w-3.5 h-3.5" />
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Discord Bottom-left Tag */}
-                        <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-sm border border-white/10 max-w-[85%] truncate">
-                          <span className="text-xs font-bold text-white tracking-wide truncate">{vp.name}</span>
-                          {vp.isHost && (
-                            <span className="text-[8px] font-mono font-bold text-amber-400 bg-amber-400/20 px-1 py-0.2 rounded border border-amber-400/30">
-                              DJ
-                            </span>
-                          )}
-                          {vp.isSpeaking && (
-                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping ml-1" />
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                </div>
-
-                {/* Helpful DJ Invite Hint */}
-                {voiceParticipants.filter(p => p.id !== myParticipantIdRef.current).length === 0 && (
-                  <p className="text-[11px] text-[#777] font-mono mt-4 text-center">
-                    {getTranslation(language, 'community.djInviteHint')}
-                  </p>
-                )}
+                  ))}
               </div>
-            )}
+
+              {/* Helpful DJ Invite Hint */}
+              {voiceParticipants.filter(p => p.id !== myParticipantIdRef.current).length === 0 && (
+                <p className="text-[11px] text-[#777] font-mono mt-4 text-center">
+                  {getTranslation(language, 'community.djInviteHint')}
+                </p>
+              )}
+            </div>
 
             {/* In-Call Controls Bottom Dock — Discord Signature Floating Dock */}
             <div className="my-2 z-10">
@@ -2369,7 +2483,10 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 >
                   {mem.name.charAt(0).toUpperCase()}
                 </div>
-                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-black" />
+                <span 
+                  className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-black" 
+                  style={{ backgroundColor: accentColor }}
+                />
               </div>
               <div className="truncate flex-1 min-w-0">
                 <div className="flex items-center gap-1">
@@ -2414,7 +2531,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       {/* ──────────────── MEMBER CONTEXT MENU (CHUỘT PHẢI ĐỂ MỜI DJ VÀO CHAT) ──────────────── */}
       {memberMenu && (
         <div 
-          className={`fixed z-50 w-52 rounded-xl shadow-2xl py-1 text-xs backdrop-blur-md animate-in fade-in duration-150 border ${
+          className={`fixed z-50 w-56 rounded-xl shadow-2xl py-1 text-xs animate-in fade-in duration-150 border ${
             isLight ? 'bg-[#ffffff] border-[#cbd5e1] text-[#0f172a]' : 'bg-[#0e0e18] border-[#26263a] text-white'
           }`}
           style={{ top: memberMenu.y, left: memberMenu.x }}
@@ -2428,7 +2545,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             </div>
             <div className="truncate flex-1">
               <p className={`font-bold truncate text-[11px] ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>{memberMenu.member.name}</p>
-              <p className="text-[9px] text-emerald-500 font-mono">{memberMenu.member.role}</p>
+              <p className="text-[9px] font-mono" style={{ color: accentColor }}>{memberMenu.member.role}</p>
             </div>
           </div>
 
@@ -2440,9 +2557,13 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   handlePlayMemberTrack(memberMenu.member);
                   setMemberMenu(null);
                 }}
-                className="w-full px-2.5 py-1.5 rounded-lg bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 font-medium flex items-center gap-2 text-left cursor-pointer transition-colors"
+                className="w-full px-2.5 py-1.5 rounded-lg text-cyan-300 font-medium flex items-center gap-2 text-left cursor-pointer transition-colors"
+                style={{
+                  backgroundColor: `${accentColor}20`,
+                  color: accentColor,
+                }}
               >
-                <Play className="w-3.5 h-3.5 fill-current text-cyan-400" />
+                <Play className="w-3.5 h-3.5 fill-current" />
                 <span className="truncate">Nghe cùng ({memberMenu.member.listening})</span>
               </button>
             )}
@@ -2473,20 +2594,61 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               <span>Xem hồ sơ mật vụ</span>
             </button>
 
+            {/* User / Bot Volume Slider (Discord Style: 0% - 200%) */}
+            {voiceParticipants.some(p => p.id === memberMenu.member.id) && (
+              <div className="px-2.5 py-2 border-y border-[#1e1e2c] my-1 bg-black/40 rounded-lg">
+                <div className="flex items-center justify-between text-[11px] font-mono text-[#aaa] mb-1.5">
+                  <span className="flex items-center gap-1.5 font-semibold text-zinc-300">
+                    <Volume2 className="w-3.5 h-3.5" style={{ color: accentColor }} />
+                    {memberMenu.member.isHost ? 'Âm lượng bot phát nhạc' : 'Âm lượng mic người dùng'}
+                  </span>
+                  <span className="font-bold text-white font-mono">{userVolumes[memberMenu.member.id] ?? 100}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="1"
+                  value={userVolumes[memberMenu.member.id] ?? 100}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setUserVolumes(prev => {
+                      const next = { ...prev, [memberMenu.member.id]: val };
+                      localStorage.setItem('spytify_user_volumes', JSON.stringify(next));
+                      return next;
+                    });
+                  }}
+                  className="w-full h-1 bg-[#262638] rounded-lg appearance-none cursor-pointer"
+                  style={{ accentColor }}
+                />
+              </div>
+            )}
+
+            {/* Voice kick or invite */}
             {voiceParticipants.some(p => p.id === memberMenu.member.id) ? (
               <button
-                onClick={() => handleRemoveMemberFromVoice(memberMenu.member.id)}
+                onClick={() => {
+                  handleRemoveMemberFromVoice(memberMenu.member.id);
+                  setMemberMenu(null);
+                }}
                 className="w-full px-2.5 py-1.5 rounded-lg hover:bg-red-950/40 text-red-400 flex items-center gap-2 text-left cursor-pointer transition-colors"
               >
                 <PhoneOff className="w-3.5 h-3.5 text-red-400" />
-                <span>{getTranslation(language, 'community.removeFromVoice')}</span>
+                <span>{getTranslation(language, 'community.removeFromVoice') || 'Mời rời khỏi voice'}</span>
               </button>
             ) : (
               <button
-                onClick={() => handleInviteMemberToVoice(memberMenu.member)}
-                className="w-full px-2.5 py-1.5 rounded-lg hover:bg-emerald-950/40 text-emerald-500 flex items-center gap-2 text-left cursor-pointer transition-colors"
+                onClick={() => {
+                  handleInviteMemberToVoice(memberMenu.member);
+                  setMemberMenu(null);
+                }}
+                className="w-full px-2.5 py-1.5 rounded-lg flex items-center gap-2 text-left cursor-pointer transition-colors"
+                style={{
+                  color: accentColor,
+                  backgroundColor: `${accentColor}18`,
+                }}
               >
-                <PhoneCall className="w-3.5 h-3.5 text-emerald-400" />
+                <PhoneCall className="w-3.5 h-3.5" style={{ color: accentColor }} />
                 <span>{memberMenu.member.isHost ? getTranslation(language, 'community.callDj') : getTranslation(language, 'community.inviteToVoice')}</span>
               </button>
             )}
