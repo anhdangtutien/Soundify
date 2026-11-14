@@ -1,6 +1,6 @@
 ﻿import React from 'react';
 import { 
-  Search, FolderPlus, HardDrive, Heart, Sparkles, User as UserIcon, LogIn, Flame, Layers
+  Search, FolderPlus, HardDrive, Heart, Sparkles, User as UserIcon, LogIn, Flame, Layers, Radio
 } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { ViewType, User } from '../types';
@@ -102,6 +102,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-3 space-y-0.5">
         {navItem('library', getTranslation(language, 'nav.trending'), <Flame className="w-4 h-4" />)}
         {navItem('search', getTranslation(language, 'nav.search'), <Search className="w-4 h-4" />)}
+        {navItem('community', getTranslation(language, 'nav.community'), <Radio className="w-4 h-4" />,
+          <span 
+            className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold border flex items-center gap-1"
+            style={{ 
+              color: '#00E5FF', 
+              backgroundColor: '#00E5FF15', 
+              borderColor: '#00E5FF30' 
+            }}
+          >
+            <span className="w-1 h-1 rounded-full bg-[#00E5FF] animate-ping" />
+            LIVE
+          </span>
+        )}
         {navItem('albums', getTranslation(language, 'nav.myAlbums'), <Layers className="w-4 h-4" />,
           <span className="text-[10px] text-[#666] font-mono">{albumCount}</span>
         )}

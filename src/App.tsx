@@ -11,6 +11,7 @@ import { AudioVisualizer } from './components/AudioVisualizer';
 import { AuthModal } from './components/AuthModal';
 import { ProfileView } from './components/ProfileView';
 import { AiMixView } from './components/AiMixView';
+import { CommunityView } from './components/CommunityView';
 import { HomeTrendingView } from './components/HomeTrendingView';
 import { AlbumsView } from './components/AlbumsView';
 import { AddToAlbumModal } from './components/AddToAlbumModal';
@@ -3147,8 +3148,8 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
           </header>
 
           {/* Body Content */}
-          <div className="flex-1 overflow-y-auto px-7 py-5">
-            {showVisualizer && currentView !== 'profile' && currentView !== 'ai_mix' && <AudioVisualizer isPlaying={isPlaying} language={language} accentColor={accentColor} source={currentTrack?.source} />}
+          <div className={`flex-1 ${currentView === 'community' ? 'p-0 overflow-hidden flex flex-col' : 'overflow-y-auto px-7 py-5'}`}>
+            {showVisualizer && currentView !== 'profile' && currentView !== 'ai_mix' && currentView !== 'community' && <AudioVisualizer isPlaying={isPlaying} language={language} accentColor={accentColor} source={currentTrack?.source} />}
 
             {currentView === 'albums' ? (
               <AlbumsView
@@ -3194,6 +3195,15 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 onOpenAuth={() => setIsAuthModalOpen(true)}
                 smartDjEnabled={smartDjEnabled}
                 onToggleSmartDj={() => setSmartDjEnabled(p => !p)}
+                accentColor={accentColor}
+                language={language}
+              />
+            ) : currentView === 'community' ? (
+              <CommunityView
+                currentUser={currentUser}
+                currentTrack={currentTrack}
+                isPlaying={isPlaying}
+                onPlayTrack={handlePlayTrack}
                 accentColor={accentColor}
                 language={language}
               />

@@ -93,4 +93,48 @@ export type ViewType =
   | 'albums'
   | 'soundcloud'
   | 'profile'
-  | 'ai_mix';
+  | 'ai_mix'
+  | 'community';
+
+export interface CommunityChannel {
+  id: string;
+  name: string;
+  type: 'text' | 'stage';
+  topic?: string;
+}
+
+export interface CommunityServer {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  badge?: string;
+  accent_color: string;
+  channels: CommunityChannel[];
+  is_verified?: boolean;
+}
+
+export interface CommunityMessage {
+  id: string;
+  server_id: string;
+  channel_id: string;
+  user_id: string;
+  username: string;
+  display_name: string;
+  avatar?: string | null;
+  content: string;
+  created_at: string;
+  track_embed?: Track | null;
+}
+
+export interface StageSession {
+  server_id: string;
+  channel_id: string;
+  host_user_id: string;
+  host_name: string;
+  current_track: Track | null;
+  position_secs: number;
+  is_playing: boolean;
+  listener_count: number;
+  updated_at: number;
+}
