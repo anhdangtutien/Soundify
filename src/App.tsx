@@ -17,7 +17,7 @@ import { AddToAlbumModal } from './components/AddToAlbumModal';
 import { SplashScreen } from './components/SplashScreen';
 import { UpdateModal } from './components/UpdateModal';
 import { checkGitHubUpdate, UpdateInfo } from './services/updater';
-import { cloudSyncPull, cloudSyncPush, isSupabaseConfigured } from './services/supabase';
+import { cloudSyncPull, cloudSyncPush, isSupabaseConfigured, cloudRegisterUser } from './services/supabase';
 import { deduplicateTracks, optimizeThumbnailUrl, handleImageError } from './utils/trackUtils';
 import { Track, PlaybackStatus, SearchResult, ViewType, User, UserAlbum, RecommendationResult } from './types';
 import { FolderPlus, Disc, CheckCircle2, Tv, X, Radio, ArrowUpRight, LogIn, Sun, Moon, Music, Play, Globe, Languages, ChevronDown, ChevronUp, EyeOff, Sparkles } from 'lucide-react';
@@ -1217,7 +1217,32 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
         .then(user => {
           if (user) {
             setCurrentUser(user);
+            localStorage.setItem('soundify_active_user_id', user.id);
             loadFavoritesFromDb(user.id);
+
+            // Ensure Supabase Cloud has credentials & updated data
+            if (isSupabaseConfigured()) {
+              invoke<[string, string] | null>('auth_get_credentials', { userId: user.id })
+                .then(creds => {
+                  if (creds) {
+                    cloudRegisterUser(user, user.email || null, creds[0], creds[1]);
+                  }
+                })
+                .catch(() => {});
+
+              invoke<Track[]>('db_get_favorites', { userId: user.id }).then(localFavs => {
+                const localAlbumsStr = localStorage.getItem('spytify_user_albums');
+                const localAlbums: UserAlbum[] = localAlbumsStr ? JSON.parse(localAlbumsStr) : [];
+                cloudSyncPush(user.id, {
+                  username: user.username,
+                  displayName: user.display_name,
+                  email: user.email || undefined,
+                  avatar: user.avatar || undefined,
+                  favorites: localFavs,
+                  albums: localAlbums,
+                }).catch(() => {});
+              }).catch(() => {});
+            }
           }
         })
         .catch(console.error);
@@ -1245,6 +1270,14 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
 
     // Auto-sync with Supabase Cloud if configured
     if (isSupabaseConfigured()) {
+      invoke<[string, string] | null>('auth_get_credentials', { userId: user.id })
+        .then(creds => {
+          if (creds) {
+            cloudRegisterUser(user, user.email || null, creds[0], creds[1]);
+          }
+        })
+        .catch(() => {});
+
       cloudSyncPull(user.id).then(cloudData => {
         if (cloudData) {
           if (cloudData.albums && cloudData.albums.length > 0) {
@@ -1258,7 +1291,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
           }
           if (cloudData.favorites && cloudData.favorites.length > 0) {
             for (const t of cloudData.favorites) {
-              invoke('db_add_favorite', { trackId: t.id }).catch(() => {});
+              invoke('db_add_favorite', { userId: user.id, track: t }).catch(() => {});
             }
             setFavorites(prev => {
               const next = new Set(prev);

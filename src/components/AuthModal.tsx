@@ -69,6 +69,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
       setLoading(true);
       try {
+        // Check if user already exists in Supabase Cloud! If password matches, log in directly
+        if (isSupabaseConfigured()) {
+          try {
+            const cloudUser = await cloudLoginUser(registerEmail.trim().toLowerCase(), password);
+            if (cloudUser) {
+              onSuccess(cloudUser);
+              onClose();
+              return;
+            }
+          } catch (e) {}
+        }
+
         const user = await invoke<User>('auth_register', {
           username: registerUsername.trim(),
           email: registerEmail.trim().toLowerCase(),
@@ -120,6 +132,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         }
 
         if (user) {
+          // Keep Supabase updated with credentials so other machines can authenticate
+          if (isSupabaseConfigured()) {
+            try {
+              const creds = await invoke<[string, string] | null>('auth_get_credentials', { userId: user.id });
+              if (creds) {
+                await cloudRegisterUser(user, user.email || null, creds[0], creds[1]);
+              }
+            } catch (e) {}
+          }
           onSuccess(user);
           onClose();
         }

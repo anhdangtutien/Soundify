@@ -78,6 +78,67 @@ impl DatabaseManager {
         let _ = conn.execute("ALTER TABLE playback_history ADD COLUMN path_or_url TEXT", []);
         let _ = conn.execute("ALTER TABLE playback_history ADD COLUMN track_json TEXT", []);
 
+        // Automatic migration: Convert any legacy random UUID user IDs to deterministic user IDs
+        // so that accounts seamlessly match across all devices and Google login
+        if let Ok(mut stmt) = conn.prepare("SELECT id, username, email FROM users") {
+            let legacy_users: Vec<(String, String, Option<String>)> = stmt
+                .query_map([], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, Option<String>>(2)?,
+                    ))
+                })
+                .ok()
+                .map(|rows| rows.filter_map(Result::ok).collect())
+                .unwrap_or_default();
+
+            for (old_id, username, email) in legacy_users {
+                if !old_id.starts_with("usr_") {
+                    let seed = email.as_deref().unwrap_or(&username);
+                    let new_id = Self::generate_deterministic_user_id(seed);
+                    if new_id != old_id {
+                        let exists: bool = conn
+                            .query_row(
+                                "SELECT 1 FROM users WHERE id = ?1",
+                                params![new_id],
+                                |_| Ok(true),
+                            )
+                            .unwrap_or(false);
+
+                        if exists {
+                            let _ = conn.execute(
+                                "UPDATE OR IGNORE user_favorites SET user_id = ?1 WHERE user_id = ?2",
+                                params![new_id, old_id],
+                            );
+                            let _ = conn.execute(
+                                "DELETE FROM user_favorites WHERE user_id = ?1",
+                                params![old_id],
+                            );
+                            let _ = conn.execute(
+                                "UPDATE playback_history SET user_id = ?1 WHERE user_id = ?2",
+                                params![new_id, old_id],
+                            );
+                            let _ = conn.execute("DELETE FROM users WHERE id = ?1", params![old_id]);
+                        } else {
+                            let _ = conn.execute(
+                                "UPDATE users SET id = ?1 WHERE id = ?2",
+                                params![new_id, old_id],
+                            );
+                            let _ = conn.execute(
+                                "UPDATE user_favorites SET user_id = ?1 WHERE user_id = ?2",
+                                params![new_id, old_id],
+                            );
+                            let _ = conn.execute(
+                                "UPDATE playback_history SET user_id = ?1 WHERE user_id = ?2",
+                                params![new_id, old_id],
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
         Ok(Self {
             conn: Mutex::new(conn),
         })
@@ -333,7 +394,23 @@ impl DatabaseManager {
 
         match res {
             Ok(u) => Ok(Some(u)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(rusqlite::Error::QueryReturnedNoRows) => {
+                // Fallback: If user ID was migrated from UUID to deterministic ID, return active user
+                let mut fallback_stmt = conn
+                    .prepare("SELECT id, username, display_name, avatar, created_at, email FROM users ORDER BY created_at DESC LIMIT 1")
+                    .map_err(|e| e.to_string())?;
+                let fallback = fallback_stmt.query_row([], |row| {
+                    Ok(User {
+                        id: row.get(0)?,
+                        username: row.get(1)?,
+                        display_name: row.get(2)?,
+                        avatar: row.get(3)?,
+                        created_at: row.get(4)?,
+                        email: row.get(5)?,
+                    })
+                }).ok();
+                Ok(fallback)
+            }
             Err(e) => Err(e.to_string()),
         }
     }
@@ -395,6 +472,17 @@ impl DatabaseManager {
             .map_err(|e| e.to_string())?;
             Ok(true) // Favorited
         }
+    }
+
+    pub fn add_favorite_if_missing(&self, user_id: &str, track: &Track) -> Result<(), String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let json = serde_json::to_string(track).map_err(|e| e.to_string())?;
+        conn.execute(
+            "INSERT OR IGNORE INTO user_favorites (user_id, track_id, track_json) VALUES (?1, ?2, ?3)",
+            params![user_id, track.id, json],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
     }
 
     pub fn add_history(&self, user_id: &str, track: &Track) -> Result<(), String> {

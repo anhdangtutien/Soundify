@@ -704,6 +704,15 @@ fn db_toggle_favorite(
 }
 
 #[tauri::command]
+fn db_add_favorite(
+    user_id: String,
+    track: Track,
+    db: State<'_, DatabaseManager>,
+) -> Result<(), String> {
+    db.add_favorite_if_missing(&user_id, &track)
+}
+
+#[tauri::command]
 fn db_add_history(
     user_id: String,
     track: Track,
@@ -987,6 +996,7 @@ pub fn run() {
             read_text_file,
             db_get_favorites,
             db_toggle_favorite,
+            db_add_favorite,
             db_add_history,
             db_get_history,
             db_get_stats,

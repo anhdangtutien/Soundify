@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { UserAlbum, Track, HistoryItem, User } from '../types';
 
 // Default Supabase credentials (Can be overridden by user in Profile settings or .env)
-const DEFAULT_URL = import.meta.env.VITE_SUPABASE_URL || 'https://qlbsrzgbyclzzayfkaei.supabase.co';
+const DEFAULT_URL = import.meta.env.VITE_SUPABASE_URL || 'https://qibsrzgbyclzzayfkeei.supabase.co';
 const DEFAULT_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_GVAkGRpbXs9N_ATIKEoscQ_DJ6QSSVX';
 
 export interface SupabaseConfig {
@@ -20,7 +20,12 @@ export function cleanSupabaseUrl(raw: string): string {
 }
 
 export function getStoredSupabaseConfig(): SupabaseConfig {
-  const url = cleanSupabaseUrl(localStorage.getItem('spytify_supabase_url') || DEFAULT_URL);
+  let storedUrl = localStorage.getItem('spytify_supabase_url');
+  if (storedUrl && (storedUrl.includes('qlbs') || storedUrl.includes('example'))) {
+    storedUrl = DEFAULT_URL;
+    localStorage.setItem('spytify_supabase_url', DEFAULT_URL);
+  }
+  const url = cleanSupabaseUrl(storedUrl || DEFAULT_URL);
   const anonKey = (localStorage.getItem('spytify_supabase_anon_key') || DEFAULT_ANON_KEY).trim();
   return { url, anonKey };
 }
