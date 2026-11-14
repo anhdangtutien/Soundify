@@ -1044,34 +1044,6 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             </div>
           </div>
         )}
-
-        {/* User Mini Bar */}
-        <div className="p-2.5 border-t border-[#15151e] bg-[#07070a] flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 truncate flex-1 min-w-0">
-            <div 
-              className="w-7 h-7 rounded-lg overflow-hidden border border-white/20 flex items-center justify-center font-bold text-[10px] flex-shrink-0"
-              style={{ backgroundColor: `${accentColor}25`, color: accentColor }}
-            >
-              {currentUser?.avatar ? (
-                <img src={currentUser.avatar} alt="avatar" className="w-full h-full object-cover" />
-              ) : (
-                <span>{(currentUser?.display_name || 'A').charAt(0).toUpperCase()}</span>
-              )}
-            </div>
-            <div className="truncate flex-1">
-              <p className="text-xs font-semibold text-white truncate">{currentUser?.display_name || 'Mật Vụ Tự Do'}</p>
-              <p className="text-[10px] text-[#666] font-mono truncate">Online • Bảo mật</p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setIsAudioSettingsOpen(true)}
-            title="Cài đặt âm lượng Mic & Loa (Voice Settings)"
-            className="p-1.5 rounded-lg hover:bg-[#161622] text-[#888899] hover:text-[#00E5FF] transition-colors cursor-pointer flex-shrink-0 ml-1"
-          >
-            <Settings className="w-3.5 h-3.5" />
-          </button>
-        </div>
       </div>
 
       {/* ──────────────── 3. MAIN CONTENT (CHAT / VOICE / STAGE) ──────────────── */}
