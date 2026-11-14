@@ -83,17 +83,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 style={{ backgroundColor: accentColor }}
               ></span>
             </h1>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <p 
-                className="text-[10px] font-mono tracking-wider font-bold"
-                style={{ color: accentColor }}
-              >
-                SPY MUSIC
-              </p>
-              <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#13131c] text-[#888899] border border-[#22222e]">
-                v{CURRENT_VERSION}
-              </span>
-            </div>
+            <p 
+              className="text-[10px] font-mono tracking-wider font-bold mt-0.5"
+              style={{ color: accentColor }}
+            >
+              SPY MUSIC
+            </p>
           </div>
         </div>
       </div>

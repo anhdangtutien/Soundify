@@ -99,8 +99,19 @@ export type ViewType =
 export interface CommunityChannel {
   id: string;
   name: string;
-  type: 'text' | 'stage';
+  type: 'text' | 'stage' | 'voice';
   topic?: string;
+}
+
+export interface VoiceParticipant {
+  id: string;
+  name: string;
+  username: string;
+  avatar?: string | null;
+  isMuted: boolean;
+  isDeafened: boolean;
+  isSpeaking: boolean;
+  isHost?: boolean;
 }
 
 export interface CommunityServer {

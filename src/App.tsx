@@ -3046,18 +3046,25 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
         <main className="flex-1 flex flex-col overflow-hidden bg-[#000000]">
           {/* Header Bar — Minimalist */}
           <header className="h-12 px-6 flex items-center justify-between border-b border-[#141416] bg-black/95 backdrop-blur z-50">
-            <div className="flex items-center gap-2.5 text-xs font-medium text-white">
-              <img src="/spytify-logo.png" alt="Spytify" className="w-5 h-5 rounded-md object-cover border border-[#262632]" />
-              <span className="tracking-tight font-bold">Spytify</span>
-              <span 
-                className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border transition-colors"
-                style={{
-                  backgroundColor: `${accentColor}18`,
-                  color: accentColor,
-                  borderColor: `${accentColor}35`,
-                }}
-              >
-                v{CURRENT_VERSION}
+            <div className="flex items-center gap-2 text-xs font-medium text-[#888]">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#666]">
+                {currentView === 'community'
+                  ? 'TRẠM SÓNG & CỘNG ĐỒNG'
+                  : currentView === 'search'
+                  ? 'TÌM KIẾM'
+                  : currentView === 'albums'
+                  ? 'ALBUM CỦA BẠN'
+                  : currentView === 'ai_mix'
+                  ? 'AI MIX STUDIO'
+                  : currentView === 'profile'
+                  ? 'HỒ SƠ CÁ NHÂN'
+                  : currentView === 'youtube'
+                  ? 'YOUTUBE MUSIC'
+                  : currentView === 'soundcloud'
+                  ? 'SOUNDCLOUD'
+                  : currentView === 'audius'
+                  ? 'AUDIUS HI-FI'
+                  : 'THỊNH HÀNH'}
               </span>
             </div>
             <div className="flex items-center gap-2.5">
