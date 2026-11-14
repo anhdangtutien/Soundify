@@ -3488,6 +3488,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
       {/* Ultra Hi-Fi Player Bar */}
       <PlayerBar
         language={language}
+        isCompact={currentView === 'community'}
         currentTrack={currentTrack}
         upcomingTrack={effectiveUpcomingTrack}
         upcomingModeLabel={nextTrackPopup?.modeLabel || getPlaylistModeLabel(activeQueueContext)}

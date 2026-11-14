@@ -45,6 +45,7 @@ interface PlayerBarProps {
   language?: LanguageCode;
   isNextTrackPopupEnabled?: boolean;
   onToggleNextTrackPopupEnabled?: () => void;
+  isCompact?: boolean;
 }
 
 export const PlayerBar: React.FC<PlayerBarProps> = ({
@@ -64,6 +65,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   language = 'vi',
   isNextTrackPopupEnabled = true,
   onToggleNextTrackPopupEnabled,
+  isCompact = false,
 }) => {
   const [prevVolume, setPrevVolume] = useState(volume || 0.8);
   const [isDragging, setIsDragging] = useState(false);
@@ -194,12 +196,49 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   };
 
   return (
-    <footer className="h-22 bg-[#060608] border-t border-[#14141a] px-6 flex items-center justify-between select-none z-50">
+    <footer className={`bg-[#060608] border-t border-[#14141a] select-none z-50 relative transition-all duration-300 ease-in-out ${
+      isCompact ? 'h-[52px] px-4 flex items-center justify-between' : 'h-22 px-6 flex items-center justify-between'
+    }`}>
+      {/* Sleek Top-Edge Progress Bar in Compact Mode */}
+      {isCompact && (
+        <div className="absolute top-0 left-0 right-0 h-[2.5px] hover:h-[5px] transition-all bg-[#181822] cursor-pointer group/compact-seek z-20">
+          <div 
+            className="h-full transition-all"
+            style={{ 
+              width: isLive ? '100%' : `${progressPercent}%`, 
+              backgroundColor: accentColor,
+              boxShadow: `0 0 8px ${accentColor}`
+            }}
+          />
+          {!isLive && effectiveDuration > 0 && (
+            <input
+              type="range"
+              min={0}
+              max={safeDuration}
+              step={0.25}
+              value={displayTime}
+              onMouseDown={() => setIsDragging(true)}
+              onTouchStart={() => setIsDragging(true)}
+              onChange={(e) => setDragValue(Number(e.target.value))}
+              onMouseUp={(e) => {
+                setIsDragging(false);
+                onSeek(Number((e.target as HTMLInputElement).value));
+              }}
+              onTouchEnd={(e) => {
+                setIsDragging(false);
+                onSeek(Number((e.target as HTMLInputElement).value));
+              }}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+            />
+          )}
+        </div>
+      )}
+
       {/* Left: Track Info — Spy Minimalist style */}
-      <div className="flex items-center gap-3.5 w-1/4 min-w-[220px]">
+      <div className={`flex items-center ${isCompact ? 'gap-2.5 w-1/4 min-w-[180px] max-w-[280px]' : 'gap-3.5 w-1/4 min-w-[220px]'}`}>
         {currentTrack ? (
           <>
-            <div className="w-12 h-12 rounded-lg overflow-hidden bg-[#101014] flex-shrink-0 border border-[#202028] relative group shadow-sm">
+            <div className={`${isCompact ? 'w-8 h-8 rounded-md' : 'w-12 h-12 rounded-lg'} overflow-hidden bg-[#101014] flex-shrink-0 border border-[#202028] relative group shadow-sm transition-all`}>
               {currentTrack.cover_art ? (
                 <img
                   src={optimizeThumbnailUrl(currentTrack.cover_art, currentTrack.path_or_url || currentTrack.id)}
@@ -212,15 +251,15 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-[#101014] text-[#666]">
-                  <Music className="w-5 h-5 text-[var(--accent-color, #ff2a55)]/70" />
+                  <Music className={`${isCompact ? 'w-3.5 h-3.5' : 'w-5 h-5'} text-[var(--accent-color, #ff2a55)]/70`} />
                 </div>
               )}
             </div>
             <div className="flex flex-col overflow-hidden pr-2 flex-1 min-w-0">
-              <span className="text-xs font-bold tracking-tight truncate" style={{ color: themeMode === 'light' ? '#0f172a' : '#ffffff' }}>
+              <span className={`${isCompact ? 'text-[11px]' : 'text-xs'} font-bold tracking-tight truncate`} style={{ color: themeMode === 'light' ? '#0f172a' : '#ffffff' }}>
                 {currentTrack.title}
               </span>
-              <span className="text-[11px] truncate mt-0.5" style={{ color: themeMode === 'light' ? '#64748b' : '#8e8e9f' }}>
+              <span className={`${isCompact ? 'text-[10px]' : 'text-[11px]'} truncate mt-0.5`} style={{ color: themeMode === 'light' ? '#64748b' : '#8e8e9f' }}>
                 {currentTrack.artist}
               </span>
             </div>
@@ -232,10 +271,10 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                 }`}
                 title={isFavorite ? getTranslation(language, 'toast.favoriteRemoved') : getTranslation(language, 'toast.favoriteAdded')}
               >
-                <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
+                <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-current' : ''}`} />
               </button>
 
-              {onAddToAlbum && (
+              {onAddToAlbum && !isCompact && (
                 <button
                   onClick={onAddToAlbum}
                   title={getTranslation(language, 'player.addToAlbum')}
@@ -245,7 +284,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                 </button>
               )}
 
-              {onDownload && (
+              {onDownload && !isCompact && (
                 <button
                   onClick={() => onDownload(currentTrack)}
                   disabled={isDownloading || currentTrack.source === 'local' || Boolean(currentTrack.is_downloaded)}
@@ -276,18 +315,22 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
             </div>
           </>
         ) : (
-          <div className="flex items-center gap-3 text-xs text-[#555]">
-            <div className="w-12 h-12 rounded-lg bg-[#0e0e12] border border-[#181820] flex items-center justify-center">
-              <Music className="w-5 h-5 text-[#333]" />
+          <div className="flex items-center gap-2.5 text-xs text-[#555]">
+            <div className={`${isCompact ? 'w-8 h-8 rounded-md' : 'w-12 h-12 rounded-lg'} bg-[#0e0e12] border border-[#181820] flex items-center justify-center flex-shrink-0`}>
+              <Music className={`${isCompact ? 'w-3.5 h-3.5' : 'w-5 h-5'} text-[#333]`} />
             </div>
-            <span className="text-[11px]">{getTranslation(language, 'player.noTrack')}</span>
+            <span className="text-[11px] truncate">{getTranslation(language, 'player.noTrack')}</span>
           </div>
         )}
       </div>
 
       {/* Center: Controls + Spy Seekbar */}
-      <div className="flex flex-col items-center gap-1.5 max-w-[620px] w-2/4">
-        <div className="flex items-center gap-6">
+      <div className={`flex items-center justify-center transition-all ${
+        isCompact 
+          ? 'gap-3 max-w-[480px] w-2/4' 
+          : 'flex-col gap-1.5 max-w-[620px] w-2/4'
+      }`}>
+        <div className={`flex items-center ${isCompact ? 'gap-3.5' : 'gap-6'}`}>
           <button
             onClick={onToggleShuffle}
             title={getTranslation(language, 'player.shuffle')}
@@ -315,9 +358,13 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
               boxShadow: currentTrack ? `0 0 16px ${accentColor}50` : (themeMode === 'light' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'),
               borderColor: currentTrack ? 'transparent' : (themeMode === 'light' ? '#cbd5e1' : '#2a2a38'),
             }}
-            className="w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 disabled:cursor-not-allowed border"
+            className={`${isCompact ? 'w-8 h-8' : 'w-10 h-10'} rounded-full flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 disabled:cursor-not-allowed border`}
           >
-            {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+            {isPlaying ? (
+              <Pause className={`${isCompact ? 'w-3.5 h-3.5' : 'w-4 h-4'} fill-current`} />
+            ) : (
+              <Play className={`${isCompact ? 'w-3.5 h-3.5' : 'w-4 h-4'} fill-current ml-0.5`} />
+            )}
           </button>
 
           {/* Next Button with Upcoming Song Pop-up */}
@@ -472,127 +519,138 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           )}
         </div>
 
-        {/* Seekbar Area — Adapts to Live Stream, Buffering, or Regular Track */}
-        {isLive ? (
-          <div className="w-full flex items-center gap-3 text-xs font-mono">
-            <span className="w-10 text-right font-semibold" style={{ color: accentColor }}>{formatTime(safeCurrentTime)}</span>
-            <div 
-              className="relative flex-1 h-[4px] rounded-full overflow-hidden flex items-center border border-black/5"
-              style={{ backgroundColor: themeMode === 'light' ? '#cbd5e1' : '#1f1f28' }}
-            >
-              <div 
-                className="h-full w-full rounded-full animate-pulse opacity-90" 
-                style={{ background: `linear-gradient(to right, ${accentColor}, #ffffff, ${accentColor})` }}
-              />
-            </div>
-            <div 
-              className="flex items-center gap-1.5 px-2 py-0.5 rounded font-bold text-[9px] uppercase tracking-wider flex-shrink-0 border"
-              style={{ 
-                backgroundColor: `${accentColor}20`, 
-                borderColor: `${accentColor}50`, 
-                color: accentColor 
-              }}
-            >
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: accentColor }}></span>
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ backgroundColor: accentColor }}></span>
-              </span>
-              <span>LIVE</span>
-            </div>
+        {/* Compact Mode Inline Time Display */}
+        {isCompact && (
+          <div className="hidden sm:flex items-center gap-1 font-mono text-[10px] text-[#8e8e9f] select-none pl-1">
+            <span className="font-semibold text-white/90">{formatTime(displayTime)}</span>
+            <span className="text-[#555]">/</span>
+            <span>{isLive ? 'LIVE' : formatTime(effectiveDuration)}</span>
           </div>
-        ) : isBuffering ? (
-          <div className="w-full flex items-center gap-3 text-[11px] font-mono">
-            <span className="w-9 text-right font-bold" style={{ color: themeMode === 'light' ? '#0f172a' : '#ffffff' }}>
-              {formatTime(safeCurrentTime)}
-            </span>
-            <div 
-              className="relative flex-1 h-[4px] rounded-full overflow-hidden border border-black/5"
-              style={{ backgroundColor: themeMode === 'light' ? '#cbd5e1' : '#1f1f28' }}
-            >
+        )}
+
+        {/* Seekbar Area — Adapts to Live Stream, Buffering, or Regular Track (standard mode) */}
+        {!isCompact && (
+          isLive ? (
+            <div className="w-full flex items-center gap-3 text-xs font-mono">
+              <span className="w-10 text-right font-semibold" style={{ color: accentColor }}>{formatTime(safeCurrentTime)}</span>
               <div 
-                className="h-full rounded-full animate-pulse w-full opacity-75" 
-                style={{ background: `linear-gradient(to right, ${accentColor}, #ffffff)` }}
-              />
-            </div>
-            <span className="w-12 text-[10px] truncate" style={{ color: themeMode === 'light' ? '#64748b' : '#888899' }}>{getTranslation(language, 'search.loading')}</span>
-          </div>
-        ) : (
-          <div className="w-full flex items-center gap-3 text-[11px] font-mono">
-            <span className="w-9 text-right font-bold text-xs" style={{ color: themeMode === 'light' ? '#0f172a' : '#ffffff' }}>
-              {formatTime(displayTime)}
-            </span>
-            <div className="relative flex-1 flex items-center group h-4 cursor-pointer">
-              {/* Background track */}
-              <div 
-                className="absolute w-full h-[4px] rounded-full group-hover:h-[6px] transition-all overflow-hidden border border-black/5"
+                className="relative flex-1 h-[4px] rounded-full overflow-hidden flex items-center border border-black/5"
                 style={{ backgroundColor: themeMode === 'light' ? '#cbd5e1' : '#1f1f28' }}
               >
-                {/* Progress fill */}
-                <div
-                  className="h-full transition-all rounded-full"
-                  style={{ width: `${progressPercent}%`, backgroundColor: accentColor }}
+                <div 
+                  className="h-full w-full rounded-full animate-pulse opacity-90" 
+                  style={{ background: `linear-gradient(to right, ${accentColor}, #ffffff, ${accentColor})` }}
                 />
               </div>
+              <div 
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded font-bold text-[9px] uppercase tracking-wider flex-shrink-0 border"
+                style={{ 
+                  backgroundColor: `${accentColor}20`, 
+                  borderColor: `${accentColor}50`, 
+                  color: accentColor 
+                }}
+              >
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: accentColor }}></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ backgroundColor: accentColor }}></span>
+                </span>
+                <span>LIVE</span>
+              </div>
+            </div>
+          ) : isBuffering ? (
+            <div className="w-full flex items-center gap-3 text-[11px] font-mono">
+              <span className="w-9 text-right font-bold" style={{ color: themeMode === 'light' ? '#0f172a' : '#ffffff' }}>
+                {formatTime(safeCurrentTime)}
+              </span>
+              <div 
+                className="relative flex-1 h-[4px] rounded-full overflow-hidden border border-black/5"
+                style={{ backgroundColor: themeMode === 'light' ? '#cbd5e1' : '#1f1f28' }}
+              >
+                <div 
+                  className="h-full rounded-full animate-pulse w-full opacity-75" 
+                  style={{ background: `linear-gradient(to right, ${accentColor}, #ffffff)` }}
+                />
+              </div>
+              <span className="w-12 text-[10px] truncate" style={{ color: themeMode === 'light' ? '#64748b' : '#888899' }}>{getTranslation(language, 'search.loading')}</span>
+            </div>
+          ) : (
+            <div className="w-full flex items-center gap-3 text-[11px] font-mono">
+              <span className="w-9 text-right font-bold text-xs" style={{ color: themeMode === 'light' ? '#0f172a' : '#ffffff' }}>
+                {formatTime(displayTime)}
+              </span>
+              <div className="relative flex-1 flex items-center group h-4 cursor-pointer">
+                {/* Background track */}
+                <div 
+                  className="absolute w-full h-[4px] rounded-full group-hover:h-[6px] transition-all overflow-hidden border border-black/5"
+                  style={{ backgroundColor: themeMode === 'light' ? '#cbd5e1' : '#1f1f28' }}
+                >
+                  {/* Progress fill */}
+                  <div
+                    className="h-full transition-all rounded-full"
+                    style={{ width: `${progressPercent}%`, backgroundColor: accentColor }}
+                  />
+                </div>
 
-              {/* Thumb handle on hover */}
-              <div
-                className="absolute w-3 h-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none -translate-x-1/2 shadow-md border-2 border-white"
-                style={{ left: `${progressPercent}%`, backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }}
-              />
+                {/* Thumb handle on hover */}
+                <div
+                  className="absolute w-3 h-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none -translate-x-1/2 shadow-md border-2 border-white"
+                  style={{ left: `${progressPercent}%`, backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }}
+                />
 
-              {/* Range input */}
-              <input
-                type="range"
-                min={0}
-                max={safeDuration}
-                step={0.25}
-                value={displayTime}
-                onMouseDown={(e) => {
-                  setIsDragging(true);
-                  setDragValue(Number((e.target as HTMLInputElement).value));
-                }}
-                onTouchStart={(e) => {
-                  setIsDragging(true);
-                  setDragValue(Number((e.target as HTMLInputElement).value));
-                }}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  setDragValue(v);
-                }}
-                onMouseUp={(e) => {
-                  const v = Number((e.target as HTMLInputElement).value);
-                  setIsDragging(false);
-                  onSeek(v);
-                }}
-                onTouchEnd={(e) => {
-                  const v = Number((e.target as HTMLInputElement).value);
-                  setIsDragging(false);
-                  onSeek(v);
-                }}
-                onPointerUp={(e) => {
-                  const v = Number((e.target as HTMLInputElement).value);
-                  if (isDragging) {
+                {/* Range input */}
+                <input
+                  type="range"
+                  min={0}
+                  max={safeDuration}
+                  step={0.25}
+                  value={displayTime}
+                  onMouseDown={(e) => {
+                    setIsDragging(true);
+                    setDragValue(Number((e.target as HTMLInputElement).value));
+                  }}
+                  onTouchStart={(e) => {
+                    setIsDragging(true);
+                    setDragValue(Number((e.target as HTMLInputElement).value));
+                  }}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    setDragValue(v);
+                  }}
+                  onMouseUp={(e) => {
+                    const v = Number((e.target as HTMLInputElement).value);
                     setIsDragging(false);
                     onSeek(v);
-                  }
-                }}
-                onBlur={() => {
-                  if (isDragging) {
+                  }}
+                  onTouchEnd={(e) => {
+                    const v = Number((e.target as HTMLInputElement).value);
                     setIsDragging(false);
-                  }
-                }}
-                className="absolute w-full opacity-0 h-full cursor-pointer z-10"
-              />
+                    onSeek(v);
+                  }}
+                  onPointerUp={(e) => {
+                    const v = Number((e.target as HTMLInputElement).value);
+                    if (isDragging) {
+                      setIsDragging(false);
+                      onSeek(v);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (isDragging) {
+                      setIsDragging(false);
+                    }
+                  }}
+                  className="absolute w-full opacity-0 h-full cursor-pointer z-10"
+                />
+              </div>
+              <span className="w-9 font-mono text-xs" style={{ color: themeMode === 'light' ? '#64748b' : '#8e8e9f' }}>
+                {formatTime(effectiveDuration)}
+              </span>
             </div>
-            <span className="w-9 font-mono text-xs" style={{ color: themeMode === 'light' ? '#64748b' : '#8e8e9f' }}>
-              {formatTime(effectiveDuration)}
-            </span>
-          </div>
+          )
         )}
       </div>
 
       {/* Right: Volume + Utils */}
-      <div className="flex items-center justify-end gap-3.5 w-1/4 min-w-[220px]">
+      <div className={`flex items-center justify-end ${isCompact ? 'gap-2.5 w-1/4 min-w-[180px]' : 'gap-3.5 w-1/4 min-w-[220px]'}`}>
         {/* Next Track Preview / Auto Suggestion Toggle */}
         {onToggleNextTrackPopupEnabled && (
           <button
@@ -829,7 +887,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           <button onClick={handleMuteToggle} className="text-[#777] hover:text-white transition-colors cursor-pointer">
             {volume === 0 ? <VolumeX className="w-4 h-4" style={{ color: accentColor }} /> : <Volume2 className="w-4 h-4" />}
           </button>
-          <div className="relative flex items-center w-20 h-4 group cursor-pointer">
+          <div className={`relative flex items-center ${isCompact ? 'w-14 sm:w-16' : 'w-20'} h-4 group cursor-pointer transition-all`}>
             <div 
               className="absolute w-full h-[4px] rounded-full group-hover:h-[6px] transition-all overflow-hidden border border-black/5"
               style={{ backgroundColor: themeMode === 'light' ? '#cbd5e1' : '#1f1f28' }}
