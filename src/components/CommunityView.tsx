@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Radio, MessageSquare, Headphones, Users, Disc, Play, Send, 
   Music, Plus, Hash, Volume2, Flame, Activity, Share2,
-  Mic, MicOff, PhoneCall, PhoneOff, VolumeX, Signal, Shield
+  Mic, MicOff, PhoneCall, PhoneOff, VolumeX, Signal, Shield,
+  X, Sparkles, Palette, Check
 } from 'lucide-react';
 import { Track, User, CommunityServer, CommunityChannel, CommunityMessage, StageSession, VoiceParticipant } from '../types';
 import { getSupabaseClient } from '../services/supabase';
@@ -41,8 +42,8 @@ function playAudioChime(type: 'join' | 'leave') {
   } catch {}
 }
 
-// Pre-configured Cyberpunk Music Hubs with Voice Call Channels
-const DEFAULT_SERVERS: CommunityServer[] = [
+// Pre-configured Cyberpunk Music Hubs (including Bar & Club theme)
+const BUILTIN_SERVERS: CommunityServer[] = [
   {
     id: 'srv_cyber_2077',
     name: 'Cyber Lounge 2077',
@@ -53,8 +54,35 @@ const DEFAULT_SERVERS: CommunityServer[] = [
     channels: [
       { id: 'ch_cyber_gen', name: 'general-chat', type: 'text', topic: 'Kênh đàm thoại mật vụ' },
       { id: 'ch_cyber_share', name: 'music-radar', type: 'text', topic: 'Chia sẻ các giai điệu Cyberpunk & Synth đỉnh cao' },
-      { id: 'ch_cyber_voice', name: 'Phòng Thoại Mật Vụ', type: 'voice', topic: 'Hội thoại trực tiếp thời gian thực (Discord Call)' },
+      { id: 'ch_cyber_voice', name: 'Phòng Thoại Mật Vụ', type: 'voice', topic: 'Hội thoại trực tiếp thời gian thực (Discord Voice Call)' },
       { id: 'ch_cyber_stage', name: 'neon-stage', type: 'stage', topic: 'Sân khấu nghe nhạc đồng bộ thời gian thực' },
+    ],
+  },
+  {
+    id: 'srv_lofi_station',
+    name: 'Lofi Chilling Hub',
+    description: 'Giai điệu thư giãn học tập, làm việc sâu và tập trung cao độ.',
+    icon: '☕',
+    badge: 'RELAX',
+    accent_color: '#00FF66',
+    channels: [
+      { id: 'ch_lofi_gen', name: 'chill-chat', type: 'text', topic: 'Không gian yên tĩnh' },
+      { id: 'ch_lofi_voice', name: 'Phòng Học Tập & Chill', type: 'voice', topic: 'Bật mic học bài và thư giãn cùng nhau' },
+      { id: 'ch_lofi_stage', name: 'focus-stage', type: 'stage', topic: 'Phát nhạc tập trung 24/7' },
+    ],
+  },
+  {
+    id: 'srv_underground_club',
+    name: 'Neon Bar & Rave Club',
+    description: 'Không gian tiệc tùng EDM, Deep House, Bass Boosted & Quầy Bar âm nhạc sôi động.',
+    icon: '🍸',
+    badge: 'NIGHTCLUB',
+    accent_color: '#E040FB',
+    channels: [
+      { id: 'ch_club_gen', name: 'quay-bar-talk', type: 'text', topic: 'Trò chuyện và giao lưu tại quầy bar' },
+      { id: 'ch_club_dj', name: 'yeu-cau-dj', type: 'text', topic: 'Yêu cầu bài hát sôi động' },
+      { id: 'ch_club_voice', name: 'VIP Lounge Voice Call', type: 'voice', topic: 'Bật mic đàm thoại tại phòng VIP Club' },
+      { id: 'ch_club_stage', name: 'rave-stage-club', type: 'stage', topic: 'Sân khấu Club Bass Boosted' },
     ],
   },
   {
@@ -71,48 +99,59 @@ const DEFAULT_SERVERS: CommunityServer[] = [
       { id: 'ch_vpop_stage', name: 'live-lounge', type: 'stage', topic: 'Phòng nghe nhạc cùng nhau' },
     ],
   },
-  {
-    id: 'srv_lofi_station',
-    name: 'Lofi Chilling Hub',
-    description: 'Giai điệu thư giãn học tập, làm việc sâu và tập trung cao độ.',
-    icon: '☕',
-    badge: 'RELAX',
-    accent_color: '#00FF66',
-    channels: [
-      { id: 'ch_lofi_gen', name: 'chill-chat', type: 'text', topic: 'Không gian yên tĩnh' },
-      { id: 'ch_lofi_voice', name: 'Phòng Học Tập & Chill', type: 'voice', topic: 'Bật mic học bài và thư giãn cùng nhau' },
-      { id: 'ch_lofi_stage', name: 'focus-stage', type: 'stage', topic: 'Phát nhạc tập trung 24/7' },
-    ],
-  },
 ];
 
-// Sample welcome messages for clean starting state
-const SEED_MESSAGES: Record<string, CommunityMessage[]> = {
-  'ch_cyber_gen': [
-    {
-      id: 'msg_1',
-      server_id: 'srv_cyber_2077',
-      channel_id: 'ch_cyber_gen',
-      user_id: 'usr_system',
-      username: 'SYSTEM',
-      display_name: 'Spytify Central',
-      avatar: null,
-      content: 'Chào mừng bạn đến với Cyber Lounge 2077! Kênh đàm thoại bảo mật của các mật vụ âm nhạc.',
-      created_at: new Date(Date.now() - 3600000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    },
-    {
-      id: 'msg_2',
-      server_id: 'srv_cyber_2077',
-      channel_id: 'ch_cyber_gen',
-      user_id: 'usr_guest_demo',
-      username: 'ShadowAgent',
-      display_name: 'Spectre',
-      avatar: null,
-      content: 'Phòng thoại đang mở, anh em vào bật mic giao lưu nhé!',
-      created_at: new Date(Date.now() - 1800000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    }
-  ],
-};
+// Server Template Presets for Custom Server Creator
+const SERVER_PRESETS = [
+  {
+    key: 'cyber',
+    label: 'Cyber Lounge',
+    icon: '⚡',
+    color: '#00E5FF',
+    desc: 'Trạm phát Synthwave, Cyberpunk Beats & Giác đấu ban đêm.',
+    defaultChannels: [
+      { name: 'general-chat', type: 'text' as const },
+      { name: 'Phòng Thoại Mật Vụ', type: 'voice' as const },
+      { name: 'neon-stage', type: 'stage' as const },
+    ]
+  },
+  {
+    key: 'lofi',
+    label: 'Lofi Chill Hub',
+    icon: '☕',
+    color: '#00FF66',
+    desc: 'Không gian thư thái, học tập, đọc sách và tập trung cao độ.',
+    defaultChannels: [
+      { name: 'chill-chat', type: 'text' as const },
+      { name: 'Phòng Học Tập & Chill', type: 'voice' as const },
+      { name: 'focus-stage', type: 'stage' as const },
+    ]
+  },
+  {
+    key: 'club',
+    label: 'Bar & Nightclub',
+    icon: '🍸',
+    color: '#E040FB',
+    desc: 'Quầy Bar sôi động, EDM, Deep House, Bassline tiệc tùng.',
+    defaultChannels: [
+      { name: 'quay-bar-talk', type: 'text' as const },
+      { name: 'VIP Lounge Voice Call', type: 'voice' as const },
+      { name: 'rave-stage-club', type: 'stage' as const },
+    ]
+  },
+  {
+    key: 'custom',
+    label: 'Tự do sáng tạo',
+    icon: '🎧',
+    color: '#FF2A55',
+    desc: 'Tự đặt tên, biểu tượng và màu neon theo cá tính riêng của bạn.',
+    defaultChannels: [
+      { name: 'general-talk', type: 'text' as const },
+      { name: 'Voice Call Room', type: 'voice' as const },
+      { name: 'live-music-stage', type: 'stage' as const },
+    ]
+  }
+];
 
 export const CommunityView: React.FC<CommunityViewProps> = ({
   currentUser,
@@ -121,18 +160,37 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   onPlayTrack,
   accentColor = '#FF2A55',
 }) => {
-  const [selectedServer, setSelectedServer] = useState<CommunityServer>(DEFAULT_SERVERS[0]);
-  const [selectedChannel, setSelectedChannel] = useState<CommunityChannel>(DEFAULT_SERVERS[0].channels[0]);
-  const [messages, setMessages] = useState<CommunityMessage[]>(SEED_MESSAGES['ch_cyber_gen'] || []);
+  // Load custom servers from localStorage
+  const [servers, setServers] = useState<CommunityServer[]>(() => {
+    try {
+      const saved = localStorage.getItem('spytify_user_servers');
+      if (saved) {
+        const parsed: CommunityServer[] = JSON.parse(saved);
+        return [...BUILTIN_SERVERS, ...parsed];
+      }
+    } catch {}
+    return BUILTIN_SERVERS;
+  });
+
+  const [selectedServer, setSelectedServer] = useState<CommunityServer>(servers[0]);
+  const [selectedChannel, setSelectedChannel] = useState<CommunityChannel>(servers[0].channels[0]);
+  const [messages, setMessages] = useState<CommunityMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [attachCurrentTrack, setAttachCurrentTrack] = useState(false);
 
-  // ──────── VOICE CALL STATE (DISCORD VOICE CALL) ────────
+  // ──────── MODAL TẠO SERVER MỚI ────────
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newServerPreset, setNewServerPreset] = useState('cyber');
+  const [newServerName, setNewServerName] = useState('My Cyber Lounge');
+  const [newServerDesc, setNewServerDesc] = useState('Trạm phát sóng âm nhạc mật vụ');
+  const [newServerIcon, setNewServerIcon] = useState('⚡');
+  const [newServerColor, setNewServerColor] = useState('#00E5FF');
+
+  // ──────── VOICE CALL STATE & SUPABASE SYNC ────────
   const [connectedVoiceChannel, setConnectedVoiceChannel] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isDeafened, setIsDeafened] = useState(false);
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
-  const [micVolume, setMicVolume] = useState(0);
 
   // Microphone stream & Web Audio Analyser references
   const micStreamRef = useRef<MediaStream | null>(null);
@@ -140,10 +198,15 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
-  // Voice call participants
+  // My unique participant ID (persisted per session)
+  const myParticipantIdRef = useRef<string>(
+    currentUser?.id || 'guest_' + Math.random().toString(36).substring(2, 8)
+  );
+
+  // Voice call participants in current channel (Synced in Realtime via Supabase!)
   const [voiceParticipants, setVoiceParticipants] = useState<VoiceParticipant[]>([
     {
-      id: 'usr_host_cyber',
+      id: 'usr_host_demo',
       name: 'DJ CyberHawk',
       username: 'cyberhawk',
       avatar: null,
@@ -153,7 +216,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       isHost: true,
     },
     {
-      id: 'usr_neon_samurai',
+      id: 'usr_neon_demo',
       name: 'NeonSamurai',
       username: 'samurai99',
       avatar: null,
@@ -166,7 +229,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
 
   // Live Stage session state
   const [stageSession, setStageSession] = useState<StageSession>({
-    server_id: 'srv_cyber_2077',
+    server_id: servers[0].id,
     channel_id: 'ch_cyber_stage',
     host_user_id: 'host_agent',
     host_name: 'DJ CyberHawk',
@@ -201,17 +264,96 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   const handleSelectServer = (server: CommunityServer) => {
     setSelectedServer(server);
     setSelectedChannel(server.channels[0]);
-    setMessages(SEED_MESSAGES[server.channels[0].id] || []);
+    setMessages([]);
   };
 
   // Handle channel switch
   const handleSelectChannel = (channel: CommunityChannel) => {
     setSelectedChannel(channel);
-    setMessages(SEED_MESSAGES[channel.id] || []);
+    setMessages([]);
   };
 
-  // ──────── CONNECT / DISCONNECT VOICE CALL ────────
+  // ──────── SUPABASE REALTIME SYNC (MESSAGES & VOICE STATE) ────────
+  useEffect(() => {
+    const client = getSupabaseClient();
+    if (!client) return;
+
+    const channelTopic = `spytify_room_${selectedServer.id}_${selectedChannel.id}`;
+    const channel = client.channel(channelTopic, {
+      config: {
+        broadcast: { ack: false },
+        presence: { key: myParticipantIdRef.current },
+      },
+    });
+
+    activeChannelRef.current = channel;
+
+    // 1. Nhận tin nhắn chat mới từ mọi máy khác
+    channel.on('broadcast', { event: 'new_message' }, ({ payload }) => {
+      if (payload && payload.id) {
+        setMessages(prev => {
+          if (prev.some(m => m.id === payload.id)) return prev;
+          return [...prev, payload].slice(-80);
+        });
+      }
+    });
+
+    // 2. Nhận tín hiệu Sân khấu Live Stage DJ
+    channel.on('broadcast', { event: 'stage_sync' }, ({ payload }) => {
+      if (payload) {
+        setStageSession(payload);
+      }
+    });
+
+    // 3. ĐỒNG BỘ HỘI THOẠI REALTIME (VOICE CALL STATE SYNC)
+    channel.on('broadcast', { event: 'voice_presence' }, ({ payload }) => {
+      if (!payload) return;
+      if (payload.action === 'join' && payload.participant) {
+        setVoiceParticipants(prev => {
+          if (prev.some(p => p.id === payload.participant.id)) return prev;
+          return [...prev, payload.participant];
+        });
+      } else if (payload.action === 'leave' && payload.userId) {
+        setVoiceParticipants(prev => prev.filter(p => p.id !== payload.userId));
+      }
+    });
+
+    channel.on('broadcast', { event: 'voice_speaking' }, ({ payload }) => {
+      if (!payload) return;
+      setVoiceParticipants(prev =>
+        prev.map(p => (p.id === payload.userId ? { ...p, isSpeaking: payload.isSpeaking } : p))
+      );
+    });
+
+    channel.on('broadcast', { event: 'voice_mute' }, ({ payload }) => {
+      if (!payload) return;
+      setVoiceParticipants(prev =>
+        prev.map(p => (p.id === payload.userId ? { ...p, isMuted: payload.isMuted } : p))
+      );
+    });
+
+    channel.subscribe();
+
+    return () => {
+      channel.unsubscribe();
+      activeChannelRef.current = null;
+    };
+  }, [selectedServer.id, selectedChannel.id]);
+
+  // ──────── THAM GIA / RỜI CUỘC GỌI VOICE CALL ────────
   const handleJoinVoiceCall = async () => {
+    const myId = myParticipantIdRef.current;
+    const myParticipant: VoiceParticipant = {
+      id: myId,
+      name: currentUser?.display_name || 'Bạn',
+      username: currentUser?.username || 'operative',
+      avatar: currentUser?.avatar || null,
+      isMuted: false,
+      isDeafened: false,
+      isSpeaking: false,
+      isHost: selectedServer.id.startsWith('srv_custom_'),
+    };
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
@@ -226,6 +368,8 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       analyserRef.current = analyser;
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      let wasSpeaking = false;
+
       const checkAudioActivity = () => {
         if (!analyserRef.current) return;
         analyserRef.current.getByteFrequencyData(dataArray);
@@ -234,23 +378,54 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
           sum += dataArray[i];
         }
         const avg = sum / dataArray.length;
-        setMicVolume(avg);
-        setIsUserSpeaking(!isMuted && avg > 14);
+        const nowSpeaking = !isMuted && avg > 14;
+
+        if (nowSpeaking !== wasSpeaking) {
+          wasSpeaking = nowSpeaking;
+          setIsUserSpeaking(nowSpeaking);
+
+          // Phát sóng trạng thái nói Realtime qua Supabase!
+          if (activeChannelRef.current) {
+            activeChannelRef.current.send({
+              type: 'broadcast',
+              event: 'voice_speaking',
+              payload: { userId: myId, isSpeaking: nowSpeaking },
+            });
+          }
+        }
+
         animFrameRef.current = requestAnimationFrame(checkAudioActivity);
       };
       checkAudioActivity();
 
       setConnectedVoiceChannel(selectedChannel.id);
       playAudioChime('join');
+
+      // Phát sóng trạng thái tham gia cuộc gọi qua Supabase!
+      if (activeChannelRef.current) {
+        activeChannelRef.current.send({
+          type: 'broadcast',
+          event: 'voice_presence',
+          payload: { action: 'join', participant: myParticipant },
+        });
+      }
     } catch {
-      // Permission denied or no mic: still join in listen-only/muted mode
       setConnectedVoiceChannel(selectedChannel.id);
       setIsMuted(true);
       playAudioChime('join');
+
+      if (activeChannelRef.current) {
+        activeChannelRef.current.send({
+          type: 'broadcast',
+          event: 'voice_presence',
+          payload: { action: 'join', participant: { ...myParticipant, isMuted: true } },
+        });
+      }
     }
   };
 
   const handleLeaveVoiceCall = () => {
+    const myId = myParticipantIdRef.current;
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach(t => t.stop());
@@ -260,18 +435,34 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       audioContextRef.current.close().catch(() => {});
       audioContextRef.current = null;
     }
+
+    if (activeChannelRef.current) {
+      activeChannelRef.current.send({
+        type: 'broadcast',
+        event: 'voice_presence',
+        payload: { action: 'leave', userId: myId },
+      });
+    }
+
     setConnectedVoiceChannel(null);
     setIsUserSpeaking(false);
-    setMicVolume(0);
     playAudioChime('leave');
   };
 
   const handleToggleMute = () => {
+    const myId = myParticipantIdRef.current;
     setIsMuted(prev => {
       const next = !prev;
       if (micStreamRef.current) {
         micStreamRef.current.getAudioTracks().forEach(t => {
           t.enabled = !next;
+        });
+      }
+      if (activeChannelRef.current) {
+        activeChannelRef.current.send({
+          type: 'broadcast',
+          event: 'voice_mute',
+          payload: { userId: myId, isMuted: next },
         });
       }
       return next;
@@ -282,57 +473,54 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
     setIsDeafened(prev => !prev);
   };
 
-  // Setup Realtime WebSocket connection on current channel
-  useEffect(() => {
-    const client = getSupabaseClient();
-    if (!client) return;
+  // ──────── TỰ TẠO SERVER MỚI (CUSTOM SERVER CREATION) ────────
+  const handleSelectPreset = (presetKey: string) => {
+    const p = SERVER_PRESETS.find(x => x.key === presetKey);
+    if (!p) return;
+    setNewServerPreset(presetKey);
+    setNewServerName(p.label);
+    setNewServerDesc(p.desc);
+    setNewServerIcon(p.icon);
+    setNewServerColor(p.color);
+  };
 
-    const channelTopic = `spytify_room_${selectedServer.id}_${selectedChannel.id}`;
-    const channel = client.channel(channelTopic, {
-      config: {
-        broadcast: { ack: false },
-        presence: { key: currentUser?.id || 'guest_' + Math.floor(Math.random() * 9999) },
-      },
-    });
+  const handleCreateServer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newServerName.trim()) return;
 
-    activeChannelRef.current = channel;
+    const p = SERVER_PRESETS.find(x => x.key === newServerPreset) || SERVER_PRESETS[0];
+    const srvId = `srv_custom_${Date.now()}`;
 
-    channel.on('broadcast', { event: 'new_message' }, ({ payload }) => {
-      if (payload && payload.id) {
-        setMessages(prev => {
-          if (prev.some(m => m.id === payload.id)) return prev;
-          const next = [...prev, payload];
-          return next.slice(-80);
-        });
-      }
-    });
+    const newChannels: CommunityChannel[] = p.defaultChannels.map((c, idx) => ({
+      id: `ch_${srvId}_${idx}`,
+      name: c.name,
+      type: c.type,
+      topic: `${c.name} - Trạm ${newServerName}`,
+    }));
 
-    channel.on('broadcast', { event: 'stage_sync' }, ({ payload }) => {
-      if (payload) {
-        setStageSession(payload);
-      }
-    });
-
-    channel.subscribe();
-
-    return () => {
-      channel.unsubscribe();
-      activeChannelRef.current = null;
+    const createdServer: CommunityServer = {
+      id: srvId,
+      name: newServerName.trim(),
+      description: newServerDesc.trim() || 'Trạm sóng âm nhạc cá nhân Spytify',
+      icon: newServerIcon || '🎧',
+      badge: 'OWNER',
+      accent_color: newServerColor,
+      channels: newChannels,
+      is_verified: true,
     };
-  }, [selectedServer.id, selectedChannel.id, currentUser?.id]);
 
-  // Clean up mic on component unmount
-  useEffect(() => {
-    return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-      if (micStreamRef.current) {
-        micStreamRef.current.getTracks().forEach(t => t.stop());
-      }
-      if (audioContextRef.current) {
-        audioContextRef.current.close().catch(() => {});
-      }
-    };
-  }, []);
+    const updated = [...servers, createdServer];
+    setServers(updated);
+
+    // Save custom servers to localStorage
+    const customOnly = updated.filter(s => s.id.startsWith('srv_custom_'));
+    localStorage.setItem('spytify_user_servers', JSON.stringify(customOnly));
+
+    setIsCreateModalOpen(false);
+    setSelectedServer(createdServer);
+    setSelectedChannel(createdServer.channels[0]);
+    setMessages([]);
+  };
 
   // Send message
   const handleSendMessage = (e?: React.FormEvent) => {
@@ -400,7 +588,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       {/* ──────────────── 1. DISCORD-STYLE SERVER RAIL (FAR LEFT) ──────────────── */}
       <div className="w-16 bg-[#040407] border-r border-[#14141c] flex flex-col items-center py-3 gap-2.5 flex-shrink-0 z-20">
         <button
-          onClick={() => handleSelectServer(DEFAULT_SERVERS[0])}
+          onClick={() => handleSelectServer(servers[0])}
           className="w-11 h-11 rounded-2xl bg-[#0e0e16] border border-[#222230] hover:border-white/40 flex items-center justify-center text-white cursor-pointer transition-all hover:rounded-xl shadow-md group relative"
           title="Trạm tổng Spytify Hub"
         >
@@ -412,7 +600,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
 
         {/* Server Icons List */}
         <div className="flex-1 w-full flex flex-col items-center gap-2 overflow-y-auto no-scrollbar">
-          {DEFAULT_SERVERS.map(srv => {
+          {servers.map(srv => {
             const isSelected = selectedServer.id === srv.id;
             return (
               <div key={srv.id} className="relative group flex items-center justify-center w-full">
@@ -442,12 +630,13 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             );
           })}
 
+          {/* NÚT "+" ĐỂ MỞ BẢNG TỰ TẠO SERVER */}
           <button
-            onClick={() => alert('Tính năng tạo máy chủ tùy chỉnh cá nhân (Custom Server) đang được tối ưu hóa cho bản v1.1.0!')}
-            className="w-11 h-11 rounded-3xl hover:rounded-xl bg-[#0e0e14] hover:bg-emerald-950/40 border border-[#20202a] hover:border-emerald-500/50 text-[#666] hover:text-emerald-400 flex items-center justify-center transition-all cursor-pointer mt-1"
-            title="Tạo trạm sóng mới"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="w-11 h-11 rounded-3xl hover:rounded-xl bg-[#0e0e14] hover:bg-emerald-950/40 border border-[#20202a] hover:border-emerald-500/50 text-[#666] hover:text-emerald-400 flex items-center justify-center transition-all cursor-pointer mt-1 group"
+            title="Tự tạo trạm sóng mới (Create Server)"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
           </button>
         </div>
       </div>
@@ -507,7 +696,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             </div>
           </div>
 
-          {/* ────── VOICE CALL CHANNELS GROUP (DISCORD VOICE CALL) ────── */}
+          {/* Voice Call Channels Group */}
           <div>
             <p className="text-[10px] font-mono font-bold text-[#555] uppercase tracking-wider px-2 mb-1 flex items-center gap-1.5">
               <Mic className="w-3 h-3 text-[#444]" />
@@ -541,12 +730,12 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                           </span>
                         ) : (
                           <span className="text-[9px] font-mono text-[#666] bg-[#121218] px-1.5 py-0.2 rounded border border-[#202028]">
-                            2 Mật vụ
+                            {voiceParticipants.length} Mật vụ
                           </span>
                         )}
                       </button>
 
-                      {/* Indented Participants list under voice channel (Discord-style!) */}
+                      {/* Indented Participants list under voice channel */}
                       <div className="pl-6 space-y-1 py-0.5">
                         {voiceParticipants.map(vp => (
                           <div key={vp.id} className="flex items-center gap-1.5 text-[11px] text-[#aaa]">
@@ -620,7 +809,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
           </div>
         </div>
 
-        {/* ────── DISCORD-STYLE PERSISTENT BOTTOM VOICE STATUS BAR ────── */}
+        {/* Persistent Bottom Voice Status Bar */}
         {connectedVoiceChannel && (
           <div className="p-2.5 border-t border-[#181824] bg-[#0c0c14] flex flex-col gap-2 animate-in fade-in duration-200">
             <div className="flex items-center justify-between text-xs">
@@ -637,7 +826,6 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 </div>
               </div>
 
-              {/* End Call Button */}
               <button
                 onClick={handleLeaveVoiceCall}
                 className="p-1.5 rounded-lg bg-red-950/50 hover:bg-red-900 border border-red-500/30 text-red-300 hover:text-white transition-colors cursor-pointer"
@@ -647,7 +835,6 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               </button>
             </div>
 
-            {/* Quick Mic / Deafen Controls */}
             <div className="flex items-center justify-between gap-1 pt-0.5">
               <button
                 onClick={handleToggleMute}
@@ -676,7 +863,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
           </div>
         )}
 
-        {/* User Mini Bar at bottom of channels */}
+        {/* User Mini Bar */}
         <div className="p-2.5 border-t border-[#15151e] bg-[#07070a] flex items-center gap-2 text-xs">
           <div 
             className="w-7 h-7 rounded-lg overflow-hidden border border-white/20 flex items-center justify-center font-bold text-[10px] flex-shrink-0"
@@ -724,22 +911,20 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
           </div>
         </div>
 
-        {/* ──────── 3A. DISCORD VOICE CALL ROOM VIEW (WHEN IN VOICE CHANNEL) ──────── */}
+        {/* ──────── 3A. DISCORD VOICE CALL ROOM VIEW ──────── */}
         {isVoice ? (
           <div className="flex-1 flex flex-col p-6 items-center justify-between overflow-y-auto bg-gradient-to-b from-[#08080f] to-[#040407]">
-            {/* Top Prompt / Status */}
             <div className="text-center my-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-xs font-mono mb-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                 HỘI THOẠI TRỰC TIẾP (DISCORD VOICE CALL)
               </div>
               <h2 className="text-lg font-black tracking-tight text-white">{selectedChannel.name}</h2>
-              <p className="text-xs text-[#777] font-mono mt-0.5">Đàm thoại bảo mật tốc độ cao qua kênh Cyberpunk Voip</p>
+              <p className="text-xs text-[#777] font-mono mt-0.5">Đàm thoại bảo mật thời gian thực qua kênh Cyberpunk Voip</p>
             </div>
 
-            {/* Participants Grid (Discord-style Voice Tiles) */}
+            {/* Participants Grid */}
             <div className="w-full max-w-2xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 my-auto py-4">
-              {/* Existing Call Members */}
               {voiceParticipants.map(vp => (
                 <div 
                   key={vp.id}
@@ -749,7 +934,6 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                       : 'border-[#1e1e28]'
                   }`}
                 >
-                  {/* Avatar */}
                   <div className="relative mb-3">
                     <div 
                       className={`w-16 h-16 rounded-full overflow-hidden border-2 flex items-center justify-center text-lg font-bold text-white transition-all ${
@@ -1108,6 +1292,167 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
           ))}
         </div>
       </div>
+
+      {/* ──────────────── 5. MODAL TỰ TẠO TRẠM SÓNG / SERVER MỚI ──────────────── */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg bg-[#0c0c14] border border-[#222234] rounded-2xl p-6 shadow-2xl relative text-white">
+            {/* Close */}
+            <button
+              onClick={() => setIsCreateModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-[#666] hover:text-white hover:bg-[#181824] transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+              <div 
+                className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-base"
+                style={{ backgroundColor: `${newServerColor}25`, color: newServerColor, border: `1px solid ${newServerColor}40` }}
+              >
+                <Sparkles className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-base font-black tracking-tight text-white">Tạo Trạm Sóng Mới (Create Server)</h3>
+                <p className="text-[11px] text-[#777] font-mono">Tự thiết lập không gian âm nhạc, phòng chat & kênh thoại</p>
+              </div>
+            </div>
+
+            {/* Step 1: Chọn phong cách mẫu (Preset Templates) */}
+            <div className="mb-4">
+              <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-[#888] mb-2">
+                1. Chọn phong cách trạm sóng mẫu:
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {SERVER_PRESETS.map(p => {
+                  const isSel = newServerPreset === p.key;
+                  return (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => handleSelectPreset(p.key)}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        isSel 
+                          ? 'bg-[#151524] shadow-md' 
+                          : 'bg-[#0e0e16] hover:bg-[#13131e] border-[#1e1e2c]'
+                      }`}
+                      style={{
+                        borderColor: isSel ? p.color : undefined,
+                        boxShadow: isSel ? `0 0 12px ${p.color}30` : undefined,
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xl">{p.icon}</span>
+                        {isSel && (
+                          <span className="p-0.5 rounded-full bg-white text-black">
+                            <Check className="w-2.5 h-2.5" />
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs font-bold text-white">{p.label}</p>
+                      <p className="text-[10px] text-[#777] font-mono line-clamp-1 mt-0.5">{p.desc}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Step 2: Form tùy biến thông tin */}
+            <form onSubmit={handleCreateServer} className="space-y-3 font-sans">
+              <div>
+                <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-[#888] mb-1">
+                  2. Tên máy chủ / Trạm sóng:
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newServerName}
+                  onChange={e => setNewServerName(e.target.value)}
+                  placeholder="Ví dụ: Neon Club 2077, Lofi Study Corner..."
+                  className="w-full px-3 py-2 rounded-xl bg-[#12121c] border border-[#252538] text-white text-xs outline-none focus:border-white transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-[#888] mb-1">
+                  Mô tả trạm sóng:
+                </label>
+                <input
+                  type="text"
+                  value={newServerDesc}
+                  onChange={e => setNewServerDesc(e.target.value)}
+                  placeholder="Mô tả ngắn về thể loại âm nhạc hoặc đối tượng tham gia..."
+                  className="w-full px-3 py-2 rounded-xl bg-[#12121c] border border-[#252538] text-white text-xs outline-none focus:border-white transition-colors"
+                />
+              </div>
+
+              {/* Icon Emoji & Color Picker */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-[#888] mb-1">
+                    Biểu tượng Icon:
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    {['⚡', '☕', '🍸', '🎧', '🪩', '🚀', '💎', '🐉'].map(ico => (
+                      <button
+                        key={ico}
+                        type="button"
+                        onClick={() => setNewServerIcon(ico)}
+                        className={`w-7 h-7 rounded-lg text-sm flex items-center justify-center cursor-pointer transition-transform ${
+                          newServerIcon === ico ? 'scale-110 bg-white/20 border border-white' : 'hover:scale-105 bg-[#141420]'
+                        }`}
+                      >
+                        {ico}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-[#888] mb-1">
+                    Màu Neon chủ đạo:
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    {['#00E5FF', '#E040FB', '#00FF66', '#FF2A55', '#FFE600'].map(clr => (
+                      <button
+                        key={clr}
+                        type="button"
+                        onClick={() => setNewServerColor(clr)}
+                        className={`w-6 h-6 rounded-full cursor-pointer transition-transform ${
+                          newServerColor === clr ? 'scale-125 border-2 border-white' : 'hover:scale-110 opacity-70 hover:opacity-100'
+                        }`}
+                        style={{ backgroundColor: clr, boxShadow: `0 0 8px ${clr}50` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-2 border-t border-[#1e1e2c]">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-[#141420] hover:bg-[#1a1a2a] text-xs font-semibold text-[#888] hover:text-white transition-colors cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl font-bold text-xs uppercase tracking-wider text-black flex items-center gap-2 cursor-pointer shadow-lg transition-transform hover:scale-[1.02]"
+                  style={{
+                    backgroundColor: newServerColor,
+                    boxShadow: `0 0 16px ${newServerColor}40`,
+                  }}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Tạo Trạm Sóng Ngay</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
