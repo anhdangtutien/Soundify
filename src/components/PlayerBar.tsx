@@ -248,7 +248,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
 
         {/* Right: Expand Button */}
         <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#888899] group-hover/minibar:text-[var(--accent-color,#00E5FF)] transition-colors">
-          <span className="hidden sm:inline">Mở thanh phát nhạc</span>
+          <span className="hidden sm:inline">{getTranslation(language, 'player.openBar')}</span>
           <ChevronUp className="w-3.5 h-3.5" />
         </div>
       </footer>
@@ -969,7 +969,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
         {(onToggleMinimize || onMinimize) && (
           <button
             onClick={onToggleMinimize || onMinimize}
-            title="Thu nhỏ thanh phát nhạc (Minimize)"
+            title={getTranslation(language, 'player.minimizeBar')}
             className="p-1.5 rounded-lg text-[#777] hover:text-white hover:bg-[#161622] transition-colors cursor-pointer flex items-center justify-center ml-1"
           >
             <ChevronDown className="w-4 h-4" />

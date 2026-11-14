@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { Track, User, CommunityServer, CommunityChannel, CommunityMessage, StageSession, VoiceParticipant } from '../types';
 import { getSupabaseClient } from '../services/supabase';
-import { LanguageCode } from '../locales/i18n';
+import { LanguageCode, getTranslation } from '../locales/i18n';
 
 interface CommunityViewProps {
   currentUser: User | null;
@@ -139,6 +139,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   isPlaying,
   onPlayTrack,
   accentColor = '#FF2A55',
+  language = 'vi',
 }) => {
   // Load custom servers from localStorage
   const [servers, setServers] = useState<CommunityServer[]>(() => {
@@ -169,6 +170,18 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   const [newServerDesc, setNewServerDesc] = useState('Trạm phát sóng âm nhạc mật vụ');
   const [newServerIcon, setNewServerIcon] = useState('⚡');
   const [newServerColor, setNewServerColor] = useState('#00E5FF');
+
+  const getChannelName = (channel: CommunityChannel) => {
+    if (channel.id === 'ch_cyber_voice') return getTranslation(language, 'community.agentVoiceRoom');
+    return channel.name;
+  };
+
+  const getChannelTopic = (channel: CommunityChannel) => {
+    if (channel.id === 'ch_cyber_gen') return getTranslation(language, 'community.generalChatTopic');
+    if (channel.id === 'ch_cyber_share') return getTranslation(language, 'community.musicRadarTopic');
+    if (channel.id === 'ch_cyber_voice') return getTranslation(language, 'community.agentVoiceTopic');
+    return channel.topic;
+  };
 
   // ──────── VOICE CALL STATE & SUPABASE SYNC ────────
   const [connectedVoiceChannel, setConnectedVoiceChannel] = useState<string | null>(null);
@@ -810,7 +823,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
         <button
           onClick={() => handleSelectServer(servers[0])}
           className="w-11 h-11 rounded-2xl bg-[#0e0e16] border border-[#222230] hover:border-white/40 flex items-center justify-center text-white cursor-pointer transition-all hover:rounded-xl shadow-md group relative"
-          title="Trạm tổng Spytify Hub"
+          title="Spytify Hub"
         >
           <Radio className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
           <span className="absolute -left-1 w-1 h-5 rounded-r-full bg-white opacity-0 group-hover:opacity-100 transition-opacity"></span>
@@ -854,7 +867,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="w-11 h-11 rounded-3xl hover:rounded-xl bg-[#0e0e14] hover:bg-emerald-950/40 border border-[#20202a] hover:border-emerald-500/50 text-[#666] hover:text-emerald-400 flex items-center justify-center transition-all cursor-pointer mt-1 group"
-            title="Tự tạo trạm sóng mới (Create Server)"
+            title={getTranslation(language, 'community.createServer')}
           >
             <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
           </button>
@@ -891,7 +904,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
           <div>
             <p className="text-[10px] font-mono font-bold text-[#555] uppercase tracking-wider px-2 mb-1 flex items-center gap-1.5">
               <MessageSquare className="w-3 h-3 text-[#444]" />
-              KÊNH TRÒ CHUYỆN
+              {getTranslation(language, 'community.textChannels')}
             </p>
             <div className="space-y-0.5">
               {selectedServer.channels
@@ -920,7 +933,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
           <div>
             <p className="text-[10px] font-mono font-bold text-[#555] uppercase tracking-wider px-2 mb-1 flex items-center gap-1.5">
               <Mic className="w-3 h-3 text-[#444]" />
-              KÊNH ĐÀM THOẠI (VOICE)
+              {getTranslation(language, 'community.voiceChannels')}
             </p>
             <div className="space-y-0.5">
               {selectedServer.channels
@@ -943,16 +956,16 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                       >
                         <div className="flex items-center gap-2 truncate">
                           <Volume2 className="w-3.5 h-3.5" style={{ color: isVoiceActive ? '#00FF66' : selectedServer.accent_color }} />
-                          <span className="truncate">{channel.name}</span>
+                          <span className="truncate">{getChannelName(channel)}</span>
                         </div>
                         {isVoiceActive ? (
                           <span className="flex items-center gap-1 text-[9px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-500/20 px-1.5 py-0.2 rounded">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                            ĐÃ NỐI
+                            {getTranslation(language, 'community.connected')}
                           </span>
                         ) : (
                           <span className="text-[9px] font-mono text-[#666] bg-[#121218] px-1.5 py-0.2 rounded border border-[#202028]">
-                            {totalVoiceCount} Mật vụ
+                            {totalVoiceCount} {getTranslation(language, 'community.members')}
                           </span>
                         )}
                       </button>
@@ -970,7 +983,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                                   <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                                 )}
                               </div>
-                              <span className="truncate">{currentUser?.display_name || 'Bạn'} (Bạn)</span>
+                              <span className="truncate">{currentUser?.display_name || getTranslation(language, 'community.you')} ({getTranslation(language, 'community.you')})</span>
                               {isMuted && <MicOff className="w-2.5 h-2.5 text-red-400 ml-auto" />}
                             </div>
                           )}
@@ -1011,11 +1024,11 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 <Signal className="w-3.5 h-3.5 text-emerald-400" />
                 <div>
                   <p className="text-[10px] font-bold text-emerald-400 font-mono flex items-center gap-1">
-                    ĐÃ NỐI THOẠI
+                    {getTranslation(language, 'community.callConnected')}
                     <span className="text-[8px] text-[#666]">18ms</span>
                   </p>
                   <p className="text-[9px] text-[#888] font-mono truncate max-w-[120px]">
-                    {selectedServer.channels.find(c => c.id === connectedVoiceChannel)?.name || 'Kênh thoại'}
+                    {selectedServer.channels.find(c => c.id === connectedVoiceChannel) ? getChannelName(selectedServer.channels.find(c => c.id === connectedVoiceChannel)!) : getTranslation(language, 'community.voiceChannelFallback')}
                   </p>
                 </div>
               </div>
@@ -1023,7 +1036,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               <button
                 onClick={handleLeaveVoiceCall}
                 className="p-1.5 rounded-lg bg-red-950/50 hover:bg-red-900 border border-red-500/30 text-red-300 hover:text-white transition-colors cursor-pointer"
-                title="Ngắt kết nối đàm thoại"
+                title={getTranslation(language, 'community.disconnect')}
               >
                 <PhoneOff className="w-3.5 h-3.5" />
               </button>
@@ -1039,7 +1052,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 }`}
               >
                 {isMuted ? <MicOff className="w-3 h-3 text-red-400" /> : <Mic className="w-3 h-3 text-emerald-400" />}
-                <span>{isMuted ? 'Bật Mic' : 'Tắt Mic'}</span>
+                <span>{isMuted ? getTranslation(language, 'community.unmuteMic') : getTranslation(language, 'community.muteMic')}</span>
               </button>
 
               <button
@@ -1051,12 +1064,12 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 }`}
               >
                 {isDeafened ? <VolumeX className="w-3 h-3 text-red-400" /> : <Headphones className="w-3 h-3 text-cyan-400" />}
-                <span>{isDeafened ? 'Bật Nghe' : 'Tắt Loa'}</span>
+                <span>{isDeafened ? getTranslation(language, 'community.unmuteSpeaker') : getTranslation(language, 'community.muteSpeaker')}</span>
               </button>
 
               <button
                 onClick={() => setIsAudioSettingsOpen(true)}
-                title="Cài đặt âm lượng Mic & Loa"
+                title={getTranslation(language, 'community.audioSettingsTitle')}
                 className="p-1.5 rounded-md bg-[#151522] hover:bg-[#202030] border border-[#262638] text-[#888899] hover:text-[#00E5FF] transition-colors cursor-pointer"
               >
                 <Settings className="w-3 h-3" />
@@ -1078,11 +1091,11 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             ) : (
               <Hash className="w-4 h-4 text-[#777]" />
             )}
-            <h3 className="text-xs font-bold text-white tracking-wide truncate">{selectedChannel.name}</h3>
+            <h3 className="text-xs font-bold text-white tracking-wide truncate">{getChannelName(selectedChannel)}</h3>
             {selectedChannel.topic && (
               <>
                 <span className="text-[#333]">|</span>
-                <p className="text-[11px] text-[#777] font-mono truncate hidden sm:block">{selectedChannel.topic}</p>
+                <p className="text-[11px] text-[#777] font-mono truncate hidden sm:block">{getChannelTopic(selectedChannel)}</p>
               </>
             )}
           </div>
@@ -1091,7 +1104,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             {/* Discord-style Member List Toggle Button (Single User Icon) */}
             <button
               onClick={toggleMemberList}
-              title={isMemberListVisible ? "Thu nhỏ danh sách thành viên (Discord)" : "Hiện danh sách thành viên (Discord)"}
+              title={getTranslation(language, 'community.toggleMemberList')}
               className={`p-2 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
                 isMemberListVisible
                   ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-400 shadow-[0_0_10px_rgba(0,255,102,0.2)]'
@@ -1109,10 +1122,10 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             <div className="text-center my-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-xs font-mono mb-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                HỘI THOẠI TRỰC TIẾP (DISCORD VOICE CALL)
+                {getTranslation(language, 'community.voiceHeader')}
               </div>
-              <h2 className="text-lg font-black tracking-tight text-white">{selectedChannel.name}</h2>
-              <p className="text-xs text-[#777] font-mono mt-0.5">Đàm thoại bảo mật thời gian thực qua kênh Cyberpunk Voip</p>
+              <h2 className="text-lg font-black tracking-tight text-white">{getChannelName(selectedChannel)}</h2>
+              <p className="text-xs text-[#777] font-mono mt-0.5">{getTranslation(language, 'community.voiceSubheader')}</p>
             </div>
 
             {/* Participants Grid */}
@@ -1121,16 +1134,16 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 <div className="w-14 h-14 rounded-2xl bg-[#141420] border border-[#252536] flex items-center justify-center mb-3 text-emerald-400">
                   <Radio className="w-7 h-7" />
                 </div>
-                <h3 className="text-sm font-bold text-white mb-1">Phòng Thoại Chưa Có Ai</h3>
+                <h3 className="text-sm font-bold text-white mb-1">{getTranslation(language, 'community.voiceEmpty')}</h3>
                 <p className="text-[11px] text-[#777] font-mono mb-4 leading-relaxed">
-                  Nhấn "Vào phòng" bên dưới, hoặc chuột phải vào tên DJ ở danh sách bên phải để gọi DJ vào đàm thoại cùng bạn!
+                  {getTranslation(language, 'community.voiceEmptyHint')}
                 </p>
                 <button
                   onClick={() => handleJoinVoiceCall()}
                   className="py-2.5 px-6 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-emerald-400 hover:bg-emerald-300 transition-all flex items-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(0,255,102,0.3)] hover:scale-[1.02]"
                 >
                   <PhoneCall className="w-4 h-4" />
-                  <span>Vào phòng đàm thoại ngay</span>
+                  <span>{getTranslation(language, 'community.joinVoice')}</span>
                 </button>
               </div>
             ) : (
@@ -1169,9 +1182,9 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                       {/* Discord Bottom-left Tag */}
                       <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-sm border border-white/10 max-w-[85%] truncate">
                         <span className="text-xs font-bold text-white tracking-wide truncate">
-                          {currentUser?.display_name || 'Bạn'}
+                          {currentUser?.display_name || getTranslation(language, 'community.you')}
                         </span>
-                        <span className="text-[10px] text-zinc-400 font-mono">(Bạn)</span>
+                        <span className="text-[10px] text-zinc-400 font-mono">({getTranslation(language, 'community.you')})</span>
                         {isUserSpeaking && (
                           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping ml-1" />
                         )}
@@ -1227,7 +1240,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 {/* Helpful DJ Invite Hint */}
                 {voiceParticipants.filter(p => p.id !== myParticipantIdRef.current).length === 0 && (
                   <p className="text-[11px] text-[#777] font-mono mt-4 text-center">
-                    💡 <span className="text-zinc-400">Gợi ý:</span> Nhấn chuột phải vào <span className="text-amber-400 font-bold">DJ CyberHawk</span> ở danh sách thành viên bên phải để gọi DJ vào trò chuyện cùng bạn!
+                    {getTranslation(language, 'community.djInviteHint')}
                   </p>
                 )}
               </div>
@@ -1242,7 +1255,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     className="py-2.5 px-6 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-emerald-400 hover:bg-emerald-300 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(0,255,102,0.4)] hover:scale-[1.02]"
                   >
                     <PhoneCall className="w-4 h-4" />
-                    <span>Kết nối lại hội thoại</span>
+                    <span>{getTranslation(language, 'community.reconnect')}</span>
                   </button>
 
                   <button
@@ -1250,7 +1263,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     className="text-[11px] font-mono text-[#888] hover:text-[#00E5FF] flex items-center gap-1.5 transition-colors cursor-pointer py-1"
                   >
                     <Sliders className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Kiểm tra & Cài đặt âm lượng Mic / Loa</span>
+                    <span>{getTranslation(language, 'community.callAudioSettings')}</span>
                   </button>
                 </div>
               ) : (
@@ -1258,7 +1271,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   {/* Mic Toggle Button */}
                   <button
                     onClick={handleToggleMute}
-                    title={isMuted ? 'Mở Mic (Unmute)' : 'Tắt Mic (Mute)'}
+                    title={isMuted ? getTranslation(language, 'community.unmuteMic') : getTranslation(language, 'community.muteMic')}
                     className={`w-11 h-11 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md ${
                       isMuted 
                         ? 'bg-red-600 hover:bg-red-500 text-white' 
@@ -1271,7 +1284,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   {/* Deafen Toggle Button */}
                   <button
                     onClick={handleToggleDeafen}
-                    title={isDeafened ? 'Bật Loa (Undeafen)' : 'Tắt Loa (Deafen)'}
+                    title={isDeafened ? getTranslation(language, 'community.unmuteSpeaker') : getTranslation(language, 'community.muteSpeaker')}
                     className={`w-11 h-11 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md ${
                       isDeafened 
                         ? 'bg-red-600 hover:bg-red-500 text-white' 
@@ -1285,7 +1298,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   <button
                     onClick={() => setIsAudioSettingsOpen(true)}
                     className="w-11 h-11 rounded-full bg-[#2b2d31] hover:bg-[#35373c] text-zinc-300 hover:text-[#00E5FF] transition-all cursor-pointer flex items-center justify-center shadow-md"
-                    title="Cài đặt Mic & Loa"
+                    title={getTranslation(language, 'community.voiceSettings')}
                   >
                     <Sliders className="w-5 h-5 text-emerald-400" />
                   </button>
@@ -1294,10 +1307,10 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   <button
                     onClick={handleLeaveVoiceCall}
                     className="px-5 h-11 rounded-full bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg hover:scale-105 active:scale-95"
-                    title="Rời khỏi phòng thoại (Disconnect)"
+                    title={getTranslation(language, 'community.leaveRoom')}
                   >
                     <PhoneOff className="w-4 h-4" />
-                    <span>Rời phòng</span>
+                    <span>{getTranslation(language, 'community.leaveRoom')}</span>
                   </button>
                 </div>
               )}
@@ -1439,7 +1452,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 <div className="mb-2 p-1.5 px-3 rounded-lg bg-[#12121a] border border-[#242434] text-xs font-mono text-[#aaa] flex items-center justify-between">
                   <span className="flex items-center gap-2 truncate text-cyan-400">
                     <Music className="w-3.5 h-3.5" />
-                    Đính kèm bài hát: <b className="text-white truncate">{currentTrack.title} - {currentTrack.artist}</b>
+                    {getTranslation(language, 'community.attachTrack')} <b className="text-white truncate">{currentTrack.title} - {currentTrack.artist}</b>
                   </span>
                   <button 
                     onClick={() => setAttachCurrentTrack(false)} 
@@ -1460,7 +1473,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                         ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300' 
                         : 'bg-[#101016] border-[#222230] text-[#777] hover:text-white'
                     }`}
-                    title="Đính kèm bài hát bạn đang nghe vào tin nhắn"
+                    title={getTranslation(language, 'community.attachTrackTooltip')}
                   >
                     <Share2 className="w-4 h-4" />
                   </button>
@@ -1470,7 +1483,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   type="text"
                   value={inputText}
                   onChange={e => setInputText(e.target.value)}
-                  placeholder={`Gửi tín hiệu vào #${selectedChannel.name}...`}
+                  placeholder={getTranslation(language, 'community.sendMessageTo', { channel: selectedChannel.name })}
                   className="flex-1 px-3.5 py-2.5 rounded-xl bg-[#101018] text-white text-xs border border-[#222232] focus:border-white/50 outline-none transition-colors font-sans"
                 />
 
@@ -1501,11 +1514,11 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       >
         <div className="flex items-center justify-between mb-2.5 pb-1 border-b border-[#14141e]">
           <p className="text-[10px] font-mono font-bold text-[#666] uppercase tracking-wider">
-            TRỰC TUYẾN — {onlineMembers.length}
+            {getTranslation(language, 'community.online')} — {onlineMembers.length}
           </p>
           <button
             onClick={toggleMemberList}
-            title="Thu gọn danh sách thành viên (Discord)"
+            title={getTranslation(language, 'community.toggleMemberList')}
             className="p-1 rounded hover:bg-[#161622] text-[#666] hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-3.5 h-3.5" />
@@ -1562,7 +1575,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                       member: mem,
                     });
                   }}
-                  title="Chuột phải hoặc bấm để mời vào voice"
+                  title={getTranslation(language, 'community.inviteToVoice')}
                   className="p-1 rounded hover:bg-white/10 text-[#666] hover:text-white opacity-0 group-hover:opacity-100 transition-opacity ml-auto cursor-pointer flex-shrink-0"
                 >
                   <MoreVertical className="w-3.5 h-3.5" />
@@ -1597,7 +1610,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 className="w-full px-2.5 py-1.5 rounded-lg hover:bg-red-950/40 text-red-300 flex items-center gap-2 text-left cursor-pointer transition-colors"
               >
                 <PhoneOff className="w-3.5 h-3.5 text-red-400" />
-                <span>Mời rời phòng thoại</span>
+                <span>{getTranslation(language, 'community.removeFromVoice')}</span>
               </button>
             ) : (
               <button
@@ -1605,7 +1618,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 className="w-full px-2.5 py-1.5 rounded-lg hover:bg-emerald-950/40 text-emerald-300 flex items-center gap-2 text-left cursor-pointer transition-colors"
               >
                 <PhoneCall className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{memberMenu.member.isHost ? 'Gọi DJ vào phòng thoại' : 'Mời vào phòng thoại'}</span>
+                <span>{memberMenu.member.isHost ? getTranslation(language, 'community.callDj') : getTranslation(language, 'community.inviteToVoice')}</span>
               </button>
             )}
 
@@ -1617,7 +1630,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               className="w-full px-2.5 py-1.5 rounded-lg hover:bg-[#161624] text-zinc-300 hover:text-white flex items-center gap-2 text-left cursor-pointer transition-colors"
             >
               <MessageSquare className="w-3.5 h-3.5 text-[#888]" />
-              <span>Nhắc tên trong chat (@)</span>
+              <span>{getTranslation(language, 'community.mentionInChat')}</span>
             </button>
           </div>
         </div>
@@ -1808,10 +1821,10 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               </div>
               <div>
                 <h3 className="text-base font-black tracking-tight text-white flex items-center gap-2">
-                  <span>Cài Đặt Âm Lượng Mic & Loa</span>
+                  <span>{getTranslation(language, 'community.audioSettingsTitle')}</span>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-950/50 border border-cyan-500/30 text-cyan-400">VOICE LAB</span>
                 </h3>
-                <p className="text-[11px] text-[#777] font-mono">Tinh chỉnh thiết bị thu âm, âm lượng đàm thoại và bộ lọc khử tạp âm</p>
+                <p className="text-[11px] text-[#777] font-mono">{getTranslation(language, 'community.audioSettingsSubtitle')}</p>
               </div>
             </div>
 
@@ -1821,7 +1834,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Mic className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">Âm Lượng Micro (Input Volume)</span>
+                    <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">{getTranslation(language, 'community.micVolume')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded">
@@ -1830,7 +1843,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     <button
                       type="button"
                       onClick={() => handleMicVolumeChange(100)}
-                      title="Đặt lại 100%"
+                      title="100%"
                       className="p-1 rounded hover:bg-[#1c1c2a] text-[#777] hover:text-white text-[10px] font-mono transition-colors cursor-pointer flex items-center gap-1"
                     >
                       <RotateCcw className="w-3 h-3" />
@@ -1851,9 +1864,9 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     className="w-full h-2 bg-[#1c1c2a] rounded-lg appearance-none cursor-pointer accent-emerald-400"
                   />
                   <div className="flex justify-between text-[9px] font-mono text-[#555] mt-1">
-                    <span>0% (Tắt)</span>
-                    <span className="text-[#888]">100% (Chuẩn)</span>
-                    <span>200% (Khuếch đại 2x)</span>
+                    <span>0%</span>
+                    <span className="text-[#888]">100%</span>
+                    <span>200%</span>
                   </div>
                 </div>
 
@@ -1862,7 +1875,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[11px] font-mono text-[#888] flex items-center gap-1.5">
                       <Activity className="w-3.5 h-3.5 text-cyan-400" />
-                      Kiểm tra Micro thực tế (Live VU Meter)
+                      {getTranslation(language, 'community.testMic')}
                     </span>
                     <button
                       type="button"
@@ -1873,7 +1886,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                           : 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60'
                       }`}
                     >
-                      {isTestingMic ? '⏹️ Dừng kiểm tra' : '▶️ Bắt đầu thử Mic'}
+                      {isTestingMic ? getTranslation(language, 'community.stopTestMic') : getTranslation(language, 'community.startTestMic')}
                     </button>
                   </div>
 
@@ -1889,7 +1902,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     <div 
                       className="absolute top-0 bottom-0 w-0.5 bg-white/70"
                       style={{ left: `${(micSensitivity / 50) * 100}%` }}
-                      title={`Ngưỡng nhận diện giọng nói: ${micSensitivity}`}
+                      title={`Sensitivity: ${micSensitivity}`}
                     />
                   </div>
 
@@ -1899,23 +1912,23 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                         testMicLevel > micSensitivity ? (
                           <span className="text-emerald-400 font-bold flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                            Đang nhận diện giọng nói ({testMicLevel}%)
+                            {getTranslation(language, 'community.voiceActive', { level: testMicLevel })}
                           </span>
                         ) : (
-                          <span className="text-zinc-400">Dưới ngưỡng thu âm ({testMicLevel}%)</span>
+                          <span className="text-zinc-400">{getTranslation(language, 'community.voiceBelowGate', { level: testMicLevel })}</span>
                         )
                       ) : (
-                        'Nhấn "Bắt đầu thử Mic" rồi nói vào mic để kiểm tra'
+                        getTranslation(language, 'community.voiceTestPrompt')
                       )}
                     </span>
-                    <span>Ngưỡng kích hoạt: {micSensitivity}</span>
+                    <span>{getTranslation(language, 'community.activationThreshold', { level: micSensitivity })}</span>
                   </div>
                 </div>
 
                 {/* Voice Sensitivity Slider */}
                 <div className="pt-3 border-t border-[#1a1a26] mt-3">
                   <div className="flex items-center justify-between mb-1.5 text-xs">
-                    <span className="text-[11px] font-mono text-[#aaa]">Độ nhạy thu âm (Ngưỡng mở Mic / Noise Gate)</span>
+                    <span className="text-[11px] font-mono text-[#aaa]">{getTranslation(language, 'community.noiseGate')}</span>
                     <span className="text-xs font-mono font-bold text-cyan-400">{micSensitivity}</span>
                   </div>
                   <input
@@ -1932,7 +1945,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     className="w-full h-1.5 bg-[#1c1c2a] rounded-lg appearance-none cursor-pointer accent-cyan-400"
                   />
                   <p className="text-[10px] text-[#555] font-mono mt-1">
-                    Kéo sang trái để mic nhạy hơn (bắt tiếng nhỏ), kéo sang phải để lọc tiếng gõ bàn phím và tiếng ồn quạt.
+                    {getTranslation(language, 'community.noiseGateHint')}
                   </p>
                 </div>
 
@@ -1948,7 +1961,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                       }}
                       className="accent-emerald-500 rounded"
                     />
-                    <span className="text-[11px] text-zinc-300 font-mono">Khử tiếng ồn (Noise)</span>
+                    <span className="text-[11px] text-zinc-300 font-mono">{getTranslation(language, 'community.noiseSuppression')}</span>
                   </label>
                   <label className="flex items-center gap-2 p-2 rounded-lg bg-[#0e0e16] border border-[#1c1c28] cursor-pointer hover:border-[#2a2a3e] transition-colors">
                     <input
@@ -1960,7 +1973,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                       }}
                       className="accent-emerald-500 rounded"
                     />
-                    <span className="text-[11px] text-zinc-300 font-mono">Chống vọng âm (Echo)</span>
+                    <span className="text-[11px] text-zinc-300 font-mono">{getTranslation(language, 'community.echoCancellation')}</span>
                   </label>
                 </div>
               </div>
@@ -1970,7 +1983,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Volume2 className="w-4 h-4 text-cyan-400" />
-                    <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">Âm Lượng Loa / Tai Nghe (Output Volume)</span>
+                    <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">{getTranslation(language, 'community.speakerVolume')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-500/30 px-2 py-0.5 rounded">
@@ -1979,7 +1992,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     <button
                       type="button"
                       onClick={() => handleSpeakerVolumeChange(100)}
-                      title="Đặt lại 100%"
+                      title="100%"
                       className="p-1 rounded hover:bg-[#1c1c2a] text-[#777] hover:text-white text-[10px] font-mono transition-colors cursor-pointer flex items-center gap-1"
                     >
                       <RotateCcw className="w-3 h-3" />
@@ -2000,22 +2013,22 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     className="w-full h-2 bg-[#1c1c2a] rounded-lg appearance-none cursor-pointer accent-cyan-400"
                   />
                   <div className="flex justify-between text-[9px] font-mono text-[#555] mt-1">
-                    <span>0% (Im lặng)</span>
-                    <span className="text-[#888]">100% (Tiêu chuẩn)</span>
-                    <span>200% (Bass/Boost 2x)</span>
+                    <span>0%</span>
+                    <span className="text-[#888]">100%</span>
+                    <span>200%</span>
                   </div>
                 </div>
 
                 {/* Speaker Test Sound Button */}
                 <div className="pt-3 border-t border-[#1a1a26] flex items-center justify-between">
-                  <span className="text-[11px] font-mono text-[#888]">Kiểm tra mức âm lượng loa thực tế:</span>
+                  <span className="text-[11px] font-mono text-[#888]"></span>
                   <button
                     type="button"
                     onClick={() => playSpeakerTestSound()}
                     className="px-3 py-1.5 rounded-lg bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/40 text-cyan-300 font-mono text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-[1.02]"
                   >
                     <Volume1 className="w-3.5 h-3.5" />
-                    <span>🔊 Thử âm thanh loa</span>
+                    <span>{getTranslation(language, 'community.testSpeaker')}</span>
                   </button>
                 </div>
               </div>
@@ -2033,7 +2046,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 }}
                 className="text-xs font-mono text-[#666] hover:text-[#aaa] transition-colors cursor-pointer"
               >
-                Khôi phục mặc định
+                {getTranslation(language, 'community.resetDefaults')}
               </button>
 
               <button

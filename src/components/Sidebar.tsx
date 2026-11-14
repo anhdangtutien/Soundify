@@ -141,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-3 py-3.5 flex flex-col items-center justify-center border-b border-[#141418]">
           <button
             onClick={handleToggle}
-            title="Mở rộng thanh điều hướng (Ctrl+B)"
+            title={getTranslation(language, 'sidebar.expand')}
             className="w-10 h-10 rounded-xl overflow-hidden bg-[#101014] border border-[#262630] hover:border-[#00E5FF]/60 flex items-center justify-center flex-shrink-0 cursor-pointer relative group transition-all"
             style={{ boxShadow: `0 0 10px ${accentColor}25` }}
           >
@@ -154,7 +154,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div 
             onClick={handleToggle}
             className="flex items-center gap-3 cursor-pointer group/brand"
-            title="Thu nhỏ thanh điều hướng (Ctrl+B)"
+            title={getTranslation(language, 'sidebar.collapse')}
           >
             <div 
               className="w-9 h-9 rounded-xl overflow-hidden bg-[#101014] border border-[#262630] group-hover/brand:border-[#00E5FF]/60 flex items-center justify-center flex-shrink-0 transition-colors"
@@ -181,7 +181,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           <button
             onClick={handleToggle}
-            title="Thu nhỏ thanh điều hướng (Ctrl+B)"
+            title={getTranslation(language, 'sidebar.collapse')}
             className="p-1.5 rounded-lg hover:bg-[#161620] text-[#666677] hover:text-white transition-colors cursor-pointer"
           >
             <PanelLeftClose className="w-4 h-4" />
@@ -355,7 +355,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <span className="text-[#666]">Spytify Client</span>
           <button
             onClick={() => onViewChange('profile')}
-            title="Bấm để kiểm tra cập nhật & xem chi tiết phiên bản"
+            title={getTranslation(language, 'sidebar.checkUpdate')}
             className="px-1.5 py-0.5 rounded bg-[#101014] hover:bg-[#181822] border border-[#202028] text-[#888] hover:text-white transition-colors cursor-pointer font-bold text-[9px]"
           >
             v{CURRENT_VERSION}

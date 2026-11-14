@@ -3086,22 +3086,26 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
             <div className="flex items-center gap-2.5 text-xs font-medium text-[#888]">
               <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#666]">
                 {currentView === 'community'
-                  ? 'TRẠM SÓNG & CỘNG ĐỒNG'
+                  ? getTranslation(language, 'nav.community').toUpperCase()
                   : currentView === 'search'
-                  ? 'TÌM KIẾM'
+                  ? getTranslation(language, 'nav.search').toUpperCase()
                   : currentView === 'albums'
-                  ? 'ALBUM CỦA BẠN'
+                  ? getTranslation(language, 'nav.myAlbums').toUpperCase()
                   : currentView === 'ai_mix'
-                  ? 'AI MIX STUDIO'
+                  ? getTranslation(language, 'nav.aiMix').toUpperCase()
                   : currentView === 'profile'
-                  ? 'HỒ SƠ CÁ NHÂN'
+                  ? getTranslation(language, 'nav.account').toUpperCase()
                   : currentView === 'youtube'
                   ? 'YOUTUBE MUSIC'
                   : currentView === 'soundcloud'
                   ? 'SOUNDCLOUD'
                   : currentView === 'audius'
                   ? 'AUDIUS HI-FI'
-                  : 'THỊNH HÀNH'}
+                  : currentView === 'local'
+                  ? getTranslation(language, 'nav.localMusic').toUpperCase()
+                  : currentView === 'favorites'
+                  ? getTranslation(language, 'nav.favorites').toUpperCase()
+                  : getTranslation(language, 'nav.trending').toUpperCase()}
               </span>
             </div>
             <div className="flex items-center gap-2.5">
