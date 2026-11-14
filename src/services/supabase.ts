@@ -2,7 +2,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { invoke } from '@tauri-apps/api/core';
 import { UserAlbum, Track, HistoryItem, User } from '../types';
 
-// Default Supabase credentials (Can be overridden by user in Profile settings or .env)
+// System default Supabase credentials (baked in for smooth out-of-the-box sync)
 const DEFAULT_URL = import.meta.env.VITE_SUPABASE_URL || 'https://qibsrzgbyclzzayfkeei.supabase.co';
 const DEFAULT_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_GVAkGRpbXs9N_ATIKEoscQ_DJ6QSSVX';
 
@@ -19,22 +19,59 @@ export function cleanSupabaseUrl(raw: string): string {
   return clean.replace(/\/+$/, '');
 }
 
+/**
+ * Returns active config: uses custom user-provided database if configured,
+ * otherwise transparently falls back to system default.
+ */
 export function getStoredSupabaseConfig(): SupabaseConfig {
-  let storedUrl = localStorage.getItem('spytify_supabase_url');
-  if (storedUrl && (storedUrl.includes('qlbs') || storedUrl.includes('example'))) {
-    storedUrl = DEFAULT_URL;
-    localStorage.setItem('spytify_supabase_url', DEFAULT_URL);
+  const customUrl = localStorage.getItem('spytify_supabase_url');
+  const customKey = localStorage.getItem('spytify_supabase_anon_key');
+
+  if (customUrl && customKey && !customUrl.includes('example-spytify')) {
+    return {
+      url: cleanSupabaseUrl(customUrl),
+      anonKey: customKey.trim(),
+    };
   }
-  const url = cleanSupabaseUrl(storedUrl || DEFAULT_URL);
-  const anonKey = (localStorage.getItem('spytify_supabase_anon_key') || DEFAULT_ANON_KEY).trim();
-  return { url, anonKey };
+
+  return {
+    url: DEFAULT_URL,
+    anonKey: DEFAULT_ANON_KEY,
+  };
+}
+
+/**
+ * Returns ONLY custom user-provided database settings.
+ * If user hasn't set custom database, returns empty strings so system default
+ * keys are NEVER leaked or visible in the UI form fields!
+ */
+export function getCustomSupabaseConfig(): { url: string; anonKey: string; isCustom: boolean } {
+  const customUrl = localStorage.getItem('spytify_supabase_url') || '';
+  const customKey = localStorage.getItem('spytify_supabase_anon_key') || '';
+  const isCustom = Boolean(customUrl && customKey && !customUrl.includes('example-spytify'));
+  return {
+    url: isCustom ? customUrl : '',
+    anonKey: isCustom ? customKey : '',
+    isCustom,
+  };
 }
 
 export function saveStoredSupabaseConfig(url: string, anonKey: string): void {
   const cleanedUrl = cleanSupabaseUrl(url);
-  localStorage.setItem('spytify_supabase_url', cleanedUrl);
-  localStorage.setItem('spytify_supabase_anon_key', anonKey.trim());
+  if (cleanedUrl && anonKey.trim()) {
+    localStorage.setItem('spytify_supabase_url', cleanedUrl);
+    localStorage.setItem('spytify_supabase_anon_key', anonKey.trim());
+  } else {
+    localStorage.removeItem('spytify_supabase_url');
+    localStorage.removeItem('spytify_supabase_anon_key');
+  }
   cachedClient = null; // Reset client
+}
+
+export function resetToDefaultSupabase(): void {
+  localStorage.removeItem('spytify_supabase_url');
+  localStorage.removeItem('spytify_supabase_anon_key');
+  cachedClient = null;
 }
 
 let cachedClient: SupabaseClient | null = null;

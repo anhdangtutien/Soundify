@@ -10,8 +10,8 @@ import {
   Folder, FolderOpen, FolderDown, Copy, CheckCheck, ExternalLink, Zap, Power
 } from 'lucide-react';
 import { 
-  getStoredSupabaseConfig, saveStoredSupabaseConfig, isSupabaseConfigured,
-  cloudSyncPush, cloudSyncPull, SUPABASE_SCHEMA_SQL, testSupabaseConnection
+  getStoredSupabaseConfig, getCustomSupabaseConfig, saveStoredSupabaseConfig, resetToDefaultSupabase,
+  isSupabaseConfigured, cloudSyncPush, cloudSyncPull, SUPABASE_SCHEMA_SQL, testSupabaseConnection
 } from '../services/supabase';
 import { checkGitHubUpdate, CURRENT_VERSION, UpdateInfo } from '../services/updater';
 import { LanguageCode, SUPPORTED_LANGUAGES, getTranslation } from '../locales/i18n';
@@ -146,8 +146,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     }
   };
 
-  // Supabase Cloud State
-  const [supabaseConfig, setSupabaseConfig] = useState(getStoredSupabaseConfig());
+  // Supabase Cloud State (Only custom settings are editable; system default keys are never exposed in input boxes)
+  const [supabaseConfig, setSupabaseConfig] = useState(getCustomSupabaseConfig());
   const [showSupabaseSettings, setShowSupabaseSettings] = useState(false);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [cloudStatusMsg, setCloudStatusMsg] = useState<string | null>(null);
@@ -221,7 +221,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   const handleTestConnection = async () => {
     setIsTestingConnection(true);
-    saveStoredSupabaseConfig(supabaseConfig.url, supabaseConfig.anonKey);
+    if (supabaseConfig.url && supabaseConfig.anonKey) {
+      saveStoredSupabaseConfig(supabaseConfig.url, supabaseConfig.anonKey);
+    }
     const res = await testSupabaseConnection();
     setCloudStatusMsg(res.message);
     setIsTestingConnection(false);
@@ -231,7 +233,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const handleSaveSupabase = (e: React.FormEvent) => {
     e.preventDefault();
     saveStoredSupabaseConfig(supabaseConfig.url, supabaseConfig.anonKey);
-    setCloudStatusMsg('Đã lưu cấu hình Supabase Cloud!');
+    setSupabaseConfig(getCustomSupabaseConfig());
+    setCloudStatusMsg(supabaseConfig.url ? 'Đã lưu cấu hình cơ sở dữ liệu riêng!' : 'Đã chuyển về sử dụng Cloud mặc định!');
+    setTimeout(() => setCloudStatusMsg(null), 3000);
+  };
+
+  const handleResetToDefaultSupabase = () => {
+    resetToDefaultSupabase();
+    setSupabaseConfig(getCustomSupabaseConfig());
+    setCloudStatusMsg('Đã đặt lại về Cloud mặc định của Spytify!');
     setTimeout(() => setCloudStatusMsg(null), 3000);
   };
 
@@ -1011,14 +1021,31 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </button>
               </div>
 
+              <div className="p-3 rounded-lg bg-[#0e0e16] border border-[#222230] text-[11px] text-[#888] font-mono leading-relaxed">
+                💡 <span className="text-white font-semibold">Ghi chú cho Lập trình viên / IT:</span> Spytify đã tích hợp sẵn Cloud mặc định để tự động đồng bộ cho người dùng thông thường. Bạn chỉ cần điền 2 ô bên dưới nếu bạn muốn tự lưu trữ dữ liệu trên dự án Supabase riêng của bạn.
+              </div>
+
+              {supabaseConfig.isCustom && (
+                <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-400 font-mono">
+                  <span>✓ Đang áp dụng cơ sở dữ liệu Supabase riêng</span>
+                  <button
+                    type="button"
+                    onClick={handleResetToDefaultSupabase}
+                    className="text-[10px] underline hover:text-white cursor-pointer"
+                  >
+                    Khôi phục về Cloud mặc định
+                  </button>
+                </div>
+              )}
+
               <form onSubmit={handleSaveSupabase} className="space-y-3">
                 <div>
                   <label className="text-[11px] font-mono text-[#888] block mb-1">
-                    Supabase Project URL (ví dụ: https://xyzcompany.supabase.co)
+                    Supabase Project URL (Cơ sở dữ liệu riêng của bạn)
                   </label>
                   <input
                     type="text"
-                    placeholder="https://your-project.supabase.co"
+                    placeholder={supabaseConfig.isCustom ? "https://your-project.supabase.co" : "Mặc định: Cloud chính thức của Spytify (Đang bảo mật)"}
                     value={supabaseConfig.url}
                     onChange={(e) => setSupabaseConfig(prev => ({ ...prev, url: e.target.value }))}
                     className="w-full py-2 px-3 rounded-lg bg-[#070709] border border-[#262634] text-xs text-white outline-none focus:border-white/50 font-mono"
@@ -1027,11 +1054,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
                 <div>
                   <label className="text-[11px] font-mono text-[#888] block mb-1">
-                    Supabase Anon Public API Key (eyJhbGciOi...)
+                    Supabase Anon Public API Key (Key riêng của bạn)
                   </label>
                   <input
                     type="password"
-                    placeholder="eyJhbGciOi..."
+                    placeholder={supabaseConfig.isCustom ? "sb_publishable_... hoặc eyJhbGciOi..." : "Mặc định: Key hệ thống ẩn an toàn"}
                     value={supabaseConfig.anonKey}
                     onChange={(e) => setSupabaseConfig(prev => ({ ...prev, anonKey: e.target.value }))}
                     className="w-full py-2 px-3 rounded-lg bg-[#070709] border border-[#262634] text-xs text-white outline-none focus:border-white/50 font-mono"
@@ -1049,13 +1076,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       <RefreshCw className={`w-3 h-3 ${isTestingConnection ? 'animate-spin' : ''}`} />
                       <span>{isTestingConnection ? 'Đang kiểm tra...' : 'Kiểm tra kết nối'}</span>
                     </button>
+                    {supabaseConfig.isCustom && (
+                      <button
+                        type="button"
+                        onClick={handleResetToDefaultSupabase}
+                        className="py-1.5 px-2.5 rounded-lg bg-transparent hover:bg-zinc-800 text-[#888] hover:text-white font-mono text-xs cursor-pointer transition-colors"
+                      >
+                        Đặt lại
+                      </button>
+                    )}
                   </div>
 
                   <button
                     type="submit"
                     className="py-1.5 px-4 rounded-lg bg-white text-black font-bold text-xs hover:bg-[#ddd] transition-colors cursor-pointer"
                   >
-                    Lưu cấu hình
+                    Lưu cấu hình riêng
                   </button>
                 </div>
               </form>
