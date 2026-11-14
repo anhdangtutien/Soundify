@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, Sparkles, Download, ExternalLink, Calendar, CheckCircle2 } from 'lucide-react';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { UpdateInfo } from '../services/updater';
+import { UpdateInfo, dismissUpdate } from '../services/updater';
 
 interface UpdateModalProps {
   isOpen: boolean;
@@ -18,7 +18,17 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 }) => {
   if (!isOpen || !updateInfo) return null;
 
+  const handleDismiss = () => {
+    if (updateInfo) {
+      dismissUpdate(updateInfo);
+    }
+    onClose();
+  };
+
   const handleDownload = async () => {
+    if (updateInfo) {
+      dismissUpdate(updateInfo);
+    }
     try {
       await openUrl(updateInfo.downloadUrl);
     } catch {
@@ -46,7 +56,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
       <div className="w-full max-w-md bg-[#0a0a0f] border border-[#222230] rounded-2xl p-6 shadow-2xl relative text-white">
         {/* Close Button */}
         <button
-          onClick={onClose}
+          onClick={handleDismiss}
           className="absolute top-4 right-4 p-1.5 rounded-full text-[#666] hover:text-white hover:bg-[#181822] transition-colors cursor-pointer"
         >
           <X className="w-4 h-4" />
@@ -129,7 +139,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 
         <div className="text-center mt-3">
           <button
-            onClick={onClose}
+            onClick={handleDismiss}
             className="text-[11px] text-[#777] hover:text-[#bbb] hover:underline cursor-pointer font-mono"
           >
             Để sau (Nhắc tôi ở bản build kế tiếp)

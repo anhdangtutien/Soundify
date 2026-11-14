@@ -10,8 +10,23 @@ export interface UpdateInfo {
 }
 
 // Baseline build timestamp for the current installed client
-export const CURRENT_BUILD_DATE = '2026-11-13T17:56:02Z';
-export const CURRENT_VERSION = '0.1.1';
+export const CURRENT_BUILD_DATE = '2026-11-14T12:00:00Z';
+export const CURRENT_VERSION = '0.1.3';
+
+export function compareSemver(v1: string, v2: string): number {
+  const parse = (v: string) =>
+    v.replace(/^v/, '').split(/[-+]/)[0].split('.').map(n => parseInt(n, 10) || 0);
+  const p1 = parse(v1);
+  const p2 = parse(v2);
+  const len = Math.max(p1.length, p2.length);
+  for (let i = 0; i < len; i++) {
+    const n1 = p1[i] || 0;
+    const n2 = p2[i] || 0;
+    if (n1 > n2) return 1;
+    if (n1 < n2) return -1;
+  }
+  return 0;
+}
 
 export async function checkGitHubUpdate(force = false): Promise<{ hasUpdate: boolean; info?: UpdateInfo; error?: string }> {
   // 1. Try native Rust command first (immune to CORS, webview network restrictions, and sets proper User-Agent)
@@ -31,9 +46,18 @@ export async function checkGitHubUpdate(force = false): Promise<{ hasUpdate: boo
         return { hasUpdate: false, info };
       }
 
+      // If version is equal or older, never prompt automatically on startup
+      if (!force && compareSemver(info.version, CURRENT_VERSION) <= 0) {
+        return { hasUpdate: false, info };
+      }
+
       if (!force) {
-        const dismissed = localStorage.getItem('spytify_dismissed_update_time');
-        if (dismissed && dismissed === raw.published_at) {
+        const dismissedVer = localStorage.getItem('spytify_dismissed_update_version');
+        const dismissedTime = localStorage.getItem('spytify_dismissed_update_time');
+        if (dismissedVer && dismissedVer === info.version) {
+          return { hasUpdate: false, info };
+        }
+        if (dismissedTime && dismissedTime === raw.published_at) {
           return { hasUpdate: false, info };
         }
       }
@@ -63,35 +87,42 @@ export async function checkGitHubUpdate(force = false): Promise<{ hasUpdate: boo
 
     const data = await res.json();
     const publishedAt = data.published_at || '';
-    const tagName = (data.tag_name || '').replace(/^v/, '');
+    const rawTag = data.tag_name || '';
     const exeAsset = data.assets?.find((a: any) => (a.name || '').endsWith('.exe'));
     const downloadUrl = exeAsset?.browser_download_url || data.html_url || 'https://github.com/anhdangtutien/Spytify/releases';
     const effectiveRemoteDate = exeAsset?.updated_at || exeAsset?.created_at || publishedAt;
 
     const info: UpdateInfo = {
-      version: data.tag_name || `v${CURRENT_VERSION}`,
-      name: data.name || `Spytify ${data.tag_name || ''}`,
+      version: rawTag || `v${CURRENT_VERSION}`,
+      name: data.name || `Spytify ${rawTag || ''}`,
       publishedAt: effectiveRemoteDate,
       notes: data.body || '',
       downloadUrl,
       releaseUrl: data.html_url || 'https://github.com/anhdangtutien/Spytify/releases',
     };
 
+    const isNewerVersion = compareSemver(info.version, CURRENT_VERSION) > 0;
     const remoteTime = new Date(effectiveRemoteDate).getTime();
     const localTime = new Date(CURRENT_BUILD_DATE).getTime();
+    const isNewerBuild = remoteTime > localTime && compareSemver(info.version, CURRENT_VERSION) === 0;
 
-    const isNewerBuild = remoteTime > localTime;
-    const isNewerVersion = tagName && tagName !== CURRENT_VERSION;
-
-    const hasUpdate = Boolean(isNewerBuild || isNewerVersion);
+    const hasUpdate = Boolean(isNewerVersion || isNewerBuild);
 
     if (!hasUpdate) {
       return { hasUpdate: false, info };
     }
 
     if (!force) {
-      const dismissed = localStorage.getItem('spytify_dismissed_update_time');
-      if (dismissed && dismissed === effectiveRemoteDate) {
+      if (compareSemver(info.version, CURRENT_VERSION) <= 0) {
+        return { hasUpdate: false, info };
+      }
+
+      const dismissedVer = localStorage.getItem('spytify_dismissed_update_version');
+      const dismissedTime = localStorage.getItem('spytify_dismissed_update_time');
+      if (dismissedVer && dismissedVer === info.version) {
+        return { hasUpdate: false, info };
+      }
+      if (dismissedTime && dismissedTime === effectiveRemoteDate) {
         return { hasUpdate: false, info };
       }
     }
@@ -103,6 +134,15 @@ export async function checkGitHubUpdate(force = false): Promise<{ hasUpdate: boo
   }
 }
 
-export function dismissUpdate(publishedAt: string) {
-  localStorage.setItem('spytify_dismissed_update_time', publishedAt);
+export function dismissUpdate(infoOrTime: string | UpdateInfo) {
+  if (typeof infoOrTime === 'string') {
+    localStorage.setItem('spytify_dismissed_update_time', infoOrTime);
+  } else {
+    if (infoOrTime.version) {
+      localStorage.setItem('spytify_dismissed_update_version', infoOrTime.version);
+    }
+    if (infoOrTime.publishedAt) {
+      localStorage.setItem('spytify_dismissed_update_time', infoOrTime.publishedAt);
+    }
+  }
 }

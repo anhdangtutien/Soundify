@@ -343,6 +343,14 @@ impl DatabaseManager {
         avatar: Option<&str>,
     ) -> Result<User, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
+
+        // Purge any stale local account with conflicting username or email but different id
+        // to prevent UNIQUE constraint failure when importing from cloud
+        let _ = conn.execute(
+            "DELETE FROM users WHERE (LOWER(username) = LOWER(?1) OR (email IS NOT NULL AND LOWER(email) = LOWER(?2))) AND id != ?3",
+            params![username, email.unwrap_or(""), id],
+        );
+
         conn.execute(
             "INSERT INTO users (id, username, email, password_hash, salt, display_name, avatar)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)

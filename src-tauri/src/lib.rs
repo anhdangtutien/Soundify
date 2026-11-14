@@ -858,6 +858,32 @@ pub struct AppUpdateInfo {
     pub release_url: String,
 }
 
+fn compare_semver(v1: &str, v2: &str) -> std::cmp::Ordering {
+    let parse = |v: &str| -> Vec<u64> {
+        v.trim_start_matches('v')
+            .split(&['-', '+'][..])
+            .next()
+            .unwrap_or("")
+            .split('.')
+            .map(|s| s.parse::<u64>().unwrap_or(0))
+            .collect()
+    };
+
+    let p1 = parse(v1);
+    let p2 = parse(v2);
+    let max_len = p1.len().max(p2.len());
+
+    for i in 0..max_len {
+        let n1 = p1.get(i).copied().unwrap_or(0);
+        let n2 = p2.get(i).copied().unwrap_or(0);
+        match n1.cmp(&n2) {
+            std::cmp::Ordering::Equal => continue,
+            other => return other,
+        }
+    }
+    std::cmp::Ordering::Equal
+}
+
 #[tauri::command]
 async fn check_for_updates(current_build_date: Option<String>) -> Result<AppUpdateInfo, String> {
     let client = reqwest::Client::builder()
@@ -920,10 +946,14 @@ async fn check_for_updates(current_build_date: Option<String>) -> Result<AppUpda
         published_at
     };
 
-    let base_date = current_build_date.unwrap_or_else(|| "2026-11-13T17:56:02Z".to_string());
-    let is_newer_date = !effective_remote_date.is_empty() && effective_remote_date > base_date;
-    let is_newer_version = !clean_tag.is_empty() && clean_tag != current_version;
-    let has_update = is_newer_date || is_newer_version;
+    let cmp = compare_semver(&clean_tag, current_version);
+    let is_newer_version = cmp == std::cmp::Ordering::Greater;
+
+    // Only compare dates if versions are identical (patch re-release with same tag)
+    let base_date = current_build_date.unwrap_or_else(|| "2026-11-14T07:05:47Z".to_string());
+    let is_patch_update = cmp == std::cmp::Ordering::Equal && !effective_remote_date.is_empty() && effective_remote_date > base_date;
+
+    let has_update = is_newer_version || is_patch_update;
 
     Ok(AppUpdateInfo {
         has_update,
