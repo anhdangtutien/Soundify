@@ -51,7 +51,7 @@ export const THEME_PALETTE = [
 export const SPY_AVATARS = [
   {
     id: '007',
-    name: 'Mật vụ 007',
+    name: 'Cyber Agent 007',
     svg: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%230c0c10" rx="20"/><ellipse cx="50" cy="40" rx="35" ry="7" fill="%23ff2a55"/><path d="M28 40 C28 20 72 20 72 40 Z" fill="%23ffffff"/><path d="M28 36 C35 34 65 34 72 36" stroke="%23ff2a55" stroke-width="3" fill="none"/><rect x="30" y="47" width="17" height="10" rx="3" fill="%23111" stroke="%23fff" stroke-width="1.5"/><rect x="53" y="47" width="17" height="10" rx="3" fill="%23111" stroke="%23fff" stroke-width="1.5"/><line x1="47" y1="50" x2="53" y2="50" stroke="%23fff" stroke-width="2"/><polygon points="50,68 35,95 65,95" fill="%23ffffff"/><polygon points="50,75 42,95 58,95" fill="%23000000"/><circle cx="50" cy="74" r="3" fill="%23ff2a55"/></svg>`
   },
   {

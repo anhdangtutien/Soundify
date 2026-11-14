@@ -48,7 +48,7 @@ const INITIAL_USERS: CommunityUserProfile[] = [
     listening: 'After Dark - Mr.Kitty',
     listeningTrack: DEFAULT_DJ_TRACK,
     isHost: true,
-    followsCurrentUser: true,
+    followsCurrentUser: false,
     joinedAt: '2024-01-15',
   },
   {
@@ -71,7 +71,7 @@ const INITIAL_USERS: CommunityUserProfile[] = [
       cover_art: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=60',
     },
     isHost: false,
-    followsCurrentUser: true,
+    followsCurrentUser: false,
     joinedAt: '2024-03-20',
   },
   {
@@ -94,7 +94,7 @@ const INITIAL_USERS: CommunityUserProfile[] = [
       cover_art: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
     },
     isHost: false,
-    followsCurrentUser: true,
+    followsCurrentUser: false,
     joinedAt: '2024-05-10',
   },
   {
@@ -291,7 +291,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   const [micVolume, setMicVolume] = useState<number>(() => {
     try {
       const v = localStorage.getItem('spytify_mic_volume');
-      return v ? Math.min(200, Math.max(0, parseInt(v, 10))) : 100;
+      return v ? Math.min(100, Math.max(0, parseInt(v, 10))) : 100;
     } catch {
       return 100;
     }
@@ -299,7 +299,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   const [speakerVolume, setSpeakerVolume] = useState<number>(() => {
     try {
       const v = localStorage.getItem('spytify_speaker_volume');
-      return v ? Math.min(200, Math.max(0, parseInt(v, 10))) : 100;
+      return v ? Math.min(100, Math.max(0, parseInt(v, 10))) : 100;
     } catch {
       return 100;
     }
@@ -557,7 +557,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               bio: 'Thành viên Spytify từ hệ thống cộng đồng.',
               listening: null,
               isHost: false,
-              followsCurrentUser: true,
+              followsCurrentUser: false,
               joinedAt: new Date().toISOString().split('T')[0],
             };
             setRegisteredUsers(prev => {
@@ -586,9 +586,13 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       return next;
     });
 
-    setAddFriendMessage(`Đã kết bạn thành công với ${target.display_name} (@${target.username})!`);
+    if (target.followsCurrentUser) {
+      setAddFriendMessage(`Hai bạn đã theo dõi lẫn nhau và chính thức là Bạn bè với ${target.display_name} (@${target.username})!`);
+    } else {
+      setAddFriendMessage(`Đã gửi yêu cầu kết bạn / theo dõi @${target.username}. Đối phương cần theo dõi lại để trở thành bạn bè!`);
+    }
     setAddFriendInput('');
-    setTimeout(() => setAddFriendMessage(null), 3500);
+    setTimeout(() => setAddFriendMessage(null), 4000);
   };
 
   const handlePlayMemberTrack = (member: { listeningTrack?: Track | null, listening?: string | null }) => {
@@ -1206,7 +1210,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             borderColor: isFriendsTabActive ? accentColor : undefined,
             color: isFriendsTabActive ? accentColor : undefined,
           }}
-          title="Bạn bè & Tin nhắn trực tiếp (Friends & DMs)"
+          title="Space Jam - Bạn bè & Tin nhắn trực tiếp (Friends & DMs)"
         >
           <Users className="w-5 h-5 group-hover:scale-110 transition-transform" />
           <span 
@@ -1495,11 +1499,11 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                             <span className="w-1.5 h-1.5 rounded-full animate-ping" style={{ backgroundColor: accentColor }} />
                             {getTranslation(language, 'community.connected')}
                           </span>
-                        ) : (
-                          <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded border ${isLight ? 'bg-[#ffffff] text-[#64748b] border-[#cbd5e1]' : 'bg-[#121218] text-[#666] border-[#202028]'}`}>
+                        ) : totalVoiceCount > 0 ? (
+                          <span className={`shrink-0 whitespace-nowrap text-[9px] font-mono px-1.5 py-0.2 rounded border ${isLight ? 'bg-[#ffffff] text-[#64748b] border-[#cbd5e1]' : 'bg-[#121218] text-[#666] border-[#202028]'}`}>
                             {totalVoiceCount} {getTranslation(language, 'community.members')}
                           </span>
-                        )}
+                        ) : null}
                       </button>
 
                       {/* Indented Participants list under voice channel */}
@@ -1775,7 +1779,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   {/* Suggested Operatives */}
                   <div className="pt-4 border-t border-[#1a1a24]">
                     <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#777] block mb-3">
-                      GỢI Ý KẾT BẠN TRONG CỘNG ĐỒNG SPYTIFY
+                      GỢI Ý KẾT BẠN TRONG SPACE JAM
                     </span>
                     <div className="space-y-2">
                       {registeredUsers.map(u => {
@@ -2151,13 +2155,6 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                     </div>
                   ))}
               </div>
-
-              {/* Helpful DJ Invite Hint */}
-              {voiceParticipants.filter(p => p.id !== myParticipantIdRef.current).length === 0 && (
-                <p className="text-[11px] text-[#777] font-mono mt-4 text-center">
-                  {getTranslation(language, 'community.djInviteHint')}
-                </p>
-              )}
             </div>
 
             {/* In-Call Controls Bottom Dock — Discord Signature Floating Dock */}
@@ -2608,7 +2605,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 <input
                   type="range"
                   min="0"
-                  max="200"
+                  max="100"
                   step="1"
                   value={userVolumes[memberMenu.member.id] ?? 100}
                   onChange={(e) => {
@@ -2704,7 +2701,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 <Sparkles className="w-5 h-5 animate-pulse" />
               </div>
               <div>
-                <h3 className="text-base font-black tracking-tight text-white">Tạo Trạm Sóng Mới (Create Server)</h3>
+                <h3 className="text-base font-black tracking-tight text-white">Tạo Server Space Jam Mới</h3>
                 <p className="text-[11px] text-[#777] font-mono">Tự thiết lập không gian âm nhạc, phòng chat & kênh thoại</p>
               </div>
             </div>
@@ -2836,7 +2833,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   }}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Tạo Trạm Sóng Ngay</span>
+                  <span>Tạo Server Ngay</span>
                 </button>
               </div>
             </form>
@@ -2935,7 +2932,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   <input
                     type="range"
                     min="0"
-                    max="200"
+                    max="100"
                     step="1"
                     value={micVolume}
                     onChange={(e) => handleMicVolumeChange(parseInt(e.target.value, 10))}
@@ -2944,8 +2941,8 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   />
                   <div className="flex justify-between text-[10px] font-mono text-[#777] mt-1.5 font-semibold">
                     <span>0%</span>
-                    <span className="text-zinc-400">100%</span>
-                    <span>200%</span>
+                    <span className="text-zinc-400">50%</span>
+                    <span>100%</span>
                   </div>
                 </div>
 
@@ -3120,7 +3117,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   <input
                     type="range"
                     min="0"
-                    max="200"
+                    max="100"
                     step="1"
                     value={speakerVolume}
                     onChange={(e) => handleSpeakerVolumeChange(parseInt(e.target.value, 10))}
@@ -3129,8 +3126,8 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   />
                   <div className="flex justify-between text-[10px] font-mono text-[#777] mt-1.5 font-semibold">
                     <span>0%</span>
-                    <span className="text-zinc-400">100%</span>
-                    <span>200%</span>
+                    <span className="text-zinc-400">50%</span>
+                    <span>100%</span>
                   </div>
                 </div>
 
