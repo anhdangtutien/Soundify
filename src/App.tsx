@@ -3153,10 +3153,14 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
               <div className="relative" ref={langDropdownRef}>
                 <button
                   onClick={() => setShowLanguageDropdown(p => !p)}
-                  className="px-2.5 py-1 bg-[#121212] hover:bg-[#1c1c1c] text-white text-xs font-medium rounded-md border border-[#222] transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className={`px-2.5 py-1 text-xs font-medium rounded-md border transition-colors flex items-center gap-1.5 cursor-pointer ${
+                    themeMode === 'light'
+                      ? 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300 shadow-sm'
+                      : 'bg-[#121212] hover:bg-[#1c1c1c] text-white border-[#222]'
+                  }`}
                   title={getTranslation(language, 'header.language')}
                 >
-                  <Globe className="w-3.5 h-3.5" style={{ color: accentColor }} />
+                  <Globe className="w-3.5 h-3.5" style={{ color: activeAccentColor }} />
                   <span className="font-mono text-[11px] font-bold tracking-wider">
                     {SUPPORTED_LANGUAGES.find(l => l.code === language)?.tag || 'VN'}
                   </span>
@@ -3165,22 +3169,32 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 {showLanguageDropdown && (
                   <>
                     <div 
-                      className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px]" 
+                      className="fixed inset-0 z-40" 
                       onClick={() => setShowLanguageDropdown(false)} 
                     />
                     <div
-                      className="absolute left-0 top-full mt-2 w-48 py-1.5 rounded-xl bg-[#0e0e14] border shadow-2xl z-50 text-xs font-sans"
+                      className={`absolute left-0 top-full mt-2 w-48 py-1.5 rounded-xl border z-50 text-xs font-sans ${
+                        themeMode === 'light'
+                          ? 'bg-white text-slate-900 border-slate-200 shadow-xl'
+                          : 'bg-[#0e0e14] text-white border-[#222230] shadow-2xl'
+                      }`}
                       style={{
-                        borderColor: `${accentColor}50`,
-                        boxShadow: `0 16px 36px rgba(0,0,0,0.9), 0 0 16px ${accentColor}25`
+                        borderColor: `${activeAccentColor}50`,
+                        boxShadow: themeMode === 'light'
+                          ? `0 12px 28px rgba(0,0,0,0.12), 0 0 12px ${activeAccentColor}20`
+                          : `0 16px 36px rgba(0,0,0,0.9), 0 0 16px ${activeAccentColor}25`
                       }}
                     >
-                      <div className="px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-[#666] border-b border-[#1c1c28] mb-1 flex items-center justify-between">
-                        <span className="flex items-center gap-1.5" style={{ color: accentColor }}>
+                      <div className={`px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider border-b mb-1 flex items-center justify-between ${
+                        themeMode === 'light' ? 'text-slate-400 border-slate-100' : 'text-[#666] border-[#1c1c28]'
+                      }`}>
+                        <span className="flex items-center gap-1.5" style={{ color: activeAccentColor }}>
                           <Languages className="w-3 h-3" />
                           {getTranslation(language, 'header.language')}
                         </span>
-                        <span className="text-[9px] text-[#555] font-mono">{SUPPORTED_LANGUAGES.length}</span>
+                        <span className={`text-[9px] font-mono ${themeMode === 'light' ? 'text-slate-400' : 'text-[#555]'}`}>
+                          {SUPPORTED_LANGUAGES.length}
+                        </span>
                       </div>
                       {SUPPORTED_LANGUAGES.map((l) => {
                         const isSel = l.code === language;
@@ -3191,18 +3205,28 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                               handleUpdateLanguage(l.code);
                               setShowLanguageDropdown(false);
                             }}
-                            className={`w-full px-3 py-2 text-left flex items-center justify-between hover:bg-[#181824] transition-colors cursor-pointer ${
-                              isSel ? 'bg-[#181824] font-semibold text-white' : 'text-[#bbb]'
+                            className={`w-full px-3 py-2 text-left flex items-center justify-between transition-colors cursor-pointer ${
+                              themeMode === 'light'
+                                ? isSel 
+                                  ? 'bg-slate-100 font-semibold text-slate-900' 
+                                  : 'text-slate-700 hover:bg-slate-50'
+                                : isSel 
+                                  ? 'bg-[#181824] font-semibold text-white' 
+                                  : 'text-[#bbb] hover:bg-[#181824]'
                             }`}
                           >
                             <div className="flex items-center gap-2.5 truncate">
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-[#181822] text-[#ccc] border border-[#262636]">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                                themeMode === 'light'
+                                  ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                  : 'bg-[#181822] text-[#ccc] border-[#262636]'
+                              }`}>
                                 {l.tag}
                               </span>
                               <span className="truncate">{l.nativeName}</span>
                             </div>
                             {isSel && (
-                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentColor }}></span>
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: activeAccentColor }}></span>
                             )}
                           </button>
                         );

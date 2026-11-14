@@ -380,6 +380,9 @@ async fn get_trending_hits(category: String) -> Result<Vec<SearchResult>, String
         "vpop" | "vietnam" => {
             sources::youtube::search_youtube("vpop thinh hanh official music video").await
         }
+        "soundcloud" => {
+            return sources::soundcloud::search_soundcloud("trending hits remix electronic chill").await;
+        }
         "audius" => return sources::audius::get_trending_audius(20).await,
         "lofi" => {
             return sources::youtube::search_youtube("lofi hip hop radio beats to relax study to live chill").await;

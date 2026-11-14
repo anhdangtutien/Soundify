@@ -401,6 +401,35 @@ const CURATED_BY_CATEGORY: Record<string, SearchResult[]> = {
       thumbnail: 'https://images.unsplash.com/photo-1526478806334-5fd488fcaabc?w=500&auto=format&fit=crop&q=60',
     },
   ],
+  soundcloud: [
+    {
+      title: 'Neon Nights & City Lights (Remix)',
+      artist: 'SoundCloud Originals',
+      album: 'Top Electronic Charts',
+      duration_secs: 198,
+      source: 'soundcloud',
+      url_or_id: 'https://soundcloud.com/chillhopdotcom/streambeats-chill',
+      thumbnail: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Midnight Phonk Drift',
+      artist: 'KSLV Noh & Ghostface Playa',
+      album: 'SoundCloud Viral Phonk Top 50',
+      duration_secs: 142,
+      source: 'soundcloud',
+      url_or_id: 'https://soundcloud.com/phonk-collective/drift-king',
+      thumbnail: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500&auto=format&fit=crop&q=60',
+    },
+    {
+      title: 'Tokyo Rain Lo-Fi Beat',
+      artist: 'Kudasaibeats',
+      album: 'The SoundCloud Tape',
+      duration_secs: 165,
+      source: 'soundcloud',
+      url_or_id: 'https://soundcloud.com/kudasaibeats/the-technician-at-the-tea-parlor',
+      thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
+    },
+  ],
   vpop: [
     {
       title: 'Đừng Làm Trái Tim Anh Đau',
@@ -924,6 +953,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
     { id: 'vpop', label: getTranslation(language, 'trending.tagVpop'), icon: '🇻🇳' },
     { id: 'anime', label: getTranslation(language, 'trending.tagAnime'), icon: '🎌' },
     { id: 'audius', label: 'Audius 320K Charts', icon: '⚡' },
+    { id: 'soundcloud', label: getTranslation(language, 'trending.tagSoundcloud'), icon: '☁️' },
     { id: 'all', label: getTranslation(language, 'trending.tagAll'), icon: '🔥' },
     { id: 'edm', label: getTranslation(language, 'trending.tagEdm'), icon: '🎛️' },
     { id: 'hiphop', label: getTranslation(language, 'trending.tagHiphop'), icon: '🎤' },

@@ -4,9 +4,10 @@ import {
   Music, Plus, Hash, Volume2, Flame, Activity, Share2,
   Mic, MicOff, PhoneCall, PhoneOff, VolumeX, Signal, Shield,
   X, Sparkles, Palette, Check, Settings, Sliders, Volume1, RotateCcw, CheckCircle2,
-  MoreVertical
+  MoreVertical, UserPlus, UserCheck, Heart, UserMinus, Trash2, Copy, Crown, Info,
+  Search, ShieldAlert
 } from 'lucide-react';
-import { Track, User, CommunityServer, CommunityChannel, CommunityMessage, StageSession, VoiceParticipant } from '../types';
+import { Track, User, CommunityServer, CommunityChannel, CommunityMessage, StageSession, VoiceParticipant, CommunityUserProfile } from '../types';
 import { getSupabaseClient } from '../services/supabase';
 import { LanguageCode, getTranslation } from '../locales/i18n';
 
@@ -20,6 +21,96 @@ interface CommunityViewProps {
   themeMode?: 'dark' | 'light';
   onActiveServerChange?: (server: CommunityServer) => void;
 }
+
+// Default DJ stage track
+const DEFAULT_DJ_TRACK: Track = {
+  id: 'yt_after_dark',
+  title: 'After Dark',
+  artist: 'Mr.Kitty',
+  album: 'Time (Cyberpunk Synthwave)',
+  duration_secs: 259,
+  path_or_url: 'sVx1mJDeUj8',
+  source: 'youtube',
+  cover_art: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500&auto=format&fit=crop&q=60',
+};
+
+// Registered Operatives in Spytify Network
+const INITIAL_USERS: CommunityUserProfile[] = [
+  {
+    id: 'usr_host',
+    username: 'cyberhawk',
+    display_name: 'DJ CyberHawk',
+    avatar: null,
+    role: 'DJ / HOST',
+    status: 'online',
+    bio: 'Resident DJ tại Cyber Lounge 2077. Chuyên dòng nhạc Synthwave, Cyberpunk Beats & Lofi mật vụ 320Kbps.',
+    listening: 'After Dark - Mr.Kitty',
+    listeningTrack: DEFAULT_DJ_TRACK,
+    isHost: true,
+    followsCurrentUser: true,
+    joinedAt: '2024-01-15',
+  },
+  {
+    id: 'usr_agent_01',
+    username: 'neonsamurai',
+    display_name: 'NeonSamurai',
+    avatar: null,
+    role: 'PRODUCER',
+    status: 'online',
+    bio: 'Cyberpunk Sound Designer & Beatsmith. Đam mê Synth & Phonk bass bùng nổ.',
+    listening: 'Resonance - HOME',
+    listeningTrack: {
+      id: 'yt_resonance',
+      title: 'Resonance',
+      artist: 'HOME',
+      album: 'Odyssey',
+      duration_secs: 212,
+      path_or_url: '8GW6sLrK40k',
+      source: 'youtube',
+      cover_art: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=60',
+    },
+    isHost: false,
+    followsCurrentUser: true,
+    joinedAt: '2024-03-20',
+  },
+  {
+    id: 'usr_luna_lofi',
+    username: 'lunalofi',
+    display_name: 'Luna Lofi',
+    avatar: null,
+    role: 'CHILL HOST',
+    status: 'idle',
+    bio: 'Thưởng thức trà chiều, mưa rơi và những giai điệu Lofi êm đềm.',
+    listening: 'Snowman - WYS',
+    listeningTrack: {
+      id: 'yt_snowman',
+      title: 'Snowman',
+      artist: 'WYS',
+      album: '1 Am. Study Session',
+      duration_secs: 184,
+      path_or_url: 'N_7nL37m33s',
+      source: 'youtube',
+      cover_art: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
+    },
+    isHost: false,
+    followsCurrentUser: true,
+    joinedAt: '2024-05-10',
+  },
+  {
+    id: 'usr_ghost_op',
+    username: 'ghostop',
+    display_name: 'GhostOperative',
+    avatar: null,
+    role: 'AGENT',
+    status: 'online',
+    bio: 'Mật vụ bóng đêm Spytify. Âm nhạc là chìa khóa mở mọi cánh cửa.',
+    listening: null,
+    listeningTrack: null,
+    isHost: false,
+    followsCurrentUser: false,
+    joinedAt: '2024-07-02',
+  },
+];
 
 // Gentle Discord-style connection and disconnection sounds
 function playAudioChime(type: 'join' | 'leave') {
@@ -329,26 +420,239 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
     setMemberMenu(null);
   };
 
-  // Live Stage session state
+  // Live Stage session state with authentic DJ CyberHawk stream
   const [stageSession, setStageSession] = useState<StageSession>({
     server_id: servers[0].id,
     channel_id: 'ch_cyber_stage',
-    host_user_id: 'host_agent',
+    host_user_id: 'usr_host',
     host_name: 'DJ CyberHawk',
-    current_track: null,
-    position_secs: 0,
-    is_playing: false,
-    listener_count: 7,
+    current_track: DEFAULT_DJ_TRACK,
+    position_secs: 42,
+    is_playing: true,
+    listener_count: 14,
     updated_at: Date.now(),
   });
 
-  // Online members list
-  const [onlineMembers] = useState([
-    { id: 'usr_host', name: 'DJ CyberHawk', role: 'DJ / HOST', listening: 'After Dark - Mr.Kitty', isHost: true },
-    { id: 'usr_agent_01', name: 'NeonSamurai', role: 'OPERATIVE', listening: 'Resonance - HOME', isHost: false },
-    { id: 'usr_agent_02', name: 'GhostOperative', role: 'OPERATIVE', listening: null, isHost: false },
-    { id: 'usr_me', name: currentUser?.display_name || 'Bạn (Operative)', role: 'BẠN', listening: currentTrack?.title || null, isHost: false },
-  ]);
+  // ──────── REGISTERED USERS & MUTUAL FOLLOW FRIENDS SYSTEM ────────
+  const [registeredUsers, setRegisteredUsers] = useState<CommunityUserProfile[]>(() => {
+    try {
+      const saved = localStorage.getItem('spytify_registered_users');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return INITIAL_USERS;
+  });
+
+  // User's following list (stored in localStorage)
+  const [followingUserIds, setFollowingUserIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('spytify_user_following');
+      if (saved) return new Set(JSON.parse(saved));
+    } catch {}
+    return new Set(['usr_host', 'usr_agent_01']);
+  });
+
+  const [isFriendsTabActive, setIsFriendsTabActive] = useState(false);
+  const [friendsTab, setFriendsTab] = useState<'online' | 'all' | 'pending' | 'add'>('online');
+  const [friendSearchQuery, setFriendSearchQuery] = useState('');
+  const [addFriendInput, setAddFriendInput] = useState('');
+  const [addFriendMessage, setAddFriendMessage] = useState<string | null>(null);
+  const [selectedProfileUser, setSelectedProfileUser] = useState<CommunityUserProfile | null>(null);
+
+  // ──────── SERVER SETTINGS STATE ────────
+  const [isServerSettingsOpen, setIsServerSettingsOpen] = useState(false);
+  const [serverSettingsTab, setServerSettingsTab] = useState<'overview' | 'members' | 'invites' | 'danger'>('overview');
+  const [editServerName, setEditServerName] = useState('');
+  const [editServerDesc, setEditServerDesc] = useState('');
+  const [editServerIcon, setEditServerIcon] = useState('⚡');
+  const [editServerColor, setEditServerColor] = useState('#00E5FF');
+  const [editServerMaxMembers, setEditServerMaxMembers] = useState(50);
+  const [inviteCopied, setInviteCopied] = useState(false);
+
+  // Follow / Unfollow logic
+  const handleToggleFollow = (userId: string) => {
+    setFollowingUserIds(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      try {
+        localStorage.setItem('spytify_user_following', JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+  };
+
+  // Rule: A follows B and B follows A => Friends!
+  const isMutualFriend = (user: CommunityUserProfile) => {
+    return followingUserIds.has(user.id) && Boolean(user.followsCurrentUser);
+  };
+
+  const handleAddFriend = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanHandle = addFriendInput.trim().replace(/^@/, '').toLowerCase();
+    if (!cleanHandle) return;
+
+    let target = registeredUsers.find(u => u.username.toLowerCase() === cleanHandle || u.display_name.toLowerCase() === cleanHandle);
+    if (!target) {
+      target = {
+        id: `usr_custom_${Date.now()}`,
+        username: cleanHandle,
+        display_name: addFriendInput.trim(),
+        avatar: null,
+        role: 'AGENT',
+        status: 'online',
+        bio: 'Mật vụ Spytify mới kết nối.',
+        listening: 'Die With A Smile - Lady Gaga & Bruno Mars',
+        listeningTrack: {
+          id: 'yt_die_smile',
+          title: 'Die With A Smile',
+          artist: 'Lady Gaga & Bruno Mars',
+          album: 'Billboard Hot 100 #1',
+          duration_secs: 251,
+          path_or_url: 'kPa7bsKwL-c',
+          source: 'youtube',
+          cover_art: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=60',
+        },
+        isHost: false,
+        followsCurrentUser: true,
+        joinedAt: new Date().toISOString().split('T')[0],
+      };
+      setRegisteredUsers(prev => {
+        const next = [...prev, target!];
+        localStorage.setItem('spytify_registered_users', JSON.stringify(next));
+        return next;
+      });
+    }
+
+    setFollowingUserIds(prev => {
+      const next = new Set(prev);
+      next.add(target!.id);
+      localStorage.setItem('spytify_user_following', JSON.stringify(Array.from(next)));
+      return next;
+    });
+
+    setAddFriendMessage(`Đã kết bạn thành công với @${cleanHandle}! Hai bạn giờ là Bạn Bè.`);
+    setAddFriendInput('');
+    setTimeout(() => setAddFriendMessage(null), 3500);
+  };
+
+  const handlePlayMemberTrack = (member: { listeningTrack?: Track | null, listening?: string | null }) => {
+    if (member.listeningTrack) {
+      onPlayTrack(member.listeningTrack);
+    } else if (member.listening) {
+      const parts = member.listening.split(' - ');
+      const t: Track = {
+        id: `yt_track_${Date.now()}`,
+        title: parts[0] || member.listening,
+        artist: parts[1] || 'Spytify Artist',
+        album: 'Cyber Station Radio',
+        duration_secs: 210,
+        path_or_url: member.listening,
+        source: 'youtube',
+        cover_art: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500&auto=format&fit=crop&q=60',
+      };
+      onPlayTrack(t);
+    }
+  };
+
+  const handleOpenServerSettings = (srv: CommunityServer) => {
+    setEditServerName(srv.name);
+    setEditServerDesc(srv.description);
+    setEditServerIcon(srv.icon);
+    setEditServerColor(srv.accent_color);
+    setEditServerMaxMembers(srv.max_members || 50);
+    setServerSettingsTab('overview');
+    setInviteCopied(false);
+    setIsServerSettingsOpen(true);
+  };
+
+  const handleSaveServerSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editServerName.trim()) return;
+
+    const updatedSrv: CommunityServer = {
+      ...selectedServer,
+      name: editServerName.trim(),
+      description: editServerDesc.trim(),
+      icon: editServerIcon.trim() || '⚡',
+      accent_color: editServerColor,
+      max_members: editServerMaxMembers,
+    };
+
+    const updatedList = servers.map(s => s.id === selectedServer.id ? updatedSrv : s);
+    setServers(updatedList);
+    setSelectedServer(updatedSrv);
+
+    const customOnly = updatedList.filter(s => s.id.startsWith('srv_custom_') || s.is_custom);
+    localStorage.setItem('spytify_user_servers', JSON.stringify(customOnly));
+
+    onActiveServerChange?.(updatedSrv);
+    setIsServerSettingsOpen(false);
+  };
+
+  const handleDeleteServer = (srvId: string) => {
+    const nextServers = servers.filter(s => s.id !== srvId);
+    setServers(nextServers);
+    const customOnly = nextServers.filter(s => s.id.startsWith('srv_custom_') || s.is_custom);
+    localStorage.setItem('spytify_user_servers', JSON.stringify(customOnly));
+    setSelectedServer(nextServers[0]);
+    setSelectedChannel(nextServers[0].channels[0]);
+    onActiveServerChange?.(nextServers[0]);
+    setIsServerSettingsOpen(false);
+  };
+
+  const handleKickMember = (memberId: string) => {
+    setSelectedServer(prev => {
+      const nextMemberIds = (prev.member_ids || ['usr_me', 'usr_host', 'usr_agent_01']).filter(id => id !== memberId);
+      const updated = { ...prev, member_ids: nextMemberIds };
+      setServers(curr => curr.map(s => s.id === prev.id ? updated : s));
+      const customOnly = servers.map(s => s.id === prev.id ? updated : s).filter(s => s.id.startsWith('srv_custom_') || s.is_custom);
+      localStorage.setItem('spytify_user_servers', JSON.stringify(customOnly));
+      return updated;
+    });
+  };
+
+  const handleCopyInvite = (srvId: string) => {
+    navigator.clipboard.writeText(`spytify://station/join/${srvId}`);
+    setInviteCopied(true);
+    setTimeout(() => setInviteCopied(false), 2500);
+  };
+
+  // Online members list synced with registered users
+  const onlineMembers = [
+    ...registeredUsers.map(u => ({
+      id: u.id,
+      name: u.display_name,
+      role: u.role,
+      listening: u.listening || null,
+      listeningTrack: u.listeningTrack || null,
+      isHost: Boolean(u.isHost),
+      userProfile: u,
+    })),
+    {
+      id: 'usr_me',
+      name: currentUser?.display_name || 'Bạn (Operative)',
+      role: 'BẠN',
+      listening: currentTrack ? `${currentTrack.title} - ${currentTrack.artist}` : null,
+      listeningTrack: currentTrack,
+      isHost: false,
+      userProfile: {
+        id: 'usr_me',
+        username: currentUser?.email?.split('@')[0] || 'me',
+        display_name: currentUser?.display_name || 'Bạn (Operative)',
+        avatar: currentUser?.avatar || null,
+        role: 'BẠN',
+        status: 'online' as const,
+        bio: 'Mật vụ tối cao đang lắng nghe Spytify.',
+        listening: currentTrack ? `${currentTrack.title} - ${currentTrack.artist}` : null,
+        listeningTrack: currentTrack,
+        isHost: false,
+        followsCurrentUser: false,
+      }
+    }
+  ];
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const activeChannelRef = useRef<any>(null);
@@ -750,6 +1054,10 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       accent_color: newServerColor,
       channels: newChannels,
       is_verified: true,
+      owner_id: currentUser?.id || 'usr_me',
+      is_custom: true,
+      max_members: 50,
+      member_ids: ['usr_me', 'usr_host', 'usr_agent_01'],
     };
 
     const updated = [...servers, createdServer];
@@ -829,24 +1137,39 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   return (
     <div className={`flex-1 flex h-full select-none overflow-hidden font-sans ${isLight ? 'bg-[#f8fafc] text-[#0f172a]' : 'bg-[#07070a] text-white'}`}>
       {/* ──────────────── 1. DISCORD-STYLE SERVER RAIL (FAR LEFT) ──────────────── */}
-      <div className={`w-16 flex flex-col items-center py-3 gap-2.5 flex-shrink-0 z-20 border-r ${isLight ? 'bg-[#f1f5f9] border-[#e2e8f0]' : 'bg-[#040407] border-[#14141c]'}`}>
+      <div className={`w-16 flex flex-col items-center py-3 gap-2 flex-shrink-0 z-20 border-r ${isLight ? 'bg-[#f1f5f9] border-[#e2e8f0]' : 'bg-[#040407] border-[#14141c]'}`}>
+        {/* Top: Discord Direct Messages / Friends Button */}
         <button
-          onClick={() => handleSelectServer(servers[0])}
-          className={`w-11 h-11 rounded-2xl border flex items-center justify-center cursor-pointer transition-all hover:rounded-xl shadow-md group relative ${
-            isLight ? 'bg-[#ffffff] border-[#cbd5e1] text-[#0f172a]' : 'bg-[#0e0e16] border-[#222230] text-white hover:border-white/40'
+          onClick={() => setIsFriendsTabActive(true)}
+          className={`w-11 h-11 flex items-center justify-center cursor-pointer transition-all shadow-md group relative ${
+            isFriendsTabActive
+              ? 'rounded-xl border'
+              : isLight
+              ? 'rounded-2xl hover:rounded-xl bg-[#ffffff] border border-[#cbd5e1] text-[#334155] hover:text-[#0f172a]'
+              : 'rounded-2xl hover:rounded-xl bg-[#0e0e16] border border-[#222230] text-white hover:border-white/40'
           }`}
-          title="Spytify Hub"
+          style={{
+            backgroundColor: isFriendsTabActive ? `${accentColor}25` : undefined,
+            borderColor: isFriendsTabActive ? accentColor : undefined,
+            color: isFriendsTabActive ? accentColor : undefined,
+          }}
+          title="Bạn bè & Tin nhắn trực tiếp (Friends & DMs)"
         >
-          <Radio className="w-5 h-5 group-hover:scale-110 transition-transform" style={{ color: accentColor }} />
-          <span className="absolute -left-1 w-1 h-5 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: accentColor }}></span>
+          <Users className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          <span 
+            className={`absolute -left-1 w-1 rounded-r-full transition-all duration-200 ${
+              isFriendsTabActive ? 'h-8 opacity-100' : 'h-2 opacity-0 group-hover:opacity-100'
+            }`} 
+            style={{ backgroundColor: accentColor }}
+          />
         </button>
 
-        <div className={`w-8 h-[1px] my-1 ${isLight ? 'bg-[#e2e8f0]' : 'bg-[#1a1a24]'}`} />
+        <div className={`w-8 h-[1px] my-0.5 ${isLight ? 'bg-[#e2e8f0]' : 'bg-[#1a1a24]'}`} />
 
         {/* Server Icons List */}
         <div className="flex-1 w-full flex flex-col items-center gap-2 overflow-y-auto no-scrollbar">
           {servers.map(srv => {
-            const isSelected = selectedServer.id === srv.id;
+            const isSelected = !isFriendsTabActive && selectedServer.id === srv.id;
             return (
               <div key={srv.id} className="relative group flex items-center justify-center w-full">
                 <span 
@@ -857,7 +1180,10 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 />
                 
                 <button
-                  onClick={() => handleSelectServer(srv)}
+                  onClick={() => {
+                    setIsFriendsTabActive(false);
+                    handleSelectServer(srv);
+                  }}
                   className={`w-11 h-11 flex items-center justify-center text-base font-bold cursor-pointer transition-all duration-200 shadow-md ${
                     isSelected 
                       ? 'rounded-xl border' 
@@ -893,32 +1219,159 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
         </div>
       </div>
 
-      {/* ──────────────── 2. CHANNELS LIST COLUMN ──────────────── */}
+      {/* ──────────────── 2. CHANNELS LIST OR FRIENDS NAVIGATION COLUMN ──────────────── */}
       <div className={`w-56 flex flex-col flex-shrink-0 z-10 border-r ${isLight ? 'bg-[#f8fafc] border-[#e2e8f0]' : 'bg-[#09090e] border-[#15151e]'}`}>
-        {/* Server Header */}
-        <div className={`p-3.5 border-b flex items-center justify-between ${isLight ? 'border-[#e2e8f0]' : 'border-[#15151e]'}`}>
-          <div className="truncate">
-            <h2 className={`text-xs font-black tracking-tight flex items-center gap-1.5 truncate ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>
-              <span>{selectedServer.name}</span>
-              {selectedServer.badge && (
-                <span 
-                  className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold tracking-wider uppercase border"
-                  style={{
-                    backgroundColor: `${accentColor}18`,
-                    color: accentColor,
-                    borderColor: `${accentColor}35`,
-                  }}
-                >
-                  {selectedServer.badge}
+        {isFriendsTabActive ? (
+          <>
+            {/* Friends Navigation Header */}
+            <div className={`p-3.5 border-b flex items-center justify-between ${isLight ? 'border-[#e2e8f0]' : 'border-[#15151e]'}`}>
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4" style={{ color: accentColor }} />
+                <span className={`text-xs font-black uppercase tracking-wider ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>
+                  Bạn Bè Mật Vụ
                 </span>
-              )}
-            </h2>
-            <p className={`text-[10px] font-mono truncate mt-0.5 ${isLight ? 'text-[#64748b]' : 'text-[#777]'}`}>{selectedServer.description}</p>
-          </div>
-        </div>
+              </div>
+            </div>
 
-        {/* Channels List */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-4 text-xs font-sans">
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              <button
+                onClick={() => setFriendsTab('online')}
+                className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                  friendsTab === 'online'
+                    ? isLight ? 'bg-slate-200 text-slate-900' : 'bg-white/10 text-white'
+                    : isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-[#888] hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  <span>Trực tuyến</span>
+                </div>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-black/20">
+                  {registeredUsers.filter(u => isMutualFriend(u) && u.status === 'online').length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setFriendsTab('all')}
+                className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                  friendsTab === 'all'
+                    ? isLight ? 'bg-slate-200 text-slate-900' : 'bg-white/10 text-white'
+                    : isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-[#888] hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Tất cả bạn bè</span>
+                </div>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-black/20">
+                  {registeredUsers.filter(u => isMutualFriend(u)).length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setFriendsTab('pending')}
+                className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                  friendsTab === 'pending'
+                    ? isLight ? 'bg-slate-200 text-slate-900' : 'bg-white/10 text-white'
+                    : isLight ? 'text-slate-600 hover:bg-slate-100' : 'text-[#888] hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Heart className="w-3.5 h-3.5 text-pink-400" />
+                  <span>Đang theo dõi</span>
+                </div>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-black/20">
+                  {followingUserIds.size}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setFriendsTab('add')}
+                className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                  friendsTab === 'add'
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'text-emerald-500 hover:bg-emerald-500/10'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Thêm bạn mới</span>
+                </div>
+              </button>
+
+              <div className="pt-3 pb-1 px-1">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#666]">
+                  TIN NHẮN TRỰC TIẾP
+                </span>
+              </div>
+
+              {registeredUsers.filter(u => isMutualFriend(u)).map(fr => (
+                <div
+                  key={fr.id}
+                  onClick={() => setSelectedProfileUser(fr)}
+                  className={`flex items-center gap-2 p-2 rounded-xl transition-colors cursor-pointer ${
+                    isLight ? 'hover:bg-slate-100' : 'hover:bg-white/5'
+                  }`}
+                >
+                  <div className="relative flex-shrink-0">
+                    <div className="w-6 h-6 rounded-lg bg-zinc-800 flex items-center justify-center font-bold text-[10px] text-white">
+                      {fr.display_name.charAt(0)}
+                    </div>
+                    <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-black ${
+                      fr.status === 'online' ? 'bg-emerald-400' : 'bg-amber-400'
+                    }`} />
+                  </div>
+                  <div className="truncate flex-1 min-w-0">
+                    <p className={`text-xs font-semibold truncate ${isLight ? 'text-slate-800' : 'text-zinc-200'}`}>
+                      {fr.display_name}
+                    </p>
+                    <p className="text-[9px] font-mono text-[#888] truncate">
+                      {fr.listening ? `🎵 ${fr.listening}` : `@${fr.username}`}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Server Header */}
+            <div className={`p-3.5 border-b flex items-center justify-between gap-2 ${isLight ? 'border-[#e2e8f0]' : 'border-[#15151e]'}`}>
+              <div className="truncate flex-1">
+                <h2 className={`text-xs font-black tracking-tight flex items-center gap-1.5 truncate ${isLight ? 'text-[#0f172a]' : 'text-white'}`}>
+                  <span>{selectedServer.name}</span>
+                  {selectedServer.badge && (
+                    <span 
+                      className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold tracking-wider uppercase border"
+                      style={{
+                        backgroundColor: `${accentColor}18`,
+                        color: accentColor,
+                        borderColor: `${accentColor}35`,
+                      }}
+                    >
+                      {selectedServer.badge}
+                    </span>
+                  )}
+                </h2>
+                <p className={`text-[10px] font-mono truncate mt-0.5 ${isLight ? 'text-[#64748b]' : 'text-[#777]'}`}>{selectedServer.description}</p>
+              </div>
+
+              {/* Server Settings Cog Button */}
+              <button
+                onClick={() => handleOpenServerSettings(selectedServer)}
+                title="Cài đặt máy chủ & Quản lý thành viên (Discord Server Settings)"
+                className={`p-1.5 rounded-lg border transition-all cursor-pointer flex-shrink-0 ${
+                  isLight 
+                    ? 'bg-white hover:bg-slate-100 border-slate-300 text-slate-600 hover:text-slate-900' 
+                    : 'bg-[#12121a] hover:bg-[#1a1a26] border-[#222230] text-[#888] hover:text-white'
+                }`}
+              >
+                <Settings className="w-3.5 h-3.5 hover:rotate-90 transition-transform" />
+              </button>
+            </div>
+
+            {/* Channels List */}
+            <div className="flex-1 overflow-y-auto p-2 space-y-4 text-xs font-sans">
           {/* Text Channels Group */}
           <div>
             <p className={`text-[10px] font-mono font-bold uppercase tracking-wider px-2 mb-1 flex items-center gap-1.5 ${isLight ? 'text-[#64748b]' : 'text-[#555]'}`}>
@@ -1104,12 +1557,316 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             </div>
           </div>
         )}
+          </>
+        )}
       </div>
 
-      {/* ──────────────── 3. MAIN CONTENT (CHAT / VOICE / STAGE) ──────────────── */}
+      {/* ──────────────── 3. MAIN CONTENT (CHAT / VOICE / STAGE OR FRIENDS HUB) ──────────────── */}
       <div className={`flex-1 flex flex-col h-full overflow-hidden ${isLight ? 'bg-[#ffffff]' : 'bg-[#0a0a0f]'}`}>
-        {/* Channel Header Bar */}
-        <div className={`h-12 px-4 border-b flex items-center justify-between flex-shrink-0 ${isLight ? 'bg-[#ffffff]/80 backdrop-blur border-[#e2e8f0]' : 'bg-black/50 backdrop-blur border-[#151520]'}`}>
+        {isFriendsTabActive ? (
+          <>
+            {/* Friends Hub Header */}
+            <div className={`h-12 px-5 border-b flex items-center justify-between flex-shrink-0 ${isLight ? 'bg-white/80 backdrop-blur border-[#e2e8f0]' : 'bg-black/50 backdrop-blur border-[#151520]'}`}>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 font-bold text-xs">
+                  <Users className="w-4 h-4" style={{ color: accentColor }} />
+                  <span className={isLight ? 'text-slate-900' : 'text-white'}>Bạn Bè Mật Vụ</span>
+                </div>
+                <div className="h-4 w-[1px] bg-zinc-700/40" />
+                <div className="flex items-center gap-1.5 text-xs">
+                  <button
+                    onClick={() => setFriendsTab('online')}
+                    className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                      friendsTab === 'online'
+                        ? isLight ? 'bg-slate-200 text-slate-900 font-bold' : 'bg-white/10 text-white font-bold'
+                        : 'text-[#888] hover:text-white'
+                    }`}
+                  >
+                    Trực tuyến
+                  </button>
+                  <button
+                    onClick={() => setFriendsTab('all')}
+                    className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                      friendsTab === 'all'
+                        ? isLight ? 'bg-slate-200 text-slate-900 font-bold' : 'bg-white/10 text-white font-bold'
+                        : 'text-[#888] hover:text-white'
+                    }`}
+                  >
+                    Tất cả
+                  </button>
+                  <button
+                    onClick={() => setFriendsTab('pending')}
+                    className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                      friendsTab === 'pending'
+                        ? isLight ? 'bg-slate-200 text-slate-900 font-bold' : 'bg-white/10 text-white font-bold'
+                        : 'text-[#888] hover:text-white'
+                    }`}
+                  >
+                    Đang theo dõi
+                  </button>
+                  <button
+                    onClick={() => setFriendsTab('add')}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-colors cursor-pointer ${
+                      friendsTab === 'add'
+                        ? 'bg-emerald-500 text-black'
+                        : 'text-emerald-400 hover:bg-emerald-500/10'
+                    }`}
+                  >
+                    + Thêm bạn
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Friend Search Bar */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-[#666]" />
+                <input
+                  type="text"
+                  value={friendSearchQuery}
+                  onChange={e => setFriendSearchQuery(e.target.value)}
+                  placeholder="Tìm bạn bè..."
+                  className={`pl-8 pr-3 py-1.5 rounded-lg text-xs outline-none border transition-colors ${
+                    isLight 
+                      ? 'bg-slate-100 text-slate-900 border-slate-200 placeholder-slate-400 focus:border-slate-400' 
+                      : 'bg-[#12121a] text-white border-[#222230] placeholder-[#666] focus:border-white/40'
+                  }`}
+                />
+              </div>
+            </div>
+
+            {/* Friends Hub Body Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {friendsTab === 'add' ? (
+                <div className="max-w-xl mx-auto space-y-6 pt-4">
+                  <div>
+                    <h3 className={`text-base font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                      THÊM BẠN BÈ MẬT VỤ
+                    </h3>
+                    <p className="text-xs text-[#888] mt-1">
+                      Nhập tên người dùng hoặc handle (ví dụ: <code className="text-cyan-400 font-mono">@cyberhawk</code>). Quy tắc kết bạn: <b>Nếu bạn follow người kia và người kia follow lại thì là bạn bè</b>!
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleAddFriend} className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3.5 top-3 text-[#666] font-mono text-sm">@</span>
+                      <input
+                        type="text"
+                        value={addFriendInput}
+                        onChange={e => setAddFriendInput(e.target.value)}
+                        placeholder="Nhập tên người dùng hoặc @handle..."
+                        className={`w-full pl-8 pr-4 py-2.5 rounded-xl text-xs font-sans border outline-none ${
+                          isLight 
+                            ? 'bg-slate-50 border-slate-300 text-slate-900 focus:border-slate-500' 
+                            : 'bg-[#12121a] border-[#242436] text-white focus:border-cyan-400'
+                        }`}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={!addFriendInput.trim()}
+                      className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition-transform hover:scale-105 active:scale-95 disabled:opacity-40 cursor-pointer flex items-center gap-1.5 shadow-lg"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>Kết bạn</span>
+                    </button>
+                  </form>
+
+                  {addFriendMessage && (
+                    <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-400 text-xs font-mono flex items-center gap-2 animate-in fade-in">
+                      <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                      <span>{addFriendMessage}</span>
+                    </div>
+                  )}
+
+                  {/* Suggested Operatives */}
+                  <div className="pt-4 border-t border-[#1a1a24]">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#777] block mb-3">
+                      GỢI Ý KẾT BẠN TRONG CỘNG ĐỒNG SPYTIFY
+                    </span>
+                    <div className="space-y-2">
+                      {registeredUsers.map(u => {
+                        const isFriend = isMutualFriend(u);
+                        const isFollowing = followingUserIds.has(u.id);
+                        return (
+                          <div 
+                            key={u.id}
+                            className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
+                              isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#0e0e16] border-[#1e1e2c]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 truncate">
+                              <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-white/10 flex items-center justify-center font-bold text-sm text-white">
+                                {u.display_name.charAt(0)}
+                              </div>
+                              <div className="truncate">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>{u.display_name}</span>
+                                  <span className="text-[10px] text-cyan-400 font-mono">@{u.username}</span>
+                                  {isFriend && (
+                                    <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-400/10 border border-emerald-500/20 px-1.5 py-0.2 rounded">
+                                      BẠN BÈ
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-[#888] font-mono truncate mt-0.5">{u.bio}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <button
+                                onClick={() => setSelectedProfileUser(u)}
+                                className="px-3 py-1.5 rounded-lg border border-[#2a2a3a] text-xs font-mono text-[#aaa] hover:text-white hover:bg-white/5 cursor-pointer"
+                              >
+                                Hồ sơ
+                              </button>
+                              <button
+                                onClick={() => handleToggleFollow(u.id)}
+                                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer flex items-center gap-1.5 ${
+                                  isFollowing
+                                    ? 'bg-zinc-800 hover:bg-red-950/40 text-zinc-300 hover:text-red-400 border border-zinc-700 hover:border-red-500/40'
+                                    : 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-md'
+                                }`}
+                              >
+                                {isFollowing ? (
+                                  <>
+                                    <UserCheck className="w-3.5 h-3.5" />
+                                    <span>{isFriend ? 'Bạn bè' : 'Đang theo dõi'}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserPlus className="w-3.5 h-3.5" />
+                                    <span>Kết bạn</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Online, All, or Pending lists
+                <div className="space-y-2 max-w-4xl">
+                  <div className="pb-2 flex items-center justify-between text-xs text-[#777] font-mono">
+                    <span>
+                      {friendsTab === 'online' 
+                        ? `BẠN BÈ TRỰC TUYẾN — ${registeredUsers.filter(u => isMutualFriend(u) && u.status === 'online').length}`
+                        : friendsTab === 'all'
+                        ? `TẤT CẢ BẠN BÈ — ${registeredUsers.filter(u => isMutualFriend(u)).length}`
+                        : `DANH SÁCH ĐANG THEO DÕI — ${followingUserIds.size}`}
+                    </span>
+                  </div>
+
+                  {registeredUsers
+                    .filter(u => {
+                      if (friendSearchQuery) {
+                        const q = friendSearchQuery.toLowerCase();
+                        if (!u.display_name.toLowerCase().includes(q) && !u.username.toLowerCase().includes(q)) return false;
+                      }
+                      if (friendsTab === 'online') return isMutualFriend(u) && u.status === 'online';
+                      if (friendsTab === 'all') return isMutualFriend(u);
+                      if (friendsTab === 'pending') return followingUserIds.has(u.id);
+                      return true;
+                    })
+                    .map(fr => {
+                      const isFriend = isMutualFriend(fr);
+                      return (
+                        <div
+                          key={fr.id}
+                          className={`p-3 rounded-2xl border flex items-center justify-between gap-4 transition-all ${
+                            isLight 
+                              ? 'bg-white hover:bg-slate-50 border-slate-200 shadow-sm' 
+                              : 'bg-[#0d0d14] hover:bg-[#12121e] border-[#1e1e2c]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3.5 truncate">
+                            <div className="relative flex-shrink-0 cursor-pointer" onClick={() => setSelectedProfileUser(fr)}>
+                              <div className="w-11 h-11 rounded-2xl bg-zinc-800 border border-white/10 flex items-center justify-center font-bold text-base text-white shadow-md">
+                                {fr.display_name.charAt(0)}
+                              </div>
+                              <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-black ${
+                                fr.status === 'online' ? 'bg-emerald-400' : 'bg-amber-400'
+                              }`} />
+                            </div>
+
+                            <div className="truncate">
+                              <div className="flex items-center gap-2">
+                                <span 
+                                  onClick={() => setSelectedProfileUser(fr)}
+                                  className={`text-sm font-bold truncate cursor-pointer hover:underline ${isLight ? 'text-slate-900' : 'text-white'}`}
+                                >
+                                  {fr.display_name}
+                                </span>
+                                <span className="text-xs text-[#777] font-mono">@{fr.username}</span>
+                                {isFriend ? (
+                                  <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-400/10 border border-emerald-500/20 px-1.5 py-0.2 rounded flex items-center gap-1">
+                                    <Sparkles className="w-2.5 h-2.5" />
+                                    BẠN BÈ MẬT VỤ
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] font-mono text-cyan-400 bg-cyan-400/10 px-1.5 py-0.2 rounded">
+                                    Đang theo dõi
+                                  </span>
+                                )}
+                              </div>
+
+                              {fr.listening ? (
+                                <p className="text-xs text-cyan-400 font-mono flex items-center gap-1.5 mt-0.5 truncate">
+                                  <Activity className="w-3 h-3 animate-pulse text-cyan-400 flex-shrink-0" />
+                                  <span className="truncate">Đang nghe: <b>{fr.listening}</b></span>
+                                </p>
+                              ) : (
+                                <p className="text-[11px] text-[#777] font-mono truncate mt-0.5">{fr.bio}</p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Friend Action Buttons */}
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {fr.listening && (
+                              <button
+                                onClick={() => handlePlayMemberTrack(fr)}
+                                className="px-3 py-1.5 rounded-xl bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/40 text-cyan-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-105 active:scale-95 transition-all"
+                                title={`Nghe bài này cùng ${fr.display_name}`}
+                              >
+                                <Play className="w-3.5 h-3.5 fill-current" />
+                                <span>Nghe cùng</span>
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => handleInviteMemberToVoice({ id: fr.id, name: fr.display_name, isHost: fr.isHost })}
+                              className={`p-2 rounded-xl border transition-colors cursor-pointer ${
+                                isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-[#181824] hover:bg-[#222234] border-[#2c2c3e] text-zinc-300 hover:text-white'
+                              }`}
+                              title="Mời vào phòng thoại"
+                            >
+                              <PhoneCall className="w-4 h-4 text-emerald-400" />
+                            </button>
+
+                            <button
+                              onClick={() => setSelectedProfileUser(fr)}
+                              className={`px-3 py-1.5 rounded-xl border text-xs font-mono font-semibold transition-colors cursor-pointer ${
+                                isLight ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800' : 'bg-[#181824] hover:bg-[#222234] border-[#2c2c3e] text-zinc-300 hover:text-white'
+                              }`}
+                            >
+                              Xem hồ sơ
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Channel Header Bar */}
+            <div className={`h-12 px-4 border-b flex items-center justify-between flex-shrink-0 ${isLight ? 'bg-[#ffffff]/80 backdrop-blur border-[#e2e8f0]' : 'bg-black/50 backdrop-blur border-[#151520]'}`}>
           <div className="flex items-center gap-2 truncate">
             {isVoice ? (
               <Mic className="w-4 h-4 text-emerald-400" />
@@ -1555,6 +2312,8 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             </div>
           </>
         )}
+          </>
+        )}
       </div>
 
       {/* ──────────────── 4. ONLINE MEMBERS LIST (RIGHT RAIL) ──────────────── */}
@@ -1669,6 +2428,46 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
           </div>
 
           <div className="p-1 space-y-0.5">
+            {/* Play listening track */}
+            {memberMenu.member.listening && (
+              <button
+                onClick={() => {
+                  handlePlayMemberTrack(memberMenu.member);
+                  setMemberMenu(null);
+                }}
+                className="w-full px-2.5 py-1.5 rounded-lg bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 font-medium flex items-center gap-2 text-left cursor-pointer transition-colors"
+              >
+                <Play className="w-3.5 h-3.5 fill-current text-cyan-400" />
+                <span className="truncate">Nghe cùng ({memberMenu.member.listening})</span>
+              </button>
+            )}
+
+            {/* Profile */}
+            <button
+              onClick={() => {
+                const u = registeredUsers.find(x => x.id === memberMenu.member.id) || {
+                  id: memberMenu.member.id,
+                  username: memberMenu.member.name.toLowerCase().replace(/\s+/g, ''),
+                  display_name: memberMenu.member.name,
+                  avatar: null,
+                  role: memberMenu.member.role,
+                  status: 'online' as const,
+                  bio: `Thành viên tại ${selectedServer.name}`,
+                  listening: memberMenu.member.listening,
+                  isHost: memberMenu.member.isHost,
+                  followsCurrentUser: false,
+                };
+                setSelectedProfileUser(u);
+                setMemberMenu(null);
+              }}
+              className={`w-full px-2.5 py-1.5 rounded-lg flex items-center gap-2 text-left cursor-pointer transition-colors ${
+                isLight ? 'hover:bg-[#f1f5f9] text-[#334155]' : 'hover:bg-[#161624] text-zinc-300 hover:text-white'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5 text-[#888]" />
+              <span>Xem hồ sơ mật vụ</span>
+            </button>
+
             {voiceParticipants.some(p => p.id === memberMenu.member.id) ? (
               <button
                 onClick={() => handleRemoveMemberFromVoice(memberMenu.member.id)}
@@ -1699,6 +2498,19 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               <MessageSquare className="w-3.5 h-3.5 text-[#888]" />
               <span>{getTranslation(language, 'community.mentionInChat')}</span>
             </button>
+
+            {(selectedServer.owner_id === currentUser?.id || selectedServer.is_custom) && memberMenu.member.id !== 'usr_me' && (
+              <button
+                onClick={() => {
+                  handleKickMember(memberMenu.member.id);
+                  setMemberMenu(null);
+                }}
+                className="w-full px-2.5 py-1.5 rounded-lg hover:bg-red-950/40 text-red-400 flex items-center gap-2 text-left cursor-pointer transition-colors border-t border-red-500/20 mt-1 pt-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                <span>Kick khỏi server</span>
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -2130,6 +2942,395 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               >
                 Xong
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ──────────────── 7. MODAL CÀI ĐẶT SERVER (SERVER SETTINGS & MANAGEMENT) ──────────────── */}
+      {isServerSettingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className={`w-full max-w-2xl border rounded-2xl shadow-2xl relative max-h-[90vh] flex flex-col overflow-hidden ${
+            isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-[#0c0c14] border-[#222234] text-white'
+          }`}>
+            {/* Header */}
+            <div className={`p-5 border-b flex items-center justify-between ${isLight ? 'border-slate-200' : 'border-[#1c1c28]'}`}>
+              <div className="flex items-center gap-3">
+                <div 
+                  className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg"
+                  style={{ backgroundColor: `${editServerColor}20`, color: editServerColor, border: `1px solid ${editServerColor}40` }}
+                >
+                  {editServerIcon || selectedServer.icon}
+                </div>
+                <div>
+                  <h3 className={`text-base font-black tracking-tight flex items-center gap-2 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    <span>Cài Đặt Máy Chủ: {selectedServer.name}</span>
+                    <span 
+                      className="text-[9px] font-mono px-2 py-0.5 rounded-full border"
+                      style={{ color: editServerColor, borderColor: `${editServerColor}40`, backgroundColor: `${editServerColor}15` }}
+                    >
+                      {selectedServer.owner_id === currentUser?.id || selectedServer.is_custom ? 'BẠN LÀ CHỦ SERVER' : 'QUẢN LÝ'}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-[#888] font-mono">Tùy biến theme neon, đổi tên, giới hạn thành viên & phân quyền</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsServerSettingsOpen(false)}
+                className="p-1.5 rounded-full text-[#666] hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Sub-Tabs: Overview, Members, Invites, Danger */}
+            <div className={`flex items-center gap-2 px-5 py-2.5 border-b text-xs font-mono font-bold uppercase tracking-wider ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#09090f] border-[#181824]'}`}>
+              {(['overview', 'members', 'invites', 'danger'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setServerSettingsTab(tab)}
+                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                    serverSettingsTab === tab
+                      ? isLight ? 'bg-white text-slate-900 shadow-sm' : 'bg-[#181826] text-white border border-white/20'
+                      : 'text-[#777] hover:text-white'
+                  }`}
+                >
+                  {tab === 'overview' && 'Tổng quan'}
+                  {tab === 'members' && 'Thành viên'}
+                  {tab === 'invites' && 'Mời bạn bè'}
+                  {tab === 'danger' && 'Vùng nguy hiểm'}
+                </button>
+              ))}
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              {serverSettingsTab === 'overview' && (
+                <form onSubmit={handleSaveServerSettings} className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-[#888] mb-1.5">
+                      Tên máy chủ (Server Name):
+                    </label>
+                    <input
+                      type="text"
+                      value={editServerName}
+                      onChange={e => setEditServerName(e.target.value)}
+                      className={`w-full px-3.5 py-2.5 rounded-xl text-xs border outline-none font-sans ${
+                        isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-[#12121a] border-[#222232] text-white focus:border-white/50'
+                      }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-[#888] mb-1.5">
+                      Mô tả máy chủ (Description):
+                    </label>
+                    <input
+                      type="text"
+                      value={editServerDesc}
+                      onChange={e => setEditServerDesc(e.target.value)}
+                      className={`w-full px-3.5 py-2.5 rounded-xl text-xs border outline-none font-sans ${
+                        isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-[#12121a] border-[#222232] text-white focus:border-white/50'
+                      }`}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-[#888] mb-1.5">
+                        Biểu tượng (Icon):
+                      </label>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {['⚡', '🍸', '☕', '🎧', '🚀', '💎', '🛸', '🎮', '🔥', '🌸'].map(ico => (
+                          <button
+                            key={ico}
+                            type="button"
+                            onClick={() => setEditServerIcon(ico)}
+                            className={`w-8 h-8 rounded-lg text-sm border flex items-center justify-center cursor-pointer transition-transform ${
+                              editServerIcon === ico 
+                                ? 'border-cyan-400 bg-cyan-950/40 scale-110 shadow-sm' 
+                                : 'border-[#222230] hover:bg-white/5'
+                            }`}
+                          >
+                            {ico}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-[#888] mb-1.5">
+                        Giới hạn số lượng thành viên:
+                      </label>
+                      <select
+                        value={editServerMaxMembers}
+                        onChange={e => setEditServerMaxMembers(Number(e.target.value))}
+                        className={`w-full px-3 py-2 rounded-xl text-xs border outline-none font-sans ${
+                          isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-[#12121a] border-[#222232] text-white'
+                        }`}
+                      >
+                        <option value={10}>10 Mật Vụ (Phòng kín)</option>
+                        <option value={25}>25 Mật Vụ</option>
+                        <option value={50}>50 Mật Vụ (Tiêu chuẩn)</option>
+                        <option value={100}>100 Mật Vụ (Club lớn)</option>
+                        <option value={500}>500 Mật Vụ (Không giới hạn)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-[#888] mb-1.5">
+                      Màu Theme Neon chủ đạo (Server Accent Color):
+                    </label>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {['#00E5FF', '#FF2A55', '#00FF66', '#E040FB', '#FFB300', '#9C27B0', '#FFFFFF'].map(c => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setEditServerColor(c)}
+                          className={`w-8 h-8 rounded-xl border-2 transition-transform cursor-pointer flex items-center justify-center ${
+                            editServerColor === c ? 'scale-110 shadow-lg' : 'hover:scale-105 border-transparent'
+                          }`}
+                          style={{ backgroundColor: c, borderColor: editServerColor === c ? '#ffffff' : 'transparent' }}
+                        >
+                          {editServerColor === c && <Check className="w-4 h-4 text-black font-black" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-[#1e1e2c] flex justify-end">
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-black flex items-center gap-2 cursor-pointer shadow-lg hover:scale-105 active:scale-95 transition-all"
+                      style={{ backgroundColor: editServerColor }}
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>Lưu Thay Đổi</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {serverSettingsTab === 'members' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between text-xs text-[#888] font-mono">
+                    <span>DANH SÁCH THÀNH VIÊN ({onlineMembers.length} / {editServerMaxMembers})</span>
+                    <span>Quyền hạn: {selectedServer.owner_id === currentUser?.id || selectedServer.is_custom ? 'Chủ Server' : 'Thành viên'}</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {onlineMembers.map(mem => (
+                      <div
+                        key={mem.id}
+                        className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
+                          isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#101018] border-[#1e1e2c]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center font-bold text-xs text-white">
+                            {mem.name.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>{mem.name}</span>
+                              <span className="text-[9px] font-mono font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.2 rounded">
+                                {mem.role}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-[#777] font-mono">{mem.listening ? `🎵 ${mem.listening}` : 'Sẵn sàng'}</p>
+                          </div>
+                        </div>
+
+                        {mem.id !== 'usr_me' && (
+                          <button
+                            onClick={() => handleKickMember(mem.id)}
+                            className="px-3 py-1 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Kick khỏi server</span>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {serverSettingsTab === 'invites' && (
+                <div className="space-y-4 max-w-lg">
+                  <div>
+                    <h4 className={`text-sm font-bold mb-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>MỜI BẠN BÈ VÀO MÁY CHỦ</h4>
+                    <p className="text-xs text-[#888] font-mono">
+                      Chia sẻ liên kết bên dưới để bạn bè tham gia phòng chat và nghe nhạc cùng bạn.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={`spytify://station/join/${selectedServer.id}`}
+                      className={`flex-1 px-3.5 py-2.5 rounded-xl text-xs font-mono border outline-none ${
+                        isLight ? 'bg-slate-100 text-slate-900 border-slate-300' : 'bg-[#101018] text-cyan-300 border-[#242436]'
+                      }`}
+                    />
+                    <button
+                      onClick={() => handleCopyInvite(selectedServer.id)}
+                      className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs flex items-center gap-1.5 transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+                    >
+                      {inviteCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      <span>{inviteCopied ? 'Đã sao chép!' : 'Sao chép link'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {serverSettingsTab === 'danger' && (
+                <div className="p-4 rounded-xl border border-red-500/30 bg-red-950/20 space-y-3">
+                  <div className="flex items-center gap-2 text-red-400 font-bold text-sm">
+                    <ShieldAlert className="w-4 h-4" />
+                    <span>XÓA MÁY CHỦ VĨNH VIỄN</span>
+                  </div>
+                  <p className="text-xs text-[#aaa]">
+                    Hành động này sẽ xóa vĩnh viễn trạm sóng âm nhạc này và toàn bộ lịch sử tin nhắn. Không thể hoàn tác sau khi xác nhận.
+                  </p>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn server "${selectedServer.name}" không?`)) {
+                        handleDeleteServer(selectedServer.id);
+                      }
+                    }}
+                    disabled={!selectedServer.id.startsWith('srv_custom_') && !selectedServer.is_custom}
+                    className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all shadow-md"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>{selectedServer.id.startsWith('srv_custom_') || selectedServer.is_custom ? 'Xác Nhận Xóa Server' : 'Server Mặc Định (Không thể xóa)'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ──────────────── 8. MODAL XEM HỒ SƠ MẬT VỤ (PROFILE MODAL) ──────────────── */}
+      {selectedProfileUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className={`w-full max-w-md border rounded-2xl shadow-2xl relative overflow-hidden ${
+            isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-[#0e0e16] border-[#222234] text-white'
+          }`}>
+            {/* Banner with Accent Glow */}
+            <div 
+              className="h-28 w-full relative overflow-hidden"
+              style={{
+                background: `linear-gradient(135deg, ${accentColor}40, #000000 90%)`,
+                borderBottom: `1px solid ${accentColor}30`,
+              }}
+            >
+              <button
+                onClick={() => setSelectedProfileUser(null)}
+                className="absolute top-3 right-3 p-1.5 rounded-full bg-black/60 hover:bg-black text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Avatar & Floating Actions */}
+            <div className="px-6 relative pb-6">
+              <div className="flex items-end justify-between -mt-12 mb-4">
+                <div className="relative">
+                  <div 
+                    className="w-20 h-20 rounded-2xl bg-[#14141e] border-4 flex items-center justify-center font-black text-2xl text-white shadow-2xl"
+                    style={{ borderColor: isLight ? '#ffffff' : '#0e0e16' }}
+                  >
+                    {selectedProfileUser.display_name.charAt(0)}
+                  </div>
+                  <span className={`absolute bottom-0 right-0 w-5 h-5 rounded-full border-2 border-black ${
+                    selectedProfileUser.status === 'online' ? 'bg-emerald-400' : 'bg-amber-400'
+                  }`} />
+                </div>
+
+                {selectedProfileUser.id !== 'usr_me' && (
+                  <button
+                    onClick={() => handleToggleFollow(selectedProfileUser.id)}
+                    className={`px-4 py-2 rounded-xl font-bold text-xs font-mono transition-all cursor-pointer flex items-center gap-1.5 shadow-md ${
+                      followingUserIds.has(selectedProfileUser.id)
+                        ? 'bg-zinc-800 hover:bg-red-950/40 text-zinc-300 hover:text-red-400 border border-zinc-700'
+                        : 'bg-emerald-500 hover:bg-emerald-400 text-black'
+                    }`}
+                  >
+                    {followingUserIds.has(selectedProfileUser.id) ? (
+                      <>
+                        <UserCheck className="w-3.5 h-3.5" />
+                        <span>{isMutualFriend(selectedProfileUser) ? 'Bạn bè mật vụ' : 'Đang theo dõi'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-3.5 h-3.5" />
+                        <span>Follow kết bạn</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {/* Name & Handle */}
+              <div>
+                <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
+                  <span>{selectedProfileUser.display_name}</span>
+                  <span className="text-[9px] font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                    {selectedProfileUser.role}
+                  </span>
+                </h3>
+                <p className="text-xs text-cyan-400 font-mono mt-0.5">@{selectedProfileUser.username}</p>
+              </div>
+
+              {/* Mutual Relationship Badge */}
+              <div className="mt-3 p-2.5 rounded-xl bg-[#141420] border border-[#222234] text-xs font-mono flex items-center justify-between">
+                <span className="text-[#888]">Mối quan hệ:</span>
+                {isMutualFriend(selectedProfileUser) ? (
+                  <span className="text-emerald-400 font-bold flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    BẠN BÈ MẬT VỤ (Follow Lẫn Nhau)
+                  </span>
+                ) : followingUserIds.has(selectedProfileUser.id) ? (
+                  <span className="text-cyan-400">Bạn đang theo dõi người này</span>
+                ) : selectedProfileUser.followsCurrentUser ? (
+                  <span className="text-amber-400">Người này đang theo dõi bạn!</span>
+                ) : (
+                  <span className="text-[#666]">Chưa theo dõi</span>
+                )}
+              </div>
+
+              {/* Bio */}
+              <div className="mt-3">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#777] block mb-1">
+                  TIỂU SỬ MẬT VỤ
+                </span>
+                <p className="text-xs text-[#aaa] leading-relaxed font-sans">{selectedProfileUser.bio || 'Chưa cập nhật tiểu sử.'}</p>
+              </div>
+
+              {/* Listening Activity Card */}
+              {selectedProfileUser.listening && (
+                <div className="mt-4 p-3 rounded-xl bg-gradient-to-r from-cyan-950/30 to-black border border-cyan-500/30 flex items-center justify-between gap-3 shadow-md">
+                  <div className="truncate flex-1">
+                    <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1 mb-0.5">
+                      <Activity className="w-3 h-3 animate-pulse" />
+                      ĐANG PHÁT TRÊN SPYTIFY
+                    </span>
+                    <p className="text-xs font-bold text-white truncate">{selectedProfileUser.listening}</p>
+                  </div>
+                  <button
+                    onClick={() => handlePlayMemberTrack(selectedProfileUser)}
+                    className="px-3 py-1.5 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-black font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md transition-transform hover:scale-105 active:scale-95"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>Nghe cùng</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

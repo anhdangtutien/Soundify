@@ -123,6 +123,25 @@ export interface CommunityServer {
   accent_color: string;
   channels: CommunityChannel[];
   is_verified?: boolean;
+  owner_id?: string;
+  max_members?: number;
+  is_custom?: boolean;
+  member_ids?: string[];
+}
+
+export interface CommunityUserProfile {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar?: string | null;
+  role: string;
+  status: 'online' | 'idle' | 'dnd' | 'offline';
+  bio?: string;
+  listening?: string | null;
+  listeningTrack?: Track | null;
+  isHost?: boolean;
+  followsCurrentUser?: boolean;
+  joinedAt?: string;
 }
 
 export interface CommunityMessage {

@@ -270,7 +270,14 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
           }`}>
             {sourceLabel}
           </span>
-          <span className="hidden md:inline-flex items-center gap-1 text-[9px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-500/20 px-1.5 py-0.2 rounded">
+          <span 
+            className="hidden md:inline-flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.5 rounded border transition-colors"
+            style={{
+              color: accentColor,
+              backgroundColor: `${accentColor}18`,
+              borderColor: `${accentColor}35`,
+            }}
+          >
             <Radio className="w-2.5 h-2.5 animate-pulse" />
             FLUID WAVEFORM 60FPS
           </span>
