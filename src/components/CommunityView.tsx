@@ -306,6 +306,13 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   const handleSelectChannel = (channel: CommunityChannel) => {
     setSelectedChannel(channel);
     setMessages([]);
+
+    // Nếu là kênh Voice (như "Phòng Thoại Mật Vụ"): Tự động tham gia cuộc gọi ngay lập tức giống Discord!
+    if (channel.type === 'voice') {
+      if (connectedVoiceChannel !== channel.id) {
+        handleJoinVoiceCall(channel.id);
+      }
+    }
   };
 
   // ──────── SUPABASE REALTIME SYNC (MESSAGES & VOICE STATE) ────────
@@ -376,8 +383,22 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   }, [selectedServer.id, selectedChannel.id]);
 
   // ──────── THAM GIA / RỜI CUỘC GỌI VOICE CALL ────────
-  const handleJoinVoiceCall = async () => {
+  const handleJoinVoiceCall = async (targetChannelId?: string) => {
     const myId = myParticipantIdRef.current;
+    const channelIdToConnect = targetChannelId || selectedChannel.id;
+
+    // Dọn dẹp session cũ nếu đang kết nối ở kênh khác
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach(t => t.stop());
+      micStreamRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    micGainRef.current = null;
+
     const myParticipant: VoiceParticipant = {
       id: myId,
       name: currentUser?.display_name || 'Bạn',
@@ -442,7 +463,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       };
       checkAudioActivity();
 
-      setConnectedVoiceChannel(selectedChannel.id);
+      setConnectedVoiceChannel(channelIdToConnect);
       playAudioChime('join');
 
       // Phát sóng trạng thái tham gia cuộc gọi qua Supabase!
@@ -454,7 +475,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
         });
       }
     } catch {
-      setConnectedVoiceChannel(selectedChannel.id);
+      setConnectedVoiceChannel(channelIdToConnect);
       setIsMuted(true);
       playAudioChime('join');
 
@@ -1202,11 +1223,11 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
               {!isConnectedToCurrentVoice ? (
                 <>
                   <button
-                    onClick={handleJoinVoiceCall}
+                    onClick={() => handleJoinVoiceCall()}
                     className="w-full py-3 px-6 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-emerald-400 hover:bg-emerald-300 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(0,255,102,0.4)] hover:scale-[1.02]"
                   >
                     <PhoneCall className="w-4 h-4" />
-                    <span>Nhấn vào để tham gia hội thoại</span>
+                    <span>Kết nối lại hội thoại</span>
                   </button>
 
                   <button
