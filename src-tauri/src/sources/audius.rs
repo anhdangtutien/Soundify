@@ -71,18 +71,25 @@ fn parse_audius_items(val: &Value) -> Vec<SearchResult> {
                 .or_else(|| item.pointer("/artwork/150x150").and_then(|v| v.as_str()))
                 .map(|s| s.to_string());
 
-            if let Some(tid) = track_id {
-                let stream_url = format!("https://discoveryprovider.audius.co/v1/tracks/{}/stream?app_name=Spytify", tid);
-                results.push(SearchResult {
-                    title: title.to_string(),
-                    artist: artist.to_string(),
-                    album: "Audius Open Music".to_string(),
-                    duration_secs,
-                    source: TrackSource::Audius,
-                    url_or_id: stream_url,
-                    thumbnail: artwork,
-                });
-            }
+            let direct_url = item.pointer("/stream/url").and_then(|v| v.as_str());
+
+            let stream_url = if let Some(d) = direct_url {
+                d.to_string()
+            } else if let Some(tid) = track_id {
+                format!("https://discoveryprovider.audius.co/v1/tracks/{}/stream?app_name=Spytify", tid)
+            } else {
+                continue;
+            };
+
+            results.push(SearchResult {
+                title: title.to_string(),
+                artist: artist.to_string(),
+                album: "Audius Open Music".to_string(),
+                duration_secs,
+                source: TrackSource::Audius,
+                url_or_id: stream_url,
+                thumbnail: artwork,
+            });
         }
     }
     results

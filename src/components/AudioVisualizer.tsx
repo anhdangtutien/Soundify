@@ -24,32 +24,8 @@ let sharedAudioCtx: AudioContext | null = null;
 let sharedAnalyser: AnalyserNode | null = null;
 let connectedElement: HTMLAudioElement | null = null;
 
-function setupAudioAnalyser(audioEl?: HTMLAudioElement | null): AnalyserNode | null {
-  if (!audioEl) return sharedAnalyser;
-  try {
-    if (!sharedAudioCtx) {
-      sharedAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    if (sharedAudioCtx.state === 'suspended') {
-      sharedAudioCtx.resume().catch(() => {});
-    }
-    if (!sharedAnalyser) {
-      sharedAnalyser = sharedAudioCtx.createAnalyser();
-      sharedAnalyser.fftSize = 256;
-      sharedAnalyser.smoothingTimeConstant = 0.82;
-    }
-    if (connectedElement !== audioEl) {
-      try {
-        const source = sharedAudioCtx.createMediaElementSource(audioEl);
-        source.connect(sharedAnalyser);
-        sharedAnalyser.connect(sharedAudioCtx.destination);
-        connectedElement = audioEl;
-      } catch {}
-    }
-    return sharedAnalyser;
-  } catch {
-    return null;
-  }
+function setupAudioAnalyser(_audioEl?: HTMLAudioElement | null): AnalyserNode | null {
+  return null; // Keep audio element on direct native pipeline to prevent CORS muting
 }
 
 export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({

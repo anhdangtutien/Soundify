@@ -148,10 +148,15 @@ export default function App() {
   const [accentColor, setAccentColor] = useState<string>(() => {
     return localStorage.getItem('spytify_accent_color') || '#ff2a55';
   });
+  const [communityServerColor, setCommunityServerColor] = useState<string | null>(null);
+
+  // In Station & Chat (Community), the entire app dynamically follows the active server's theme!
+  // When leaving Station & Chat, it smoothly reverts back to the user's permanent saved accent color!
+  const activeAccentColor = currentView === 'community' && communityServerColor ? communityServerColor : accentColor;
 
   useEffect(() => {
-    document.documentElement.style.setProperty('--accent-color', accentColor);
-  }, [accentColor]);
+    document.documentElement.style.setProperty('--accent-color', activeAccentColor);
+  }, [activeAccentColor]);
 
   const handleUpdateAccentColor = (newColor: string) => {
     setAccentColor(newColor);
@@ -2263,11 +2268,22 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
       sendScCmd('pause');
       setScTrackUrl(null);
 
+      // Resolve direct stream URL if needed
+      let streamUrl = track.path_or_url;
+      try {
+        if (!streamUrl.includes('/tracks/cidstream/') || streamUrl.includes('discoveryprovider.audius.co')) {
+          const resolved = await invoke<string>('resolve_audius_stream', { urlOrId: streamUrl });
+          if (resolved) streamUrl = resolved;
+        }
+      } catch (e) {
+        console.warn('Backend Audius stream resolve error:', e);
+      }
+
       // Play direct 320kbps Open Stream via HTML5 Audio
       if (onlineAudioRef.current) {
         onlineAudioRef.current.pause();
         onlineAudioRef.current.removeAttribute('crossorigin');
-        onlineAudioRef.current.src = track.path_or_url;
+        onlineAudioRef.current.src = streamUrl;
         onlineAudioRef.current.volume = volume;
         onlineAudioRef.current.load();
         onlineAudioRef.current.play()
@@ -2276,25 +2292,21 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
             setIsPlaying(true);
             showNotification(`▶ Audius Hi-Fi 320K: ${track.title}`);
           })
-          .catch((err) => {
-            console.warn('Audius direct play error, trying discovery fallback:', err);
-            // Fallback node URL
-            if (track.path_or_url.includes('discoveryprovider.audius.co') && onlineAudioRef.current) {
-              const fallbackUrl = track.path_or_url.replace('discoveryprovider.audius.co', 'api.audius.co');
-              onlineAudioRef.current.src = fallbackUrl;
-              onlineAudioRef.current.load();
-              onlineAudioRef.current.play()
-                .then(() => {
-                  isPlayingRef.current = true;
-                  setIsPlaying(true);
-                  showNotification(`▶ Audius Hi-Fi 320K: ${track.title}`);
-                })
-                .catch(() => {
-                  showNotification(getTranslation(language, 'toast.audiusError'));
-                });
-            } else {
-              showNotification(getTranslation(language, 'toast.audiusError'));
-            }
+          .catch(async (err) => {
+            console.warn('Audius direct play error, trying backend resolve fallback:', err);
+            try {
+              const fallback = await invoke<string>('resolve_audius_stream', { urlOrId: track.path_or_url });
+              if (fallback && fallback !== streamUrl && onlineAudioRef.current) {
+                onlineAudioRef.current.src = fallback;
+                onlineAudioRef.current.load();
+                await onlineAudioRef.current.play();
+                isPlayingRef.current = true;
+                setIsPlaying(true);
+                showNotification(`▶ Audius Hi-Fi 320K: ${track.title}`);
+                return;
+              }
+            } catch {}
+            showNotification(getTranslation(language, 'toast.audiusError'));
           });
       }
     }
@@ -3101,7 +3113,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
           albumCount={albums.length}
           currentUser={currentUser}
           onOpenAuth={() => setIsAuthModalOpen(true)}
-          accentColor={accentColor}
+          accentColor={activeAccentColor}
           themeMode={themeMode}
           language={language}
           isCollapsed={isSidebarCollapsed}
@@ -3231,7 +3243,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
               <AudioVisualizer 
                 isPlaying={isPlaying} 
                 language={language} 
-                accentColor={accentColor} 
+                accentColor={activeAccentColor} 
                 source={currentTrack?.source} 
                 audioElement={onlineAudioRef.current}
                 currentTime={currentTime}
@@ -3292,9 +3304,10 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 currentTrack={currentTrack}
                 isPlaying={isPlaying}
                 onPlayTrack={handlePlayTrack}
-                accentColor={accentColor}
+                accentColor={activeAccentColor}
                 language={language}
                 themeMode={themeMode}
+                onActiveServerChange={(server) => setCommunityServerColor(server.accent_color)}
               />
             ) : currentView === 'profile' ? (
               <ProfileView
@@ -3564,7 +3577,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
         onSeek={handleSeek}
         onVolumeChange={handleVolumeChange}
         onToggleFavorite={() => currentTrack && handleToggleFavorite(currentTrack)}
-        accentColor={accentColor}
+        accentColor={activeAccentColor}
         onAddToAlbum={() => {
           if (currentTrack) {
             setTrackToAddToAlbum(currentTrack);

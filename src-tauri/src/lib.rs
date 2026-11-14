@@ -200,6 +200,29 @@ async fn resolve_youtube_music_stream(
 }
 
 #[tauri::command]
+async fn resolve_audius_stream(url_or_id: String) -> Result<String, String> {
+    if url_or_id.contains("/tracks/cidstream/") && url_or_id.contains("signature=") {
+        return Ok(url_or_id);
+    }
+
+    let client = reqwest::Client::builder()
+        .user_agent("Spytify/1.0")
+        .redirect(reqwest::redirect::Policy::limited(5))
+        .timeout(std::time::Duration::from_secs(8))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let stream_url = if url_or_id.starts_with("http") {
+        url_or_id
+    } else {
+        format!("https://discoveryprovider.audius.co/v1/tracks/{}/stream?app_name=Spytify", url_or_id)
+    };
+
+    let res = client.get(&stream_url).send().await.map_err(|e| e.to_string())?;
+    Ok(res.url().to_string())
+}
+
+#[tauri::command]
 fn scan_music_folder(folder_path: String) -> Result<Vec<Track>, String> {
     Ok(scanner::scan_folder(folder_path))
 }
@@ -342,7 +365,16 @@ async fn get_trending_hits(category: String) -> Result<Vec<SearchResult>, String
         "usuk" | "global" => {
             sources::youtube::search_youtube("global top hits official music video audio").await
         }
-        "kpop_jpop" | "kpop" | "jpop" => {
+        "kpop" => {
+            sources::youtube::search_youtube("kpop viral hits music video audio official").await
+        }
+        "jpop" => {
+            sources::youtube::search_youtube("jpop viral hits official mv audio").await
+        }
+        "anime" => {
+            sources::youtube::search_youtube("anime opening ost viral hits official").await
+        }
+        "kpop_jpop" => {
             sources::youtube::search_youtube("kpop jpop viral hits official mv audio").await
         }
         "vpop" | "vietnam" => {
@@ -352,8 +384,17 @@ async fn get_trending_hits(category: String) -> Result<Vec<SearchResult>, String
         "lofi" => {
             return sources::youtube::search_youtube("lofi hip hop radio beats to relax study to live chill").await;
         }
-        "edm" => {
+        "edm" | "electronic" => {
             sources::youtube::search_youtube("festival edm electronic dance banger official audio").await
+        }
+        "hiphop" | "rap" => {
+            sources::youtube::search_youtube("hip hop rap top billboard hits official audio").await
+        }
+        "rock" | "metal" => {
+            sources::youtube::search_youtube("rock alternative viral hits official music video").await
+        }
+        "acoustic" | "indie" => {
+            sources::youtube::search_youtube("acoustic indie pop viral songs guitar chill").await
         }
         _ => {
             // Priority: US/UK -> K-Pop/J-Pop -> V-Pop
@@ -1234,6 +1275,7 @@ pub fn run() {
             download_track,
             trim_memory,
             resolve_youtube_music_stream,
+            resolve_audius_stream,
             rust_ui_get_snapshot,
             rust_ui_switch_tab,
             rust_ui_filter,

@@ -18,6 +18,7 @@ interface CommunityViewProps {
   accentColor?: string;
   language?: LanguageCode;
   themeMode?: 'dark' | 'light';
+  onActiveServerChange?: (server: CommunityServer) => void;
 }
 
 // Gentle Discord-style connection and disconnection sounds
@@ -142,6 +143,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   accentColor = '#FF2A55',
   language = 'vi',
   themeMode = 'dark',
+  onActiveServerChange,
 }) => {
   const isLight = themeMode === 'light';
   // Load custom servers from localStorage
@@ -360,11 +362,16 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    onActiveServerChange?.(selectedServer);
+  }, [selectedServer, onActiveServerChange]);
+
   // Handle server switch
   const handleSelectServer = (server: CommunityServer) => {
     setSelectedServer(server);
     setSelectedChannel(server.channels[0]);
     setMessages([]);
+    onActiveServerChange?.(server);
   };
 
   // Handle channel switch
