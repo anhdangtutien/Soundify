@@ -15,6 +15,8 @@ import { HomeTrendingView } from './components/HomeTrendingView';
 import { AlbumsView } from './components/AlbumsView';
 import { AddToAlbumModal } from './components/AddToAlbumModal';
 import { SplashScreen } from './components/SplashScreen';
+import { UpdateModal } from './components/UpdateModal';
+import { checkGitHubUpdate, UpdateInfo } from './services/updater';
 import { cloudSyncPull, cloudSyncPush, isSupabaseConfigured } from './services/supabase';
 import { deduplicateTracks, optimizeThumbnailUrl, handleImageError } from './utils/trackUtils';
 import { Track, PlaybackStatus, SearchResult, ViewType, User, UserAlbum, RecommendationResult } from './types';
@@ -49,6 +51,34 @@ export default function App() {
     return localStorage.getItem('spytify_local_folder') || '';
   });
   const [downloadingTrackIds, setDownloadingTrackIds] = useState<Set<string>>(new Set());
+
+  // Software Update & Close-to-Tray State
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+
+  // Initialize Close to Tray & Background Update Check on startup
+  useEffect(() => {
+    const savedCloseToTray = localStorage.getItem('spytify_close_to_tray');
+    const enabled = savedCloseToTray !== 'false';
+    invoke('set_close_to_tray', { enabled }).catch(err => {
+      console.warn('Failed to initialize close to tray:', err);
+    });
+
+    // Check for updates 3.5s after launch (non-blocking)
+    const timer = setTimeout(async () => {
+      try {
+        const res = await checkGitHubUpdate(false);
+        if (res.hasUpdate && res.info) {
+          setUpdateInfo(res.info);
+          setIsUpdateModalOpen(true);
+        }
+      } catch (e) {
+        console.warn('Startup update check failed:', e);
+      }
+    }, 3500);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Automatically scan & load saved local music folder and download directory on startup
   useEffect(() => {
@@ -2898,6 +2928,16 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
             onClose={() => setIsAuthModalOpen(false)}
             onSuccess={handleLoginSuccess}
           />
+
+          {/* Software Update Modal */}
+          {updateInfo && (
+            <UpdateModal
+              isOpen={isUpdateModalOpen}
+              updateInfo={updateInfo}
+              accentColor={accentColor}
+              onClose={() => setIsUpdateModalOpen(false)}
+            />
+          )}
         </>
       )}
 
@@ -3130,6 +3170,10 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 downloadFolder={downloadFolder}
                 onChangeDownloadFolder={handleChangeDownloadFolder}
                 onOpenDownloadFolder={handleOpenDownloadFolder}
+                onOpenUpdateModal={(info) => {
+                  setUpdateInfo(info);
+                  setIsUpdateModalOpen(true);
+                }}
               />
             ) : currentView === 'search' ? (
               <SearchView

@@ -22,9 +22,21 @@ use tauri::{
     Emitter, Manager, State, WindowEvent,
 };
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
 static RELATED_CACHE: Mutex<Option<HashMap<String, Vec<SearchResult>>>> = Mutex::new(None);
+static CLOSE_TO_TRAY: AtomicBool = AtomicBool::new(true);
+
+#[tauri::command]
+fn set_close_to_tray(enabled: bool) {
+    CLOSE_TO_TRAY.store(enabled, Ordering::SeqCst);
+}
+
+#[tauri::command]
+fn get_close_to_tray() -> bool {
+    CLOSE_TO_TRAY.load(Ordering::SeqCst)
+}
 
 #[cfg(target_os = "windows")]
 mod win_mem {
@@ -925,11 +937,16 @@ pub fn run() {
         .on_window_event(|window, event| {
             match event {
                 WindowEvent::CloseRequested { api, .. } => {
-                    // Hide window to tray on close to allow background audio playback
-                    api.prevent_close();
-                    let _ = window.hide();
-                    let _ = window.emit("app-window-state", "hidden");
-                    trim_process_memory();
+                    if CLOSE_TO_TRAY.load(Ordering::SeqCst) {
+                        // Hide window to tray on close to allow background audio playback
+                        api.prevent_close();
+                        let _ = window.hide();
+                        let _ = window.emit("app-window-state", "hidden");
+                        trim_process_memory();
+                    } else {
+                        // User disabled tray: exit application completely
+                        std::process::exit(0);
+                    }
                 }
                 WindowEvent::Resized(_) => {
                     if let Ok(true) = window.is_minimized() {
@@ -943,6 +960,8 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            set_close_to_tray,
+            get_close_to_tray,
             scan_music_folder,
             play_track,
             pause_track,

@@ -7,12 +7,13 @@ import {
   Music, RefreshCw, Disc, Palette, Camera, Upload, Trash2, 
   Check, Sparkles, Shield, Sun, Moon, Download, Database, HardDriveDownload,
   Cloud, CloudLightning, Key, ChevronDown, ChevronUp, Globe, Languages,
-  Folder, FolderOpen, FolderDown, Copy, CheckCheck, ExternalLink, Zap
+  Folder, FolderOpen, FolderDown, Copy, CheckCheck, ExternalLink, Zap, Power
 } from 'lucide-react';
 import { 
   getStoredSupabaseConfig, saveStoredSupabaseConfig, isSupabaseConfigured,
   cloudSyncPush, cloudSyncPull, SUPABASE_SCHEMA_SQL, testSupabaseConnection
 } from '../services/supabase';
+import { checkGitHubUpdate, CURRENT_VERSION, UpdateInfo } from '../services/updater';
 import { LanguageCode, SUPPORTED_LANGUAGES, getTranslation } from '../locales/i18n';
 
 interface ProfileViewProps {
@@ -30,6 +31,7 @@ interface ProfileViewProps {
   downloadFolder?: string;
   onChangeDownloadFolder?: () => void;
   onOpenDownloadFolder?: () => void;
+  onOpenUpdateModal?: (info: UpdateInfo) => void;
 }
 
 // 8 Curated Spy / Classified Theme Colors
@@ -93,12 +95,52 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   downloadFolder = '',
   onChangeDownloadFolder,
   onOpenDownloadFolder,
+  onOpenUpdateModal,
 }) => {
   const [stats, setStats] = useState<UserStats>({ total_played: 0, favorite_count: 0, top_artist: null });
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const backupInputRef = useRef<HTMLInputElement>(null);
+
+  // Close to Tray & Updater state
+  const [closeToTray, setCloseToTray] = useState<boolean>(() => {
+    const saved = localStorage.getItem('spytify_close_to_tray');
+    return saved !== 'false';
+  });
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [updateStatusMsg, setUpdateStatusMsg] = useState<string | null>(null);
+
+  const handleToggleCloseToTray = async (enabled: boolean) => {
+    setCloseToTray(enabled);
+    localStorage.setItem('spytify_close_to_tray', enabled ? 'true' : 'false');
+    try {
+      await invoke('set_close_to_tray', { enabled });
+    } catch (e) {
+      console.warn('Failed to set close to tray in backend:', e);
+    }
+  };
+
+  const handleManualCheckUpdate = async () => {
+    setIsCheckingUpdate(true);
+    setUpdateStatusMsg(null);
+    try {
+      const res = await checkGitHubUpdate(true);
+      if (res && res.hasUpdate && res.info) {
+        if (onOpenUpdateModal) {
+          onOpenUpdateModal(res.info);
+        }
+      } else {
+        setUpdateStatusMsg('Bạn đang dùng phiên bản mới nhất!');
+        setTimeout(() => setUpdateStatusMsg(null), 4000);
+      }
+    } catch (e: any) {
+      setUpdateStatusMsg('Không thể kiểm tra cập nhật: ' + (e?.message || e));
+      setTimeout(() => setUpdateStatusMsg(null), 5000);
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
 
   // Supabase Cloud State
   const [supabaseConfig, setSupabaseConfig] = useState(getStoredSupabaseConfig());
@@ -814,6 +856,83 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 );
               })}
             </div>
+          </div>
+        </div>
+
+        {/* System Tray Setting (Tắt hẳn app vs Thu xuống khay hệ thống) */}
+        <div className="pt-4 border-t border-[#141418]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
+              >
+                <Power className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-white">Chạy ngầm ở khay hệ thống (System Tray)</p>
+                <p className="text-[11px] text-[#777] mt-0.5">
+                  {closeToTray 
+                    ? 'Bật: Nhấn nút [X] sẽ ẩn app xuống khay hệ thống để tiếp tục phát nhạc ngầm.' 
+                    : 'Tắt: Nhấn nút [X] sẽ đóng và thoát hoàn toàn ứng dụng.'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => handleToggleCloseToTray(!closeToTray)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                closeToTray ? 'bg-emerald-500' : 'bg-zinc-700'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  closeToTray ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* Software Update Checker */}
+        <div className="pt-4 border-t border-[#141418]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
+              >
+                <Download className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-bold text-white">Cập nhật ứng dụng</p>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#151520] text-zinc-300 border border-[#252535]">
+                    Phiên bản: v{CURRENT_VERSION}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#777] mt-0.5">
+                  Tự động kiểm tra bản build mới nhất trên GitHub (kể cả các bản patch vá lỗi gần nhất).
+                </p>
+                {updateStatusMsg && (
+                  <p className="text-[11px] text-emerald-400 font-mono mt-1">
+                    {updateStatusMsg}
+                  </p>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={handleManualCheckUpdate}
+              disabled={isCheckingUpdate}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer border hover:scale-105 disabled:opacity-50 self-start sm:self-auto"
+              style={{
+                backgroundColor: `${accentColor}18`,
+                color: accentColor,
+                borderColor: `${accentColor}40`,
+              }}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isCheckingUpdate ? 'animate-spin' : ''}`} />
+              <span>{isCheckingUpdate ? 'Đang kiểm tra...' : 'Kiểm tra bản mới'}</span>
+            </button>
           </div>
         </div>
 
