@@ -3173,13 +3173,15 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                   {showYoutubeVideo ? getTranslation(language, 'header.minimizeMv') : 'MV'}
                 </button>
               )}
-              <button
-                onClick={handleSelectFolder}
-                className="px-3 py-1 bg-[#121212] hover:bg-[#1c1c1c] text-white text-xs font-medium rounded-md border border-[#222] transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <FolderPlus className="w-3.5 h-3.5 text-white" />
-                {getTranslation(language, 'header.selectFolder')}
-              </button>
+              {currentView === 'local' && (
+                <button
+                  onClick={handleSelectFolder}
+                  className="px-3 py-1 bg-[#121212] hover:bg-[#1c1c1c] text-white text-xs font-medium rounded-md border border-[#222] transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <FolderPlus className="w-3.5 h-3.5 text-white" />
+                  {getTranslation(language, 'header.selectFolder')}
+                </button>
+              )}
             </div>
           </header>
 

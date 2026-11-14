@@ -233,15 +233,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Library Section */}
       {isCollapsed ? (
-        <div className="my-1.5 border-t border-[#141418] mx-2 flex justify-center pt-2">
-          <button
-            onClick={onSelectFolder}
-            title={getTranslation(language, 'header.selectFolder')}
-            className="p-2 hover:bg-[#14141a] rounded-lg transition-colors text-[#777788] hover:text-white cursor-pointer"
-          >
-            <FolderPlus className="w-4 h-4" />
-          </button>
-        </div>
+        <div className="my-2 border-t border-[#141418] mx-2" />
       ) : (
         <div className="mt-4 px-4 flex items-center justify-between text-[#666677] text-[10px] font-semibold tracking-wider uppercase font-mono">
           <span>{getTranslation(language, 'nav.library')}</span>
