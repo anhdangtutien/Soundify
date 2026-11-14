@@ -1895,6 +1895,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
   // ─── AUDIUS & LOCAL HTML5 audio element (Native decoding for MP3, M4A, WebM, etc.) ───
   useEffect(() => {
     const audio = new Audio();
+    audio.crossOrigin = "anonymous";
     onlineAudioRef.current = audio;
     const onTimeUpdate = () => {
       if (
@@ -3206,6 +3207,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 accentColor={accentColor} 
                 source={currentTrack?.source} 
                 audioElement={onlineAudioRef.current}
+                currentTime={currentTime}
               />
             )}
 
