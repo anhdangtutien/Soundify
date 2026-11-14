@@ -3,7 +3,8 @@ import {
   Radio, MessageSquare, Headphones, Users, Disc, Play, Send, 
   Music, Plus, Hash, Volume2, Flame, Activity, Share2,
   Mic, MicOff, PhoneCall, PhoneOff, VolumeX, Signal, Shield,
-  X, Sparkles, Palette, Check, Settings, Sliders, Volume1, RotateCcw, CheckCircle2
+  X, Sparkles, Palette, Check, Settings, Sliders, Volume1, RotateCcw, CheckCircle2,
+  MoreVertical
 } from 'lucide-react';
 import { Track, User, CommunityServer, CommunityChannel, CommunityMessage, StageSession, VoiceParticipant } from '../types';
 import { getSupabaseClient } from '../services/supabase';
@@ -235,29 +236,60 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
     currentUser?.id || 'guest_' + Math.random().toString(36).substring(2, 8)
   );
 
-  // Voice call participants in current channel (Synced in Realtime via Supabase!)
-  const [voiceParticipants, setVoiceParticipants] = useState<VoiceParticipant[]>([
-    {
-      id: 'usr_host_demo',
-      name: 'DJ CyberHawk',
-      username: 'cyberhawk',
+  // Voice call participants in current channel (Synced in Realtime via Supabase & Invites!)
+  const [voiceParticipants, setVoiceParticipants] = useState<VoiceParticipant[]>([]);
+
+  // Right-click context menu for online members
+  const [memberMenu, setMemberMenu] = useState<{
+    x: number;
+    y: number;
+    member: {
+      id: string;
+      name: string;
+      role: string;
+      listening: string | null;
+      isHost?: boolean;
+    };
+  } | null>(null);
+
+  useEffect(() => {
+    const handleCloseMenu = () => setMemberMenu(null);
+    window.addEventListener('click', handleCloseMenu);
+    return () => window.removeEventListener('click', handleCloseMenu);
+  }, []);
+
+  const handleInviteMemberToVoice = (member: { id: string; name: string; isHost?: boolean }) => {
+    // If not currently in voice, join voice first!
+    if (!connectedVoiceChannel) {
+      const voiceCh = selectedServer.channels.find(c => c.type === 'voice') || selectedChannel;
+      handleJoinVoiceCall(voiceCh.id);
+    }
+
+    const newVp: VoiceParticipant = {
+      id: member.id,
+      name: member.name,
+      username: member.id.replace('usr_', ''),
       avatar: null,
       isMuted: false,
       isDeafened: false,
-      isSpeaking: true,
-      isHost: true,
-    },
-    {
-      id: 'usr_neon_demo',
-      name: 'NeonSamurai',
-      username: 'samurai99',
-      avatar: null,
-      isMuted: false,
-      isDeafened: false,
-      isSpeaking: false,
-      isHost: false,
-    },
-  ]);
+      isSpeaking: !!member.isHost,
+      isHost: !!member.isHost,
+    };
+
+    setVoiceParticipants(prev => {
+      if (prev.some(p => p.id === member.id)) return prev;
+      return [...prev, newVp];
+    });
+
+    playAudioChime('join');
+    setMemberMenu(null);
+  };
+
+  const handleRemoveMemberFromVoice = (memberId: string) => {
+    setVoiceParticipants(prev => prev.filter(p => p.id !== memberId));
+    playAudioChime('leave');
+    setMemberMenu(null);
+  };
 
   // Live Stage session state
   const [stageSession, setStageSession] = useState<StageSession>({
@@ -876,6 +908,8 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 .map(channel => {
                   const isCur = selectedChannel.id === channel.id;
                   const isVoiceActive = connectedVoiceChannel === channel.id;
+                  const otherVoiceParticipants = voiceParticipants.filter(p => p.id !== myParticipantIdRef.current);
+                  const totalVoiceCount = (isVoiceActive ? 1 : 0) + otherVoiceParticipants.length;
 
                   return (
                     <div key={channel.id} className="space-y-1">
@@ -898,43 +932,50 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                           </span>
                         ) : (
                           <span className="text-[9px] font-mono text-[#666] bg-[#121218] px-1.5 py-0.2 rounded border border-[#202028]">
-                            {voiceParticipants.length} Mật vụ
+                            {totalVoiceCount} Mật vụ
                           </span>
                         )}
                       </button>
 
                       {/* Indented Participants list under voice channel */}
-                      <div className="pl-6 space-y-1 py-0.5">
-                        {voiceParticipants.map(vp => (
-                          <div key={vp.id} className="flex items-center gap-1.5 text-[11px] text-[#aaa]">
-                            <div className="relative">
-                              <span className="w-4 h-4 rounded-full bg-[#161622] border border-white/20 text-[9px] font-bold flex items-center justify-center text-white">
-                                {vp.name.charAt(0)}
-                              </span>
-                              {vp.isSpeaking && (
-                                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                              )}
+                      {(isVoiceActive || otherVoiceParticipants.length > 0) && (
+                        <div className="pl-6 space-y-1 py-0.5">
+                          {isVoiceActive && (
+                            <div className="flex items-center gap-1.5 text-[11px] text-emerald-300 font-semibold">
+                              <div className="relative">
+                                <span className="w-4 h-4 rounded-full bg-emerald-950 border border-emerald-400 text-[9px] font-bold flex items-center justify-center text-white">
+                                  {(currentUser?.display_name || 'B').charAt(0)}
+                                </span>
+                                {isUserSpeaking && (
+                                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                )}
+                              </div>
+                              <span className="truncate">{currentUser?.display_name || 'Bạn'} (Bạn)</span>
+                              {isMuted && <MicOff className="w-2.5 h-2.5 text-red-400 ml-auto" />}
                             </div>
-                            <span className="truncate">{vp.name}</span>
-                            {vp.isMuted && <MicOff className="w-2.5 h-2.5 text-red-400 ml-auto" />}
-                          </div>
-                        ))}
+                          )}
 
-                        {connectedVoiceChannel === channel.id && (
-                          <div className="flex items-center gap-1.5 text-[11px] text-emerald-300 font-semibold">
-                            <div className="relative">
-                              <span className="w-4 h-4 rounded-full bg-emerald-950 border border-emerald-400 text-[9px] font-bold flex items-center justify-center text-white">
-                                {(currentUser?.display_name || 'B').charAt(0)}
-                              </span>
-                              {isUserSpeaking && (
-                                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                          {otherVoiceParticipants.map(vp => (
+                            <div key={vp.id} className="flex items-center gap-1.5 text-[11px] text-[#aaa]">
+                              <div className="relative">
+                                <span className="w-4 h-4 rounded-full bg-[#161622] border border-white/20 text-[9px] font-bold flex items-center justify-center text-white">
+                                  {vp.name.charAt(0)}
+                                </span>
+                                {vp.isSpeaking && (
+                                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                )}
+                              </div>
+                              <span className="truncate">{vp.name}</span>
+                              {vp.isHost && (
+                                <span className="text-[8px] font-mono font-bold text-amber-400 bg-amber-400/10 px-1 rounded">
+                                  DJ
+                                </span>
                               )}
+                              {vp.isMuted && <MicOff className="w-2.5 h-2.5 text-red-400 ml-auto" />}
                             </div>
-                            <span className="truncate">{currentUser?.display_name || 'Bạn'} (Bạn)</span>
-                            {isMuted && <MicOff className="w-2.5 h-2.5 text-red-400 ml-auto" />}
-                          </div>
-                        )}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1084,101 +1125,135 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             </div>
 
             {/* Participants Grid */}
-            <div className="w-full max-w-2xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 my-auto py-4">
-              {voiceParticipants.map(vp => (
-                <div 
-                  key={vp.id}
-                  className={`p-5 rounded-2xl bg-[#0e0e16] border transition-all duration-300 flex flex-col items-center justify-center relative shadow-lg ${
-                    vp.isSpeaking 
-                      ? 'border-emerald-400 shadow-[0_0_20px_rgba(0,255,102,0.25)]' 
-                      : 'border-[#1e1e28]'
-                  }`}
+            {(!isConnectedToCurrentVoice && voiceParticipants.filter(p => p.id !== myParticipantIdRef.current).length === 0) ? (
+              <div className="flex flex-col items-center justify-center p-8 rounded-2xl bg-[#0c0c14] border border-[#20202e] text-center max-w-sm my-auto">
+                <div className="w-14 h-14 rounded-2xl bg-[#141420] border border-[#252536] flex items-center justify-center mb-3 text-emerald-400">
+                  <Radio className="w-7 h-7" />
+                </div>
+                <h3 className="text-sm font-bold text-white mb-1">Phòng Thoại Chưa Có Ai</h3>
+                <p className="text-[11px] text-[#777] font-mono mb-4 leading-relaxed">
+                  Nhấn "Vào phòng" bên dưới, hoặc chuột phải vào tên DJ ở danh sách bên phải để gọi DJ vào đàm thoại cùng bạn!
+                </p>
+                <button
+                  onClick={() => handleJoinVoiceCall()}
+                  className="py-2.5 px-6 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-emerald-400 hover:bg-emerald-300 transition-all flex items-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(0,255,102,0.3)] hover:scale-[1.02]"
                 >
-                  <div className="relative mb-3">
+                  <PhoneCall className="w-4 h-4" />
+                  <span>Vào phòng đàm thoại ngay</span>
+                </button>
+              </div>
+            ) : (
+              <div className="w-full max-w-2xl flex flex-col items-center my-auto py-4">
+                <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {/* Current User Card */}
+                  {isConnectedToCurrentVoice && (
                     <div 
-                      className={`w-16 h-16 rounded-full overflow-hidden border-2 flex items-center justify-center text-lg font-bold text-white transition-all ${
-                        vp.isSpeaking 
-                          ? 'border-emerald-400 scale-105 shadow-[0_0_16px_#00FF66]' 
-                          : 'border-white/20 bg-[#161622]'
+                      className={`p-5 rounded-2xl bg-[#0e0e16] border transition-all duration-300 flex flex-col items-center justify-center relative shadow-lg ${
+                        isUserSpeaking
+                          ? 'border-emerald-400 shadow-[0_0_20px_rgba(0,255,102,0.3)]'
+                          : 'border-cyan-500/50'
                       }`}
                     >
-                      {vp.name.charAt(0).toUpperCase()}
+                      <div className="relative mb-3">
+                        <div 
+                          className={`w-16 h-16 rounded-full overflow-hidden border-2 flex items-center justify-center text-lg font-bold text-white transition-all ${
+                            isUserSpeaking
+                              ? 'border-emerald-400 scale-105 shadow-[0_0_16px_#00FF66]'
+                              : 'border-cyan-400 bg-[#141424]'
+                          }`}
+                        >
+                          {currentUser?.avatar ? (
+                            <img src={currentUser.avatar} alt="avatar" className="w-full h-full object-cover" />
+                          ) : (
+                            <span>{(currentUser?.display_name || 'B').charAt(0).toUpperCase()}</span>
+                          )}
+                        </div>
+                        {isMuted ? (
+                          <span className="absolute bottom-0 right-0 p-1 rounded-full bg-red-600 border-2 border-black text-white">
+                            <MicOff className="w-3 h-3" />
+                          </span>
+                        ) : (
+                          <span className="absolute bottom-0 right-0 p-1 rounded-full bg-emerald-500 border-2 border-black text-black">
+                            <Mic className="w-3 h-3" />
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-xs font-bold text-white tracking-wide truncate max-w-[120px]">
+                        {currentUser?.display_name || 'Bạn'} (Bạn)
+                      </p>
+                      <p className="text-[10px] text-[#666] font-mono">
+                        {isMuted ? 'Đã tắt mic' : isUserSpeaking ? 'Đang nói...' : 'Đang lắng nghe'}
+                      </p>
+
+                      {isUserSpeaking && (
+                        <span className="mt-2 text-[9px] font-mono font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/20 px-2 py-0.5 rounded-full animate-pulse">
+                          🎙️ Đang nói...
+                        </span>
+                      )}
                     </div>
-                    {vp.isMuted ? (
-                      <span className="absolute bottom-0 right-0 p-1 rounded-full bg-red-600 border-2 border-black text-white">
-                        <MicOff className="w-3 h-3" />
-                      </span>
-                    ) : vp.isSpeaking ? (
-                      <span className="absolute bottom-0 right-0 p-1 rounded-full bg-emerald-500 border-2 border-black text-black">
-                        <Activity className="w-3 h-3 animate-pulse" />
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <p className="text-xs font-bold text-white tracking-wide truncate max-w-[120px]">{vp.name}</p>
-                  <p className="text-[10px] text-[#666] font-mono">@{vp.username}</p>
-
-                  {vp.isSpeaking && (
-                    <span className="mt-2 text-[9px] font-mono font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/20 px-2 py-0.5 rounded-full animate-pulse">
-                      🎙️ Đang nói...
-                    </span>
                   )}
-                </div>
-              ))}
 
-              {/* Current User Card */}
-              <div 
-                className={`p-5 rounded-2xl bg-[#0e0e16] border transition-all duration-300 flex flex-col items-center justify-center relative shadow-lg ${
-                  isConnectedToCurrentVoice
-                    ? isUserSpeaking
-                      ? 'border-emerald-400 shadow-[0_0_20px_rgba(0,255,102,0.3)]'
-                      : 'border-cyan-500/50'
-                    : 'border-dashed border-[#282838] opacity-70'
-                }`}
-              >
-                <div className="relative mb-3">
-                  <div 
-                    className={`w-16 h-16 rounded-full overflow-hidden border-2 flex items-center justify-center text-lg font-bold text-white transition-all ${
-                      isUserSpeaking
-                        ? 'border-emerald-400 scale-105 shadow-[0_0_16px_#00FF66]'
-                        : isConnectedToCurrentVoice
-                        ? 'border-cyan-400 bg-[#141424]'
-                        : 'border-[#333] bg-[#0c0c12]'
-                    }`}
-                  >
-                    {currentUser?.avatar ? (
-                      <img src={currentUser.avatar} alt="avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      <span>{(currentUser?.display_name || 'B').charAt(0).toUpperCase()}</span>
-                    )}
-                  </div>
-                  {isConnectedToCurrentVoice && (
-                    isMuted ? (
-                      <span className="absolute bottom-0 right-0 p-1 rounded-full bg-red-600 border-2 border-black text-white">
-                        <MicOff className="w-3 h-3" />
-                      </span>
-                    ) : (
-                      <span className="absolute bottom-0 right-0 p-1 rounded-full bg-emerald-500 border-2 border-black text-black">
-                        <Mic className="w-3 h-3" />
-                      </span>
-                    )
-                  )}
+                  {/* Other Invited / Real Participants */}
+                  {voiceParticipants
+                    .filter(vp => vp.id !== myParticipantIdRef.current)
+                    .map(vp => (
+                      <div 
+                        key={vp.id}
+                        className={`p-5 rounded-2xl bg-[#0e0e16] border transition-all duration-300 flex flex-col items-center justify-center relative shadow-lg ${
+                          vp.isSpeaking 
+                            ? 'border-emerald-400 shadow-[0_0_20px_rgba(0,255,102,0.25)]' 
+                            : 'border-[#1e1e28]'
+                        }`}
+                      >
+                        <div className="relative mb-3">
+                          <div 
+                            className={`w-16 h-16 rounded-full overflow-hidden border-2 flex items-center justify-center text-lg font-bold text-white transition-all ${
+                              vp.isSpeaking 
+                                ? 'border-emerald-400 scale-105 shadow-[0_0_16px_#00FF66]' 
+                                : 'border-white/20 bg-[#161622]'
+                            }`}
+                          >
+                            {vp.name.charAt(0).toUpperCase()}
+                          </div>
+                          {vp.isMuted ? (
+                            <span className="absolute bottom-0 right-0 p-1 rounded-full bg-red-600 border-2 border-black text-white">
+                              <MicOff className="w-3 h-3" />
+                            </span>
+                          ) : vp.isSpeaking ? (
+                            <span className="absolute bottom-0 right-0 p-1 rounded-full bg-emerald-500 border-2 border-black text-black">
+                              <Activity className="w-3 h-3 animate-pulse" />
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <p className="text-xs font-bold text-white tracking-wide truncate max-w-[120px]">{vp.name}</p>
+                          {vp.isHost && (
+                            <span className="text-[8px] font-mono font-bold text-amber-400 bg-amber-400/10 px-1 py-0.2 rounded">
+                              DJ
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-[#666] font-mono">@{vp.username}</p>
+
+                        {vp.isSpeaking && (
+                          <span className="mt-2 text-[9px] font-mono font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/20 px-2 py-0.5 rounded-full animate-pulse">
+                            🎙️ Đang nói...
+                          </span>
+                        )}
+                      </div>
+                    ))}
                 </div>
 
-                <p className="text-xs font-bold text-white tracking-wide truncate max-w-[120px]">
-                  {currentUser?.display_name || 'Bạn'} (Bạn)
-                </p>
-                <p className="text-[10px] text-[#666] font-mono">
-                  {isConnectedToCurrentVoice ? (isMuted ? 'Đã tắt mic' : isUserSpeaking ? 'Đang nói...' : 'Đang lắng nghe') : 'Chưa tham gia'}
-                </p>
-
-                {isConnectedToCurrentVoice && isUserSpeaking && (
-                  <span className="mt-2 text-[9px] font-mono font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/20 px-2 py-0.5 rounded-full animate-pulse">
-                    🎙️ Đang nói...
-                  </span>
+                {/* Helpful DJ Invite Hint */}
+                {voiceParticipants.filter(p => p.id !== myParticipantIdRef.current).length === 0 && (
+                  <p className="text-[11px] text-[#666] font-mono mt-4 text-center">
+                    💡 <span className="text-zinc-400">Gợi ý:</span> Nhấn chuột phải vào <span className="text-amber-400 font-bold">DJ CyberHawk</span> ở danh sách thành viên bên phải để gọi DJ vào trò chuyện cùng bạn!
+                  </p>
                 )}
               </div>
-            </div>
+            )}
 
             {/* In-Call Controls Bottom Bar */}
             <div className="w-full max-w-md p-3 rounded-2xl bg-[#0f0f18] border border-[#222234] shadow-2xl flex flex-col items-center justify-center gap-2.5">
@@ -1435,14 +1510,25 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       </div>
 
       {/* ──────────────── 4. ONLINE MEMBERS LIST (RIGHT RAIL) ──────────────── */}
-      <div className="w-48 bg-[#07070b] border-l border-[#15151e] flex flex-col p-3 overflow-y-auto no-scrollbar hidden md:flex flex-shrink-0 text-xs">
+      <div className="w-48 bg-[#07070b] border-l border-[#15151e] flex flex-col p-3 overflow-y-auto no-scrollbar hidden md:flex flex-shrink-0 text-xs select-none">
         <p className="text-[10px] font-mono font-bold text-[#555] uppercase tracking-wider mb-2">
           TRỰC TUYẾN — {onlineMembers.length}
         </p>
-        <div className="space-y-2">
+        <div className="space-y-1">
           {onlineMembers.map(mem => (
-            <div key={mem.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#101018] transition-colors">
-              <div className="relative">
+            <div 
+              key={mem.id} 
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setMemberMenu({
+                  x: Math.min(e.clientX, window.innerWidth - 220),
+                  y: Math.min(e.clientY, window.innerHeight - 200),
+                  member: mem,
+                });
+              }}
+              className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#12121c] transition-colors cursor-pointer group"
+            >
+              <div className="relative flex-shrink-0">
                 <div 
                   className="w-7 h-7 rounded-lg bg-[#14141e] border border-white/10 flex items-center justify-center font-bold text-[10px] text-white"
                 >
@@ -1450,11 +1536,11 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 </div>
                 <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-black" />
               </div>
-              <div className="truncate flex-1">
+              <div className="truncate flex-1 min-w-0">
                 <div className="flex items-center gap-1">
                   <span className="text-xs font-semibold text-zinc-300 truncate">{mem.name}</span>
                   {mem.isHost && (
-                    <span className="text-[8px] font-mono font-bold text-amber-400 bg-amber-400/10 px-1 py-0.2 rounded">
+                    <span className="text-[8px] font-mono font-bold text-amber-400 bg-amber-400/10 px-1 py-0.2 rounded flex-shrink-0">
                       DJ
                     </span>
                   )}
@@ -1466,10 +1552,79 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   </p>
                 )}
               </div>
+
+              {/* 3-dots Menu Button */}
+              {mem.id !== 'usr_me' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setMemberMenu({
+                      x: Math.min(rect.left - 180, window.innerWidth - 220),
+                      y: Math.min(rect.bottom + 4, window.innerHeight - 200),
+                      member: mem,
+                    });
+                  }}
+                  title="Chuột phải hoặc bấm để mời vào voice"
+                  className="p-1 rounded hover:bg-white/10 text-[#666] hover:text-white opacity-0 group-hover:opacity-100 transition-opacity ml-auto cursor-pointer flex-shrink-0"
+                >
+                  <MoreVertical className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           ))}
         </div>
       </div>
+
+      {/* ──────────────── MEMBER CONTEXT MENU (CHUỘT PHẢI ĐỂ MỜI DJ VÀO CHAT) ──────────────── */}
+      {memberMenu && (
+        <div 
+          className="fixed z-50 w-52 bg-[#0e0e18] border border-[#26263a] rounded-xl shadow-2xl py-1 text-xs text-white backdrop-blur-md animate-in fade-in duration-150"
+          style={{ top: memberMenu.y, left: memberMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-3 py-1.5 border-b border-[#1c1c28] flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-[#181826] border border-white/20 flex items-center justify-center font-bold text-[10px] text-white">
+              {memberMenu.member.name.charAt(0)}
+            </div>
+            <div className="truncate flex-1">
+              <p className="font-bold text-white truncate text-[11px]">{memberMenu.member.name}</p>
+              <p className="text-[9px] text-emerald-400 font-mono">{memberMenu.member.role}</p>
+            </div>
+          </div>
+
+          <div className="p-1 space-y-0.5">
+            {voiceParticipants.some(p => p.id === memberMenu.member.id) ? (
+              <button
+                onClick={() => handleRemoveMemberFromVoice(memberMenu.member.id)}
+                className="w-full px-2.5 py-1.5 rounded-lg hover:bg-red-950/40 text-red-300 flex items-center gap-2 text-left cursor-pointer transition-colors"
+              >
+                <PhoneOff className="w-3.5 h-3.5 text-red-400" />
+                <span>Mời rời phòng thoại</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => handleInviteMemberToVoice(memberMenu.member)}
+                className="w-full px-2.5 py-1.5 rounded-lg hover:bg-emerald-950/40 text-emerald-300 flex items-center gap-2 text-left cursor-pointer transition-colors"
+              >
+                <PhoneCall className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{memberMenu.member.isHost ? 'Gọi DJ vào phòng thoại' : 'Mời vào phòng thoại'}</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                setInputText(prev => `${prev}@${memberMenu.member.name} `);
+                setMemberMenu(null);
+              }}
+              className="w-full px-2.5 py-1.5 rounded-lg hover:bg-[#161624] text-zinc-300 hover:text-white flex items-center gap-2 text-left cursor-pointer transition-colors"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-[#888]" />
+              <span>Nhắc tên trong chat (@)</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ──────────────── 5. MODAL TỰ TẠO TRẠM SÓNG / SERVER MỚI ──────────────── */}
       {isCreateModalOpen && (
