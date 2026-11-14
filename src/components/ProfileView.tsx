@@ -130,8 +130,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         if (onOpenUpdateModal) {
           onOpenUpdateModal(res.info);
         }
+      } else if (res && res.error) {
+        setUpdateStatusMsg('Lỗi kiểm tra: ' + res.error);
+        setTimeout(() => setUpdateStatusMsg(null), 6000);
       } else {
-        setUpdateStatusMsg('Bạn đang dùng phiên bản mới nhất!');
+        const ver = res?.info?.version || `v${CURRENT_VERSION}`;
+        setUpdateStatusMsg(`Bạn đang dùng bản mới nhất (${ver})!`);
         setTimeout(() => setUpdateStatusMsg(null), 4000);
       }
     } catch (e: any) {

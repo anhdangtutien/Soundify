@@ -846,6 +846,89 @@ fn rust_ui_play_index(
     Ok(None)
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+pub struct AppUpdateInfo {
+    pub has_update: bool,
+    pub current_version: String,
+    pub latest_version: String,
+    pub release_name: String,
+    pub published_at: String,
+    pub release_notes: String,
+    pub download_url: String,
+    pub release_url: String,
+}
+
+#[tauri::command]
+async fn check_for_updates(current_build_date: Option<String>) -> Result<AppUpdateInfo, String> {
+    let client = reqwest::Client::builder()
+        .user_agent("Spytify-Desktop-App/0.1.1")
+        .timeout(std::time::Duration::from_secs(8))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let res = client
+        .get("https://api.github.com/repos/anhdangtutien/Spytify/releases/latest")
+        .header("Accept", "application/vnd.github.v3+json")
+        .send()
+        .await
+        .map_err(|e| format!("Không thể kết nối đến GitHub: {}", e))?;
+
+    if !res.status().is_success() {
+        return Err(format!("GitHub API trả về mã lỗi: {}", res.status()));
+    }
+
+    let data: serde_json::Value = res
+        .json()
+        .await
+        .map_err(|e| format!("Lỗi phân tích JSON từ GitHub: {}", e))?;
+
+    let tag_name = data["tag_name"].as_str().unwrap_or("").to_string();
+    let published_at = data["published_at"].as_str().unwrap_or("").to_string();
+    let name = data["name"].as_str().unwrap_or("").to_string();
+    let body = data["body"].as_str().unwrap_or("").to_string();
+    let html_url = data["html_url"]
+        .as_str()
+        .unwrap_or("https://github.com/anhdangtutien/Spytify/releases")
+        .to_string();
+
+    let exe_asset = data["assets"].as_array().and_then(|arr| {
+        arr.iter().find(|a| {
+            a["name"]
+                .as_str()
+                .map(|n| n.ends_with(".exe"))
+                .unwrap_or(false)
+        })
+    });
+
+    let download_url = exe_asset
+        .and_then(|a| a["browser_download_url"].as_str())
+        .unwrap_or(&html_url)
+        .to_string();
+
+    let current_version = env!("CARGO_PKG_VERSION");
+    let clean_tag = tag_name.trim_start_matches('v').to_string();
+
+    let base_date = current_build_date.unwrap_or_else(|| "2026-11-13T17:56:02Z".to_string());
+    let is_newer_date = !published_at.is_empty() && published_at > base_date;
+    let is_newer_version = !clean_tag.is_empty() && clean_tag != current_version;
+    let has_update = is_newer_date || is_newer_version;
+
+    Ok(AppUpdateInfo {
+        has_update,
+        current_version: format!("v{}", current_version),
+        latest_version: tag_name,
+        release_name: if name.is_empty() {
+            format!("Spytify v{}", clean_tag)
+        } else {
+            name
+        },
+        published_at,
+        release_notes: body,
+        download_url,
+        release_url: html_url,
+    })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let audio_manager = AudioPlayerManager::new();
@@ -1011,7 +1094,8 @@ pub fn run() {
             rust_ui_switch_tab,
             rust_ui_filter,
             rust_ui_search_online,
-            rust_ui_play_index
+            rust_ui_play_index,
+            check_for_updates
         ])
         .run(tauri::generate_context!())
         .expect("error while running soundify application");

@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Sparkles, Download, ExternalLink, Calendar, CheckCircle2 } from 'lucide-react';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import { UpdateInfo } from '../services/updater';
 
 interface UpdateModalProps {
@@ -17,12 +18,20 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 }) => {
   if (!isOpen || !updateInfo) return null;
 
-  const handleDownload = () => {
-    window.open(updateInfo.downloadUrl, '_blank');
+  const handleDownload = async () => {
+    try {
+      await openUrl(updateInfo.downloadUrl);
+    } catch {
+      window.open(updateInfo.downloadUrl, '_blank');
+    }
   };
 
-  const handleOpenReleasePage = () => {
-    window.open(updateInfo.releaseUrl, '_blank');
+  const handleOpenReleasePage = async () => {
+    try {
+      await openUrl(updateInfo.releaseUrl);
+    } catch {
+      window.open(updateInfo.releaseUrl, '_blank');
+    }
   };
 
   const formattedDate = updateInfo.publishedAt

@@ -1,3 +1,5 @@
+import { invoke } from '@tauri-apps/api/core';
+
 export interface UpdateInfo {
   version: string;
   name: string;
@@ -11,7 +13,38 @@ export interface UpdateInfo {
 export const CURRENT_BUILD_DATE = '2026-11-13T17:56:02Z';
 export const CURRENT_VERSION = '0.1.1';
 
-export async function checkGitHubUpdate(force = false): Promise<{ hasUpdate: boolean; info?: UpdateInfo }> {
+export async function checkGitHubUpdate(force = false): Promise<{ hasUpdate: boolean; info?: UpdateInfo; error?: string }> {
+  // 1. Try native Rust command first (immune to CORS, webview network restrictions, and sets proper User-Agent)
+  try {
+    const raw = await invoke<any>('check_for_updates', { currentBuildDate: CURRENT_BUILD_DATE });
+    if (raw) {
+      const info: UpdateInfo = {
+        version: raw.latest_version || `v${CURRENT_VERSION}`,
+        name: raw.release_name || `Spytify ${raw.latest_version || ''}`,
+        publishedAt: raw.published_at || '',
+        notes: raw.release_notes || '',
+        downloadUrl: raw.download_url,
+        releaseUrl: raw.release_url,
+      };
+
+      if (!raw.has_update) {
+        return { hasUpdate: false, info };
+      }
+
+      if (!force) {
+        const dismissed = localStorage.getItem('spytify_dismissed_update_time');
+        if (dismissed && dismissed === raw.published_at) {
+          return { hasUpdate: false, info };
+        }
+      }
+
+      return { hasUpdate: true, info };
+    }
+  } catch (rustErr) {
+    console.warn('Rust update check fallback to web fetch:', rustErr);
+  }
+
+  // 2. Fallback to standard web fetch
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 6000);
@@ -25,7 +58,7 @@ export async function checkGitHubUpdate(force = false): Promise<{ hasUpdate: boo
     clearTimeout(timer);
 
     if (!res.ok) {
-      return { hasUpdate: false };
+      return { hasUpdate: false, error: `GitHub API trả về HTTP ${res.status}` };
     }
 
     const data = await res.json();
@@ -43,7 +76,6 @@ export async function checkGitHubUpdate(force = false): Promise<{ hasUpdate: boo
       releaseUrl: data.html_url || 'https://github.com/anhdangtutien/Spytify/releases',
     };
 
-    // Check if remote build is strictly newer than current build time or has a newer tag
     const remoteTime = new Date(publishedAt).getTime();
     const localTime = new Date(CURRENT_BUILD_DATE).getTime();
 
@@ -64,9 +96,9 @@ export async function checkGitHubUpdate(force = false): Promise<{ hasUpdate: boo
     }
 
     return { hasUpdate: true, info };
-  } catch (err) {
+  } catch (err: any) {
     console.debug('Failed to check for Spytify updates:', err);
-    return { hasUpdate: false };
+    return { hasUpdate: false, error: err?.message || String(err) };
   }
 }
 
