@@ -1088,27 +1088,17 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2 text-xs font-mono text-[#777]">
-            <button
-              onClick={() => setIsAudioSettingsOpen(true)}
-              title="Cài đặt âm lượng Mic & Loa"
-              className="px-2.5 py-1.5 rounded-lg bg-[#12121c] hover:bg-[#1a1a2a] border border-[#222234] text-[#888899] hover:text-[#00E5FF] transition-all cursor-pointer flex items-center gap-1.5"
-            >
-              <Sliders className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline text-[10px] font-bold">Cài đặt Mic/Loa</span>
-            </button>
-
-            {/* Discord-style Member List Toggle Button */}
+            {/* Discord-style Member List Toggle Button (Single User Icon) */}
             <button
               onClick={toggleMemberList}
               title={isMemberListVisible ? "Thu nhỏ danh sách thành viên (Discord)" : "Hiện danh sách thành viên (Discord)"}
-              className={`p-1.5 px-2.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`p-2 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
                 isMemberListVisible
                   ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-400 shadow-[0_0_10px_rgba(0,255,102,0.2)]'
                   : 'bg-[#12121c] hover:bg-[#1a1a2a] border-[#222234] text-[#888899] hover:text-white'
               }`}
             >
               <Users className="w-4 h-4" />
-              <span className="text-[10px] font-bold">{onlineMembers.length}</span>
             </button>
           </div>
         </div>

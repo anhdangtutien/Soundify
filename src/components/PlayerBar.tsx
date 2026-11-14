@@ -3,7 +3,7 @@ import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat,
   Volume2, VolumeX, Heart, Music, Sparkles, FolderPlus, Radio,
   Download, Check, Loader2, Moon, Clock, Minus, Plus, Eye, EyeOff,
-  ChevronDown
+  ChevronDown, ChevronUp, Disc
 } from 'lucide-react';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
 import { Track } from '../types';
@@ -49,6 +49,7 @@ interface PlayerBarProps {
   isCompact?: boolean;
   isMinimized?: boolean;
   onMinimize?: () => void;
+  onToggleMinimize?: () => void;
 }
 
 export const PlayerBar: React.FC<PlayerBarProps> = ({
@@ -71,6 +72,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   isCompact = false,
   isMinimized = false,
   onMinimize,
+  onToggleMinimize = onMinimize,
 }) => {
   const [prevVolume, setPrevVolume] = useState(volume || 0.8);
   const [isDragging, setIsDragging] = useState(false);
@@ -200,13 +202,62 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
     }
   };
 
+  if (isMinimized) {
+    return (
+      <footer 
+        onClick={onToggleMinimize}
+        className="h-7 bg-[#060608] hover:bg-[#0c0c12] border-t border-[#14141a] px-4 flex items-center justify-between select-none cursor-pointer group/minibar transition-colors z-50 text-xs flex-shrink-0"
+      >
+        {/* Left: Mini Track Status */}
+        <div className="flex items-center gap-2 truncate max-w-[45%]">
+          <Disc 
+            className={`w-3.5 h-3.5 flex-shrink-0 ${isPlaying ? 'animate-spin' : 'text-[#666]'}`} 
+            style={{ color: isPlaying ? accentColor : undefined }} 
+          />
+          <span className="font-mono text-[11px] text-zinc-300 group-hover/minibar:text-white truncate">
+            {currentTrack ? `${currentTrack.title} — ${currentTrack.artist}` : getTranslation(language, 'player.noTrack')}
+          </span>
+        </div>
+
+        {/* Center: Mini Quick Controls */}
+        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={onPrev}
+            title={getTranslation(language, 'player.prev')}
+            className="text-[#666] hover:text-white transition-colors cursor-pointer"
+          >
+            <SkipBack className="w-3.5 h-3.5 fill-current" />
+          </button>
+          <button
+            onClick={onTogglePlay}
+            disabled={!currentTrack}
+            title={isPlaying ? getTranslation(language, 'player.pause') : getTranslation(language, 'player.play')}
+            style={{ backgroundColor: currentTrack ? accentColor : '#222', color: '#fff' }}
+            className="w-5 h-5 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-40"
+          >
+            {isPlaying ? <Pause className="w-2.5 h-2.5 fill-current" /> : <Play className="w-2.5 h-2.5 fill-current ml-0.5" />}
+          </button>
+          <button
+            onClick={onNext}
+            title={getTranslation(language, 'player.next')}
+            className="text-[#666] hover:text-white transition-colors cursor-pointer"
+          >
+            <SkipForward className="w-3.5 h-3.5 fill-current" />
+          </button>
+        </div>
+
+        {/* Right: Expand Button */}
+        <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#888899] group-hover/minibar:text-[var(--accent-color,#00E5FF)] transition-colors">
+          <span className="hidden sm:inline">Mở thanh phát nhạc</span>
+          <ChevronUp className="w-3.5 h-3.5" />
+        </div>
+      </footer>
+    );
+  }
+
   return (
-    <footer className={`bg-[#060608] border-t border-[#14141a] select-none z-50 relative transition-all duration-300 ease-in-out ${
-      isMinimized 
-        ? 'h-0 py-0 border-t-0 overflow-hidden opacity-0 pointer-events-none'
-        : isCompact 
-          ? 'h-[52px] px-4 flex items-center justify-between' 
-          : 'h-22 px-6 flex items-center justify-between'
+    <footer className={`bg-[#060608] border-t border-[#14141a] select-none z-50 relative transition-all duration-300 ease-in-out flex-shrink-0 ${
+      isCompact ? 'h-[52px] px-4 flex items-center justify-between' : 'h-22 px-6 flex items-center justify-between'
     }`}>
       {/* Sleek Top-Edge Progress Bar in Compact Mode */}
       {isCompact && (
@@ -914,12 +965,12 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           </div>
         </div>
 
-        {/* Minimize Button in Compact / Community Mode */}
-        {onMinimize && (
+        {/* Minimize Button in any view */}
+        {(onToggleMinimize || onMinimize) && (
           <button
-            onClick={onMinimize}
+            onClick={onToggleMinimize || onMinimize}
             title="Thu nhỏ thanh phát nhạc (Minimize)"
-            className="p-1.5 rounded-lg text-[#777] hover:text-white hover:bg-[#161622] transition-colors cursor-pointer flex items-center justify-center"
+            className="p-1.5 rounded-lg text-[#777] hover:text-white hover:bg-[#161622] transition-colors cursor-pointer flex items-center justify-center ml-1"
           >
             <ChevronDown className="w-4 h-4" />
           </button>
