@@ -55,7 +55,6 @@ const BUILTIN_SERVERS: CommunityServer[] = [
       { id: 'ch_cyber_gen', name: 'general-chat', type: 'text', topic: 'Kênh đàm thoại mật vụ' },
       { id: 'ch_cyber_share', name: 'music-radar', type: 'text', topic: 'Chia sẻ các giai điệu Cyberpunk & Synth đỉnh cao' },
       { id: 'ch_cyber_voice', name: 'Phòng Thoại Mật Vụ', type: 'voice', topic: 'Hội thoại trực tiếp thời gian thực (Discord Voice Call)' },
-      { id: 'ch_cyber_stage', name: 'neon-stage', type: 'stage', topic: 'Sân khấu nghe nhạc đồng bộ thời gian thực' },
     ],
   },
   {
@@ -68,7 +67,6 @@ const BUILTIN_SERVERS: CommunityServer[] = [
     channels: [
       { id: 'ch_lofi_gen', name: 'chill-chat', type: 'text', topic: 'Không gian yên tĩnh' },
       { id: 'ch_lofi_voice', name: 'Phòng Học Tập & Chill', type: 'voice', topic: 'Bật mic học bài và thư giãn cùng nhau' },
-      { id: 'ch_lofi_stage', name: 'focus-stage', type: 'stage', topic: 'Phát nhạc tập trung 24/7' },
     ],
   },
   {
@@ -82,7 +80,6 @@ const BUILTIN_SERVERS: CommunityServer[] = [
       { id: 'ch_club_gen', name: 'quay-bar-talk', type: 'text', topic: 'Trò chuyện và giao lưu tại quầy bar' },
       { id: 'ch_club_dj', name: 'yeu-cau-dj', type: 'text', topic: 'Yêu cầu bài hát sôi động' },
       { id: 'ch_club_voice', name: 'VIP Lounge Voice Call', type: 'voice', topic: 'Bật mic đàm thoại tại phòng VIP Club' },
-      { id: 'ch_club_stage', name: 'rave-stage-club', type: 'stage', topic: 'Sân khấu Club Bass Boosted' },
     ],
   },
 ];
@@ -98,7 +95,6 @@ const SERVER_PRESETS = [
     defaultChannels: [
       { name: 'general-chat', type: 'text' as const },
       { name: 'Phòng Thoại Mật Vụ', type: 'voice' as const },
-      { name: 'neon-stage', type: 'stage' as const },
     ]
   },
   {
@@ -110,7 +106,6 @@ const SERVER_PRESETS = [
     defaultChannels: [
       { name: 'chill-chat', type: 'text' as const },
       { name: 'Phòng Học Tập & Chill', type: 'voice' as const },
-      { name: 'focus-stage', type: 'stage' as const },
     ]
   },
   {
@@ -122,7 +117,6 @@ const SERVER_PRESETS = [
     defaultChannels: [
       { name: 'quay-bar-talk', type: 'text' as const },
       { name: 'VIP Lounge Voice Call', type: 'voice' as const },
-      { name: 'rave-stage-club', type: 'stage' as const },
     ]
   },
   {
@@ -134,7 +128,6 @@ const SERVER_PRESETS = [
     defaultChannels: [
       { name: 'general-talk', type: 'text' as const },
       { name: 'Voice Call Room', type: 'voice' as const },
-      { name: 'live-music-stage', type: 'stage' as const },
     ]
   }
 ];
@@ -152,7 +145,11 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       const saved = localStorage.getItem('spytify_user_servers');
       if (saved) {
         const parsed: CommunityServer[] = JSON.parse(saved);
-        return [...BUILTIN_SERVERS, ...parsed];
+        const cleaned = parsed.map(s => ({
+          ...s,
+          channels: s.channels.filter(c => c.type !== 'stage')
+        }));
+        return [...BUILTIN_SERVERS, ...cleaned];
       }
     } catch {}
     return BUILTIN_SERVERS;
@@ -939,41 +936,6 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                         )}
                       </div>
                     </div>
-                  );
-                })}
-            </div>
-          </div>
-
-          {/* Live Stage Channels Group */}
-          <div>
-            <p className="text-[10px] font-mono font-bold text-[#555] uppercase tracking-wider px-2 mb-1 flex items-center gap-1.5">
-              <Headphones className="w-3 h-3 text-[#444]" />
-              SÂN KHẤU NGHE CHUNG
-            </p>
-            <div className="space-y-0.5">
-              {selectedServer.channels
-                .filter(c => c.type === 'stage')
-                .map(channel => {
-                  const isCur = selectedChannel.id === channel.id;
-                  return (
-                    <button
-                      key={channel.id}
-                      onClick={() => handleSelectChannel(channel)}
-                      className={`w-full px-2.5 py-1.5 rounded-lg flex items-center justify-between text-left cursor-pointer transition-colors ${
-                        isCur
-                          ? 'bg-[#161624] text-white font-semibold'
-                          : 'text-[#888899] hover:text-white hover:bg-[#0e0e14]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <Volume2 className="w-3.5 h-3.5" style={{ color: selectedServer.accent_color }} />
-                        <span className="truncate">{channel.name}</span>
-                      </div>
-                      <span className="flex items-center gap-1 text-[9px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-500/20 px-1.5 py-0.2 rounded">
-                        <span className="w-1 h-1 rounded-full bg-emerald-400 animate-ping" />
-                        LIVE
-                      </span>
-                    </button>
                   );
                 })}
             </div>
