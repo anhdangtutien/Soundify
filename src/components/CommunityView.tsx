@@ -3,7 +3,7 @@ import {
   Radio, MessageSquare, Headphones, Users, Disc, Play, Send, 
   Music, Plus, Hash, Volume2, Flame, Activity, Share2,
   Mic, MicOff, PhoneCall, PhoneOff, VolumeX, Signal, Shield,
-  X, Sparkles, Palette, Check
+  X, Sparkles, Palette, Check, Settings, Sliders, Volume1, RotateCcw, CheckCircle2
 } from 'lucide-react';
 import { Track, User, CommunityServer, CommunityChannel, CommunityMessage, StageSession, VoiceParticipant } from '../types';
 import { getSupabaseClient } from '../services/supabase';
@@ -178,10 +178,59 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
   const [isDeafened, setIsDeafened] = useState(false);
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
 
+  // ──────── AUDIO & VOICE SETTINGS (MIC & SPEAKER) ────────
+  const [isAudioSettingsOpen, setIsAudioSettingsOpen] = useState(false);
+  const [micVolume, setMicVolume] = useState<number>(() => {
+    try {
+      const v = localStorage.getItem('spytify_mic_volume');
+      return v ? Math.min(200, Math.max(0, parseInt(v, 10))) : 100;
+    } catch {
+      return 100;
+    }
+  });
+  const [speakerVolume, setSpeakerVolume] = useState<number>(() => {
+    try {
+      const v = localStorage.getItem('spytify_speaker_volume');
+      return v ? Math.min(200, Math.max(0, parseInt(v, 10))) : 100;
+    } catch {
+      return 100;
+    }
+  });
+  const [micSensitivity, setMicSensitivity] = useState<number>(() => {
+    try {
+      const v = localStorage.getItem('spytify_mic_sensitivity');
+      return v ? parseInt(v, 10) : 14;
+    } catch {
+      return 14;
+    }
+  });
+  const [noiseSuppression, setNoiseSuppression] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('spytify_noise_suppression') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  const [echoCancellation, setEchoCancellation] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('spytify_echo_cancellation') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  // Live Mic Test in Settings
+  const [isTestingMic, setIsTestingMic] = useState(false);
+  const [testMicLevel, setTestMicLevel] = useState(0);
+  const testStreamRef = useRef<MediaStream | null>(null);
+  const testCtxRef = useRef<AudioContext | null>(null);
+  const testAnimRef = useRef<number | null>(null);
+
   // Microphone stream & Web Audio Analyser references
   const micStreamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const micGainRef = useRef<GainNode | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
   // My unique participant ID (persisted per session)
@@ -341,17 +390,26 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
     };
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          noiseSuppression,
+          echoCancellation,
+        },
+      });
       micStreamRef.current = stream;
 
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 256;
       const source = audioCtx.createMediaStreamSource(stream);
-      source.connect(analyser);
+      const micGain = audioCtx.createGain();
+      micGain.gain.setValueAtTime(micVolume / 100, audioCtx.currentTime);
+      source.connect(micGain);
+      micGain.connect(analyser);
 
       audioContextRef.current = audioCtx;
       analyserRef.current = analyser;
+      micGainRef.current = micGain;
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       let wasSpeaking = false;
@@ -364,7 +422,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
           sum += dataArray[i];
         }
         const avg = sum / dataArray.length;
-        const nowSpeaking = !isMuted && avg > 14;
+        const nowSpeaking = !isMuted && avg > micSensitivity;
 
         if (nowSpeaking !== wasSpeaking) {
           wasSpeaking = nowSpeaking;
@@ -421,6 +479,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
       audioContextRef.current.close().catch(() => {});
       audioContextRef.current = null;
     }
+    micGainRef.current = null;
 
     if (activeChannelRef.current) {
       activeChannelRef.current.send({
@@ -457,6 +516,111 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
 
   const handleToggleDeafen = () => {
     setIsDeafened(prev => !prev);
+  };
+
+  // ──────── AUDIO CONTROL HELPERS (VOLUME, CHIME, MIC TEST) ────────
+  const handleMicVolumeChange = (newVol: number) => {
+    setMicVolume(newVol);
+    localStorage.setItem('spytify_mic_volume', String(newVol));
+    if (micGainRef.current && audioContextRef.current) {
+      try {
+        micGainRef.current.gain.setValueAtTime(newVol / 100, audioContextRef.current.currentTime);
+      } catch {}
+    }
+  };
+
+  const handleSpeakerVolumeChange = (newVol: number) => {
+    setSpeakerVolume(newVol);
+    localStorage.setItem('spytify_speaker_volume', String(newVol));
+  };
+
+  const playSpeakerTestSound = (vol?: number) => {
+    try {
+      const effectiveVol = vol !== undefined ? vol : (isDeafened ? 0 : speakerVolume);
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const now = ctx.currentTime;
+      const gain = ctx.createGain();
+      const volumeLevel = Math.max(0, Math.min(2, effectiveVol / 100)) * 0.25;
+      gain.gain.setValueAtTime(volumeLevel, now);
+      gain.connect(ctx.destination);
+
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      osc1.type = 'sine';
+      osc2.type = 'triangle';
+      osc1.frequency.setValueAtTime(523.25, now);
+      osc1.frequency.exponentialRampToValueAtTime(1046.5, now + 0.25);
+      osc2.frequency.setValueAtTime(659.25, now);
+      osc2.frequency.exponentialRampToValueAtTime(1318.5, now + 0.25);
+
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      osc1.connect(gain);
+      osc2.connect(gain);
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.5);
+      osc2.stop(now + 0.5);
+      setTimeout(() => {
+        ctx.close().catch(() => {});
+      }, 600);
+    } catch (e) {
+      console.error('Test audio error:', e);
+    }
+  };
+
+  const startMicTest = async () => {
+    try {
+      setIsTestingMic(true);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          noiseSuppression,
+          echoCancellation,
+        },
+      });
+      testStreamRef.current = stream;
+
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      const source = audioCtx.createMediaStreamSource(stream);
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(micVolume / 100, audioCtx.currentTime);
+      source.connect(gain);
+      gain.connect(analyser);
+
+      testCtxRef.current = audioCtx;
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      const loop = () => {
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        const avg = sum / dataArray.length;
+        const normalized = Math.min(100, Math.round((avg / 128) * 100 * (micVolume / 100)));
+        setTestMicLevel(normalized);
+        testAnimRef.current = requestAnimationFrame(loop);
+      };
+      loop();
+    } catch (err) {
+      console.warn('Cannot test microphone:', err);
+      setIsTestingMic(false);
+    }
+  };
+
+  const stopMicTest = () => {
+    setIsTestingMic(false);
+    setTestMicLevel(0);
+    if (testAnimRef.current) cancelAnimationFrame(testAnimRef.current);
+    if (testStreamRef.current) {
+      testStreamRef.current.getTracks().forEach(t => t.stop());
+      testStreamRef.current = null;
+    }
+    if (testCtxRef.current) {
+      testCtxRef.current.close().catch(() => {});
+      testCtxRef.current = null;
+    }
   };
 
   // ──────── TỰ TẠO SERVER MỚI (CUSTOM SERVER CREATION) ────────
@@ -824,7 +988,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             <div className="flex items-center justify-between gap-1 pt-0.5">
               <button
                 onClick={handleToggleMute}
-                className={`flex-1 py-1 px-2 rounded-md border text-[10px] font-mono flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                className={`flex-1 py-1 px-2 rounded-md border text-[10px] font-mono flex items-center justify-center gap-1 transition-colors cursor-pointer ${
                   isMuted 
                     ? 'bg-red-950/40 border-red-500/40 text-red-300' 
                     : 'bg-[#151522] border-[#262638] text-zinc-300 hover:text-white'
@@ -836,7 +1000,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
 
               <button
                 onClick={handleToggleDeafen}
-                className={`flex-1 py-1 px-2 rounded-md border text-[10px] font-mono flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                className={`flex-1 py-1 px-2 rounded-md border text-[10px] font-mono flex items-center justify-center gap-1 transition-colors cursor-pointer ${
                   isDeafened 
                     ? 'bg-red-950/40 border-red-500/40 text-red-300' 
                     : 'bg-[#151522] border-[#262638] text-zinc-300 hover:text-white'
@@ -845,26 +1009,44 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 {isDeafened ? <VolumeX className="w-3 h-3 text-red-400" /> : <Headphones className="w-3 h-3 text-cyan-400" />}
                 <span>{isDeafened ? 'Bật Nghe' : 'Tắt Loa'}</span>
               </button>
+
+              <button
+                onClick={() => setIsAudioSettingsOpen(true)}
+                title="Cài đặt âm lượng Mic & Loa"
+                className="p-1.5 rounded-md bg-[#151522] hover:bg-[#202030] border border-[#262638] text-[#888899] hover:text-[#00E5FF] transition-colors cursor-pointer"
+              >
+                <Settings className="w-3 h-3" />
+              </button>
             </div>
           </div>
         )}
 
         {/* User Mini Bar */}
-        <div className="p-2.5 border-t border-[#15151e] bg-[#07070a] flex items-center gap-2 text-xs">
-          <div 
-            className="w-7 h-7 rounded-lg overflow-hidden border border-white/20 flex items-center justify-center font-bold text-[10px] flex-shrink-0"
-            style={{ backgroundColor: `${accentColor}25`, color: accentColor }}
+        <div className="p-2.5 border-t border-[#15151e] bg-[#07070a] flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2 truncate flex-1 min-w-0">
+            <div 
+              className="w-7 h-7 rounded-lg overflow-hidden border border-white/20 flex items-center justify-center font-bold text-[10px] flex-shrink-0"
+              style={{ backgroundColor: `${accentColor}25`, color: accentColor }}
+            >
+              {currentUser?.avatar ? (
+                <img src={currentUser.avatar} alt="avatar" className="w-full h-full object-cover" />
+              ) : (
+                <span>{(currentUser?.display_name || 'A').charAt(0).toUpperCase()}</span>
+              )}
+            </div>
+            <div className="truncate flex-1">
+              <p className="text-xs font-semibold text-white truncate">{currentUser?.display_name || 'Mật Vụ Tự Do'}</p>
+              <p className="text-[10px] text-[#666] font-mono truncate">Online • Bảo mật</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsAudioSettingsOpen(true)}
+            title="Cài đặt âm lượng Mic & Loa (Voice Settings)"
+            className="p-1.5 rounded-lg hover:bg-[#161622] text-[#888899] hover:text-[#00E5FF] transition-colors cursor-pointer flex-shrink-0 ml-1"
           >
-            {currentUser?.avatar ? (
-              <img src={currentUser.avatar} alt="avatar" className="w-full h-full object-cover" />
-            ) : (
-              <span>{(currentUser?.display_name || 'A').charAt(0).toUpperCase()}</span>
-            )}
-          </div>
-          <div className="truncate flex-1">
-            <p className="text-xs font-semibold text-white truncate">{currentUser?.display_name || 'Mật Vụ Tự Do'}</p>
-            <p className="text-[10px] text-[#666] font-mono truncate">Online • Bảo mật</p>
-          </div>
+            <Settings className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
@@ -889,7 +1071,16 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-3 text-xs font-mono text-[#777]">
+          <div className="flex items-center gap-2.5 text-xs font-mono text-[#777]">
+            <button
+              onClick={() => setIsAudioSettingsOpen(true)}
+              title="Cài đặt âm lượng Mic & Loa"
+              className="px-2 py-1 rounded-lg bg-[#12121c] hover:bg-[#1a1a2a] border border-[#222234] text-[#888899] hover:text-[#00E5FF] transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <Sliders className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline text-[10px] font-bold">Cài đặt Mic/Loa</span>
+            </button>
+
             <span className="flex items-center gap-1.5 text-emerald-400 bg-emerald-950/30 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[10px]">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               {onlineMembers.length} Mật vụ
@@ -1007,17 +1198,27 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
             </div>
 
             {/* In-Call Controls Bottom Bar */}
-            <div className="w-full max-w-md p-3 rounded-2xl bg-[#0f0f18] border border-[#222234] shadow-2xl flex items-center justify-center gap-3">
+            <div className="w-full max-w-md p-3 rounded-2xl bg-[#0f0f18] border border-[#222234] shadow-2xl flex flex-col items-center justify-center gap-2.5">
               {!isConnectedToCurrentVoice ? (
-                <button
-                  onClick={handleJoinVoiceCall}
-                  className="w-full py-3 px-6 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-emerald-400 hover:bg-emerald-300 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(0,255,102,0.4)] hover:scale-[1.02]"
-                >
-                  <PhoneCall className="w-4 h-4" />
-                  <span>Nhấn vào để tham gia hội thoại</span>
-                </button>
+                <>
+                  <button
+                    onClick={handleJoinVoiceCall}
+                    className="w-full py-3 px-6 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-emerald-400 hover:bg-emerald-300 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(0,255,102,0.4)] hover:scale-[1.02]"
+                  >
+                    <PhoneCall className="w-4 h-4" />
+                    <span>Nhấn vào để tham gia hội thoại</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsAudioSettingsOpen(true)}
+                    className="text-[11px] font-mono text-[#888] hover:text-[#00E5FF] flex items-center gap-1.5 transition-colors cursor-pointer py-1"
+                  >
+                    <Sliders className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Kiểm tra & Cài đặt âm lượng Mic / Loa</span>
+                  </button>
+                </>
               ) : (
-                <div className="flex items-center gap-3 w-full justify-between">
+                <div className="flex items-center gap-2.5 w-full justify-between">
                   <button
                     onClick={handleToggleMute}
                     className={`flex-1 py-2.5 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
@@ -1040,6 +1241,14 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                   >
                     {isDeafened ? <VolumeX className="w-4 h-4 text-red-400" /> : <Headphones className="w-4 h-4 text-cyan-400" />}
                     <span>{isDeafened ? 'Bật Loa' : 'Tắt Loa'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsAudioSettingsOpen(true)}
+                    className="p-2.5 rounded-xl bg-[#181824] hover:bg-[#222232] border border-[#2c2c3e] text-zinc-300 hover:text-[#00E5FF] transition-all cursor-pointer flex items-center justify-center"
+                    title="Cài đặt âm lượng Mic & Loa"
+                  >
+                    <Settings className="w-4 h-4" />
                   </button>
 
                   <button
@@ -1436,6 +1645,273 @@ export const CommunityView: React.FC<CommunityViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ──────────────── 6. MODAL CÀI ĐẶT ÂM LƯỢNG MIC & LOA (VOICE AUDIO SETTINGS) ──────────────── */}
+      {isAudioSettingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg bg-[#0c0c14] border border-[#222234] rounded-2xl p-6 shadow-2xl relative text-white max-h-[90vh] overflow-y-auto">
+            {/* Close Button */}
+            <button
+              onClick={() => {
+                stopMicTest();
+                setIsAudioSettingsOpen(false);
+              }}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-[#666] hover:text-white hover:bg-[#181824] transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-5">
+              <div 
+                className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-base bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+              >
+                <Sliders className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-black tracking-tight text-white flex items-center gap-2">
+                  <span>Cài Đặt Âm Lượng Mic & Loa</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-950/50 border border-cyan-500/30 text-cyan-400">VOICE LAB</span>
+                </h3>
+                <p className="text-[11px] text-[#777] font-mono">Tinh chỉnh thiết bị thu âm, âm lượng đàm thoại và bộ lọc khử tạp âm</p>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              {/* ──────── SECTION 1: MICROPHONE (ĐẦU VÀO) ──────── */}
+              <div className="p-4 rounded-xl bg-[#11111a] border border-[#1e1e2c]">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Mic className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">Âm Lượng Micro (Input Volume)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded">
+                      {micVolume}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleMicVolumeChange(100)}
+                      title="Đặt lại 100%"
+                      className="p-1 rounded hover:bg-[#1c1c2a] text-[#777] hover:text-white text-[10px] font-mono transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>100%</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Mic Volume Slider */}
+                <div className="relative mb-3">
+                  <input
+                    type="range"
+                    min="0"
+                    max="200"
+                    step="1"
+                    value={micVolume}
+                    onChange={(e) => handleMicVolumeChange(parseInt(e.target.value, 10))}
+                    className="w-full h-2 bg-[#1c1c2a] rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                  />
+                  <div className="flex justify-between text-[9px] font-mono text-[#555] mt-1">
+                    <span>0% (Tắt)</span>
+                    <span className="text-[#888]">100% (Chuẩn)</span>
+                    <span>200% (Khuếch đại 2x)</span>
+                  </div>
+                </div>
+
+                {/* Live Mic Test Meter */}
+                <div className="pt-3 border-t border-[#1a1a26]">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-mono text-[#888] flex items-center gap-1.5">
+                      <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                      Kiểm tra Micro thực tế (Live VU Meter)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={isTestingMic ? stopMicTest : startMicTest}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold border transition-all cursor-pointer ${
+                        isTestingMic
+                          ? 'bg-red-950/50 border-red-500/40 text-red-300 hover:bg-red-900'
+                          : 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60'
+                      }`}
+                    >
+                      {isTestingMic ? '⏹️ Dừng kiểm tra' : '▶️ Bắt đầu thử Mic'}
+                    </button>
+                  </div>
+
+                  {/* VU Level Bar */}
+                  <div className="h-3 bg-[#0a0a0f] border border-[#222230] rounded-full overflow-hidden p-0.5 relative">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-75 ${
+                        testMicLevel > 80 ? 'bg-gradient-to-r from-emerald-400 via-amber-400 to-red-500' : 'bg-gradient-to-r from-emerald-500 to-cyan-400'
+                      }`}
+                      style={{ width: `${testMicLevel}%` }}
+                    />
+                    {/* Sensitivity Marker needle */}
+                    <div 
+                      className="absolute top-0 bottom-0 w-0.5 bg-white/70"
+                      style={{ left: `${(micSensitivity / 50) * 100}%` }}
+                      title={`Ngưỡng nhận diện giọng nói: ${micSensitivity}`}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] font-mono mt-1.5 text-[#666]">
+                    <span>
+                      {isTestingMic ? (
+                        testMicLevel > micSensitivity ? (
+                          <span className="text-emerald-400 font-bold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                            Đang nhận diện giọng nói ({testMicLevel}%)
+                          </span>
+                        ) : (
+                          <span className="text-zinc-400">Dưới ngưỡng thu âm ({testMicLevel}%)</span>
+                        )
+                      ) : (
+                        'Nhấn "Bắt đầu thử Mic" rồi nói vào mic để kiểm tra'
+                      )}
+                    </span>
+                    <span>Ngưỡng kích hoạt: {micSensitivity}</span>
+                  </div>
+                </div>
+
+                {/* Voice Sensitivity Slider */}
+                <div className="pt-3 border-t border-[#1a1a26] mt-3">
+                  <div className="flex items-center justify-between mb-1.5 text-xs">
+                    <span className="text-[11px] font-mono text-[#aaa]">Độ nhạy thu âm (Ngưỡng mở Mic / Noise Gate)</span>
+                    <span className="text-xs font-mono font-bold text-cyan-400">{micSensitivity}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="5"
+                    max="50"
+                    step="1"
+                    value={micSensitivity}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      setMicSensitivity(val);
+                      localStorage.setItem('spytify_mic_sensitivity', String(val));
+                    }}
+                    className="w-full h-1.5 bg-[#1c1c2a] rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                  />
+                  <p className="text-[10px] text-[#555] font-mono mt-1">
+                    Kéo sang trái để mic nhạy hơn (bắt tiếng nhỏ), kéo sang phải để lọc tiếng gõ bàn phím và tiếng ồn quạt.
+                  </p>
+                </div>
+
+                {/* Audio Filters (Noise Suppression & Echo Cancellation) */}
+                <div className="pt-3 border-t border-[#1a1a26] mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <label className="flex items-center gap-2 p-2 rounded-lg bg-[#0e0e16] border border-[#1c1c28] cursor-pointer hover:border-[#2a2a3e] transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={noiseSuppression}
+                      onChange={(e) => {
+                        setNoiseSuppression(e.target.checked);
+                        localStorage.setItem('spytify_noise_suppression', String(e.target.checked));
+                      }}
+                      className="accent-emerald-500 rounded"
+                    />
+                    <span className="text-[11px] text-zinc-300 font-mono">Khử tiếng ồn (Noise)</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-2 rounded-lg bg-[#0e0e16] border border-[#1c1c28] cursor-pointer hover:border-[#2a2a3e] transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={echoCancellation}
+                      onChange={(e) => {
+                        setEchoCancellation(e.target.checked);
+                        localStorage.setItem('spytify_echo_cancellation', String(e.target.checked));
+                      }}
+                      className="accent-emerald-500 rounded"
+                    />
+                    <span className="text-[11px] text-zinc-300 font-mono">Chống vọng âm (Echo)</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* ──────── SECTION 2: SPEAKER & OUTPUT (ĐẦU RA) ──────── */}
+              <div className="p-4 rounded-xl bg-[#11111a] border border-[#1e1e2c]">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Volume2 className="w-4 h-4 text-cyan-400" />
+                    <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">Âm Lượng Loa / Tai Nghe (Output Volume)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-500/30 px-2 py-0.5 rounded">
+                      {speakerVolume}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleSpeakerVolumeChange(100)}
+                      title="Đặt lại 100%"
+                      className="p-1 rounded hover:bg-[#1c1c2a] text-[#777] hover:text-white text-[10px] font-mono transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>100%</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Speaker Volume Slider */}
+                <div className="relative mb-3">
+                  <input
+                    type="range"
+                    min="0"
+                    max="200"
+                    step="1"
+                    value={speakerVolume}
+                    onChange={(e) => handleSpeakerVolumeChange(parseInt(e.target.value, 10))}
+                    className="w-full h-2 bg-[#1c1c2a] rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                  />
+                  <div className="flex justify-between text-[9px] font-mono text-[#555] mt-1">
+                    <span>0% (Im lặng)</span>
+                    <span className="text-[#888]">100% (Tiêu chuẩn)</span>
+                    <span>200% (Bass/Boost 2x)</span>
+                  </div>
+                </div>
+
+                {/* Speaker Test Sound Button */}
+                <div className="pt-3 border-t border-[#1a1a26] flex items-center justify-between">
+                  <span className="text-[11px] font-mono text-[#888]">Kiểm tra mức âm lượng loa thực tế:</span>
+                  <button
+                    type="button"
+                    onClick={() => playSpeakerTestSound()}
+                    className="px-3 py-1.5 rounded-lg bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/40 text-cyan-300 font-mono text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-[1.02]"
+                  >
+                    <Volume1 className="w-3.5 h-3.5" />
+                    <span>🔊 Thử âm thanh loa</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-4 mt-4 border-t border-[#1e1e2c] flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  handleMicVolumeChange(100);
+                  handleSpeakerVolumeChange(100);
+                  setMicSensitivity(14);
+                  localStorage.setItem('spytify_mic_sensitivity', '14');
+                }}
+                className="text-xs font-mono text-[#666] hover:text-[#aaa] transition-colors cursor-pointer"
+              >
+                Khôi phục mặc định
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  stopMicTest();
+                  setIsAudioSettingsOpen(false);
+                }}
+                className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg hover:scale-[1.02]"
+              >
+                Xong
+              </button>
+            </div>
           </div>
         </div>
       )}

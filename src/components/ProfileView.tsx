@@ -7,7 +7,8 @@ import {
   Music, RefreshCw, Disc, Palette, Camera, Upload, Trash2, 
   Check, Sparkles, Shield, Sun, Moon, Download, Database, HardDriveDownload,
   Cloud, CloudLightning, Key, ChevronDown, ChevronUp, Globe, Languages,
-  Folder, FolderOpen, FolderDown, Copy, CheckCheck, ExternalLink, Zap, Power
+  Folder, FolderOpen, FolderDown, Copy, CheckCheck, ExternalLink, Zap, Power,
+  Mic, Volume2, Sliders, RotateCcw, Volume1
 } from 'lucide-react';
 import { 
   getStoredSupabaseConfig, getCustomSupabaseConfig, saveStoredSupabaseConfig, resetToDefaultSupabase,
@@ -151,6 +152,66 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [showSupabaseSettings, setShowSupabaseSettings] = useState(false);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [cloudStatusMsg, setCloudStatusMsg] = useState<string | null>(null);
+
+  // Voice & Audio Settings State (Mic & Speaker)
+  const [voiceMicVolume, setVoiceMicVolume] = useState<number>(() => {
+    try {
+      const v = localStorage.getItem('spytify_mic_volume');
+      return v ? parseInt(v, 10) : 100;
+    } catch {
+      return 100;
+    }
+  });
+
+  const [voiceSpeakerVolume, setVoiceSpeakerVolume] = useState<number>(() => {
+    try {
+      const v = localStorage.getItem('spytify_speaker_volume');
+      return v ? parseInt(v, 10) : 100;
+    } catch {
+      return 100;
+    }
+  });
+
+  const handleUpdateMicVolume = (val: number) => {
+    setVoiceMicVolume(val);
+    localStorage.setItem('spytify_mic_volume', String(val));
+  };
+
+  const handleUpdateSpeakerVolume = (val: number) => {
+    setVoiceSpeakerVolume(val);
+    localStorage.setItem('spytify_speaker_volume', String(val));
+  };
+
+  const playSpeakerTestChime = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const now = ctx.currentTime;
+      const gain = ctx.createGain();
+      const volumeLevel = Math.max(0, Math.min(2, voiceSpeakerVolume / 100)) * 0.25;
+      gain.gain.setValueAtTime(volumeLevel, now);
+      gain.connect(ctx.destination);
+
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      osc1.type = 'sine';
+      osc2.type = 'triangle';
+      osc1.frequency.setValueAtTime(523.25, now);
+      osc1.frequency.exponentialRampToValueAtTime(1046.5, now + 0.25);
+      osc2.frequency.setValueAtTime(659.25, now);
+      osc2.frequency.exponentialRampToValueAtTime(1318.5, now + 0.25);
+
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      osc1.connect(gain);
+      osc2.connect(gain);
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.5);
+      osc2.stop(now + 0.5);
+      setTimeout(() => {
+        ctx.close().catch(() => {});
+      }, 600);
+    } catch {}
+  };
 
   const loadUserData = async () => {
     if (!currentUser) return;
@@ -904,6 +965,113 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 }`}
               />
             </button>
+          </div>
+        </div>
+
+        {/* Voice & Call Audio Setting (Mic & Loa) */}
+        <div className="pt-4 border-t border-[#141418]">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
+              >
+                <Sliders className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-white flex items-center gap-2">
+                  <span>Âm lượng Micro & Loa (Voice Call & Cộng đồng)</span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-950/40 text-emerald-400 border border-emerald-500/30">DISCORD VOIP</span>
+                </p>
+                <p className="text-[11px] text-[#777] mt-0.5">
+                  Thiết lập âm lượng mặc định khi tham gia kênh đàm thoại Cyberpunk và sân khấu nghe nhạc chung.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-0 sm:pl-11">
+            {/* Mic Volume */}
+            <div className="p-3.5 rounded-xl bg-[#0e0e14] border border-[#1e1e28] flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Mic className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs font-bold text-white">Âm lượng Micro</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded">
+                      {voiceMicVolume}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateMicVolume(100)}
+                      title="Đặt về 100%"
+                      className="p-1 rounded hover:bg-[#1a1a24] text-[#777] hover:text-white text-[10px] font-mono transition-colors cursor-pointer"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="1"
+                  value={voiceMicVolume}
+                  onChange={(e) => handleUpdateMicVolume(parseInt(e.target.value, 10))}
+                  className="w-full h-1.5 bg-[#1c1c2a] rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                />
+              </div>
+              <p className="text-[10px] text-[#555] font-mono mt-2">
+                Hỗ trợ khuếch đại mic lên tới 200% cho micro có âm lượng nhỏ.
+              </p>
+            </div>
+
+            {/* Speaker Volume */}
+            <div className="p-3.5 rounded-xl bg-[#0e0e14] border border-[#1e1e28] flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Volume2 className="w-4 h-4 text-cyan-400" />
+                    <span className="text-xs font-bold text-white">Âm lượng Loa / Đầu ra</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-500/30 px-2 py-0.5 rounded">
+                      {voiceSpeakerVolume}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateSpeakerVolume(100)}
+                      title="Đặt về 100%"
+                      className="p-1 rounded hover:bg-[#1a1a24] text-[#777] hover:text-white text-[10px] font-mono transition-colors cursor-pointer"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="1"
+                  value={voiceSpeakerVolume}
+                  onChange={(e) => handleUpdateSpeakerVolume(parseInt(e.target.value, 10))}
+                  className="w-full h-1.5 bg-[#1c1c2a] rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                />
+              </div>
+              <div className="flex items-center justify-between mt-2 pt-1">
+                <span className="text-[10px] text-[#555] font-mono">0% đến 200%</span>
+                <button
+                  type="button"
+                  onClick={playSpeakerTestChime}
+                  className="px-2.5 py-1 rounded-lg bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/40 text-cyan-300 font-mono text-[10px] flex items-center gap-1 transition-all cursor-pointer shadow-sm hover:scale-105"
+                >
+                  <Volume1 className="w-3 h-3" />
+                  <span>Thử âm thanh loa</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
