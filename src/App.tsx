@@ -32,7 +32,21 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.8);
+  const [volume, setVolume] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('spytify_volume');
+      return saved !== null ? parseFloat(saved) : 0.8;
+    } catch {
+      return 0.8;
+    }
+  });
+  const volumeRef = useRef<number>(volume);
+  useEffect(() => {
+    volumeRef.current = volume;
+    try {
+      localStorage.setItem('spytify_volume', String(volume));
+    } catch {}
+  }, [volume]);
   const [currentView, setCurrentView] = useState<ViewType>('library');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -156,6 +170,13 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.style.setProperty('--accent-color', activeAccentColor);
+    const hex = activeAccentColor.replace('#', '');
+    if (hex.length === 6) {
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      document.documentElement.style.setProperty('--accent-color-rgb', `${r}, ${g}, ${b}`);
+    }
   }, [activeAccentColor]);
 
   const handleUpdateAccentColor = (newColor: string) => {
@@ -1747,6 +1768,18 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
         if (!data) return;
 
         // YouTube events
+        if (data.event === 'onReady' || (data.event === 'onStateChange' && (data.info === 1 || data.info === 3))) {
+          if (currentTrackRef.current?.source === 'youtube') {
+            const curVol = volumeRef.current;
+            if (curVol === 0) {
+              sendYtCmd('mute');
+            } else {
+              sendYtCmd('unMute');
+            }
+            sendYtCmd('setVolume', [curVol * 100]);
+          }
+        }
+
         if (data.event === 'onError') {
           if (currentTrackRef.current?.source !== 'youtube') return;
           const erroredTrack = currentTrackRef.current;
@@ -1855,6 +1888,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
             isPlayingRef.current = true;
             setIsPlaying(true);
             playStartTimestampRef.current = Date.now();
+            sendScCmd('setVolume', volumeRef.current * 100);
           }
           if (scEvent === 'pause') {
             isPlayingRef.current = false;
@@ -1888,22 +1922,33 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
     return () => window.removeEventListener('message', onMsg);
   }, [handleNext]);
 
-  // Subscribe to YouTube iframe events after video loads
+  // Subscribe to YouTube iframe events and proactively sync volume after video loads
   useEffect(() => {
     if (!ytVideoId) return;
-    const sendListening = () => {
+    const syncYt = () => {
       try {
         ytIframeRef.current?.contentWindow?.postMessage(
           JSON.stringify({ event: 'listening', id: 1 }), '*'
         );
+        const curVol = volumeRef.current;
+        if (curVol === 0) {
+          sendYtCmd('mute');
+        } else {
+          sendYtCmd('unMute');
+        }
+        sendYtCmd('setVolume', [curVol * 100]);
       } catch {}
     };
-    sendListening();
-    const timer1 = setTimeout(sendListening, 500);
-    const timer2 = setTimeout(sendListening, 1500);
+    syncYt();
+    const timer1 = setTimeout(syncYt, 250);
+    const timer2 = setTimeout(syncYt, 600);
+    const timer3 = setTimeout(syncYt, 1200);
+    const timer4 = setTimeout(syncYt, 2200);
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
+      clearTimeout(timer3);
+      clearTimeout(timer4);
     };
   }, [ytVideoId]);
 
@@ -2028,7 +2073,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
         ytMusicFallbackActiveRef.current = true;
         onlineAudioRef.current.pause();
         onlineAudioRef.current.src = res.stream_url;
-        onlineAudioRef.current.volume = volume;
+        onlineAudioRef.current.volume = volumeRef.current;
 
         if (res.duration_secs > 0) {
           durationRef.current = res.duration_secs;
@@ -2163,7 +2208,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
           try { await invoke('stop_track'); } catch {}
           const fileUrl = convertFileSrc(track.path_or_url);
           onlineAudioRef.current.src = fileUrl;
-          onlineAudioRef.current.volume = volume;
+          onlineAudioRef.current.volume = volumeRef.current;
           await onlineAudioRef.current.play();
           isPlayingRef.current = true;
           setIsPlaying(true);
@@ -2179,6 +2224,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
         try {
           if (onlineAudioRef.current) onlineAudioRef.current.src = '';
           await invoke('play_track', { track });
+          try { await invoke('set_volume', { volume: volumeRef.current }); } catch {}
           isPlayingRef.current = true;
           setIsPlaying(true);
           showNotification(`▶ ${track.title} - ${track.artist}`);
@@ -2203,6 +2249,13 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
       if (videoId.startsWith('yt_')) videoId = videoId.replace('yt_', '');
       if (videoId.includes('v=')) videoId = videoId.split('v=')[1].split('&')[0];
       setYtVideoId(videoId);
+      const curVol = volumeRef.current;
+      if (curVol === 0) {
+        sendYtCmd('mute');
+      } else {
+        sendYtCmd('unMute');
+      }
+      sendYtCmd('setVolume', [curVol * 100]);
       isPlayingRef.current = true;
       setIsPlaying(true);
       showNotification(`▶ YouTube Hi-Fi: ${track.title}`);
@@ -2250,6 +2303,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
       }
       if (scUrl) {
         setScTrackUrl(scUrl);
+        sendScCmd('setVolume', volumeRef.current * 100);
         isPlayingRef.current = true;
         setIsPlaying(true);
         showNotification(`▶ SoundCloud: ${track.title}`);
@@ -2284,7 +2338,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
         onlineAudioRef.current.pause();
         onlineAudioRef.current.removeAttribute('crossorigin');
         onlineAudioRef.current.src = streamUrl;
-        onlineAudioRef.current.volume = volume;
+        onlineAudioRef.current.volume = volumeRef.current;
         onlineAudioRef.current.load();
         onlineAudioRef.current.play()
           .then(() => {
@@ -2483,7 +2537,14 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
 
   const handleVolumeChange = async (v: number) => {
     setVolume(v);
+    volumeRef.current = v;
+    try { localStorage.setItem('spytify_volume', String(v)); } catch {}
     try { await invoke('set_volume', { volume: v }); } catch {}
+    if (v === 0) {
+      sendYtCmd('mute');
+    } else {
+      sendYtCmd('unMute');
+    }
     sendYtCmd('setVolume', [v * 100]);
     sendScCmd('setVolume', v * 100);
     if (onlineAudioRef.current) onlineAudioRef.current.volume = v;
@@ -3077,6 +3138,13 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
                 ytIframeRef.current?.contentWindow?.postMessage(
                   JSON.stringify({ event: 'listening', id: 1 }), '*'
                 );
+                const curVol = volumeRef.current;
+                if (curVol === 0) {
+                  sendYtCmd('mute');
+                } else {
+                  sendYtCmd('unMute');
+                }
+                sendYtCmd('setVolume', [curVol * 100]);
               } catch {}
             }}
             title="YouTube Player"
@@ -3094,6 +3162,11 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
             key={scTrackUrl}
             ref={scIframeRef}
             src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(scTrackUrl)}&auto_play=true&hide_related=true&show_artwork=false&show_user=false&show_reposts=false&visual=false&color=%2300e5ff`}
+            onLoad={() => {
+              try {
+                sendScCmd('setVolume', volumeRef.current * 100);
+              } catch {}
+            }}
             title="SoundCloud Player"
             className="w-full h-full border-0"
             allow="autoplay"
@@ -3123,7 +3196,7 @@ const getLanguageAiPopupLabel = (lang: LanguageCode): string => {
 
         <main className="flex-1 flex flex-col overflow-hidden bg-[#000000]">
           {/* Header Bar — Minimalist */}
-          <header className="h-12 px-4 sm:px-6 flex items-center justify-between border-b border-[#141416] bg-black/95 backdrop-blur z-50">
+          <header className="h-12 px-4 sm:px-6 flex items-center justify-between border-b border-[#141416] bg-black/95 z-50">
             <div className="flex items-center gap-2.5 text-xs font-medium text-[#888]">
               <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#666]">
                 {currentView === 'community'

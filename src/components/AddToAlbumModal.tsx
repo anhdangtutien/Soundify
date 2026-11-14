@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Plus, FolderPlus, Check, Disc, Music } from 'lucide-react';
 import { Track, UserAlbum } from '../types';
 import { LanguageCode, getTranslation } from '../locales/i18n';
+import { getContrastTextColor, sanitizeTrackTitle } from '../utils/trackUtils';
 
 interface AddToAlbumModalProps {
   isOpen: boolean;
@@ -69,7 +70,7 @@ export const AddToAlbumModal: React.FC<AddToAlbumModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none">
+    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 select-none">
       <div className="w-full max-w-sm bg-[#0a0a0d] border border-[#1e1e28] rounded-2xl p-5 shadow-2xl relative">
         <button
           onClick={onClose}
@@ -80,15 +81,18 @@ export const AddToAlbumModal: React.FC<AddToAlbumModalProps> = ({
 
         <div className="flex items-center gap-2.5 mb-3">
           <div 
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-sm"
-            style={{ backgroundColor: accentColor }}
+            className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm"
+            style={{ 
+              backgroundColor: accentColor,
+              color: getContrastTextColor(accentColor),
+            }}
           >
             <FolderPlus className="w-4 h-4" />
           </div>
           <div>
             <h3 className="text-sm font-bold text-white tracking-tight">{getTranslation(language, 'player.addToAlbum')}</h3>
             <p className="text-[11px] text-[#777] truncate max-w-[220px]" title={trackToAdd.title}>
-              {trackToAdd.title}
+              {sanitizeTrackTitle(trackToAdd.title)}
             </p>
           </div>
         </div>
@@ -102,7 +106,7 @@ export const AddToAlbumModal: React.FC<AddToAlbumModalProps> = ({
               onChange={(e) => setNewAlbumTitle(e.target.value)}
               placeholder={getTranslation(language, 'album.namePlaceholder') || "Album name..."}
               className="w-full px-3 py-2 bg-[#121218] border border-[#22222e] text-white rounded-xl text-xs outline-none transition-colors"
-              style={{ borderColor: `${accentColor}60` }}
+              style={{ borderColor: `${accentColor}70` }}
               autoFocus
             />
             <div className="flex items-center justify-end gap-2">
@@ -116,10 +120,14 @@ export const AddToAlbumModal: React.FC<AddToAlbumModalProps> = ({
               <button
                 type="submit"
                 disabled={!newAlbumTitle.trim()}
-                style={{ backgroundColor: accentColor }}
-                className="px-3.5 py-1.5 rounded-lg hover:opacity-90 text-xs font-bold text-black transition-all cursor-pointer disabled:opacity-50"
+                style={{ 
+                  backgroundColor: accentColor,
+                  color: getContrastTextColor(accentColor),
+                  boxShadow: `0 0 12px ${accentColor}40`,
+                }}
+                className="px-3.5 py-1.5 rounded-lg hover:opacity-90 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
               >
-                {getTranslation(language, 'toast.addedToAlbum')}
+                {getTranslation(language, 'album.createAndAdd') || getTranslation(language, 'album.createTitle') || 'Create Album'}
               </button>
             </div>
           </form>

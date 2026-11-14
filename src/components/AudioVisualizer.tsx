@@ -278,7 +278,7 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
               borderColor: `${accentColor}35`,
             }}
           >
-            <Radio className="w-2.5 h-2.5 animate-pulse" />
+            <Radio className="w-2.5 h-2.5 animate-pulse" style={{ color: accentColor }} />
             FLUID WAVEFORM 60FPS
           </span>
         </div>

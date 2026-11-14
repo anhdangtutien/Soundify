@@ -59,6 +59,21 @@ input[type="range"] {
   accent-color: var(--accent-color, #ff2a55);
 }
 
+/* Dynamic Accent Card & Title Hover / Highlight Effects */
+.card-hover-accent {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.card-hover-accent:hover {
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 16px rgba(var(--accent-color-rgb, 0, 229, 255), 0.35) !important;
+}
+
+.card-hover-accent:hover .card-title-accent,
+.group:hover .card-title-accent {
+  color: var(--accent-color) !important;
+}
+
 /* ═════════════════════════════════════════════════════════════════════
    RAM OPTIMIZER (MỤC 3): TẠM DỪNG TOÀN BỘ CSS ANIMATIONS KHI ẨN / THU NHỎ
    ═════════════════════════════════════════════════════════════════════ */

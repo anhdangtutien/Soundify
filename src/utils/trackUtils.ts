@@ -95,6 +95,21 @@ export function optimizeThumbnailUrl(url: string | undefined, fallbackIdOrUrl?: 
 }
 
 /**
+ * Cleans YouTube and localized metadata artifacts from track titles.
+ * E.g. "Outside (cùng với Ellie Goulding)" -> "Outside (feat. Ellie Goulding)"
+ * E.g. "Die With A Smile [Official Music Video]" -> "Die With A Smile"
+ */
+export function sanitizeTrackTitle(title: string | undefined): string {
+  if (!title) return '';
+  return title
+    .replace(/\s*\((?:cùng với|với|cùng)\s+([^)]+)\)/gi, ' (feat. $1)')
+    .replace(/\s*\[(?:cùng với|với|cùng)\s+([^\]]+)\]/gi, ' (feat. $1)')
+    .replace(/\s*\[(?:Official\s*(?:Music\s*)?Video|MV|Audio|Visualizer|Lyric\s*Video|HD|4K)\]/gi, '')
+    .replace(/\s*\((?:Official\s*(?:Music\s*)?Video|MV|Audio|Visualizer|Lyric\s*Video|HD|4K)\)/gi, '')
+    .trim();
+}
+
+/**
  * Universal onError handler for <img> tags so broken thumbnail icons never appear.
  */
 export function handleImageError(

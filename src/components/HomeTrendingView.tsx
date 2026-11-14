@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { SearchResult, Track } from '../types';
 import { YoutubeIcon, SoundCloudIcon, AudiusIcon } from './Icons';
-import { getContrastTextColor, optimizeThumbnailUrl, handleImageError } from '../utils/trackUtils';
+import { getContrastTextColor, optimizeThumbnailUrl, handleImageError, sanitizeTrackTitle } from '../utils/trackUtils';
 import { LanguageCode, getTranslation } from '../locales/i18n';
 
 interface HomeTrendingViewProps {
@@ -947,17 +947,17 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
   const remaining = trendingTracks.slice(10);
 
   const categories: CategoryFilter[] = [
-    { id: 'usuk', label: 'Billboard US/UK Hot 100', icon: '🌍' },
+    { id: 'usuk', label: getTranslation(language, 'trending.tagUsuk') || 'Billboard US/UK Hot 100', icon: '🌍' },
     { id: 'jpop', label: getTranslation(language, 'trending.tagJpop'), icon: '🌸' },
     { id: 'kpop', label: getTranslation(language, 'trending.tagKpop'), icon: '⚡' },
     { id: 'vpop', label: getTranslation(language, 'trending.tagVpop'), icon: '🇻🇳' },
     { id: 'anime', label: getTranslation(language, 'trending.tagAnime'), icon: '🎌' },
-    { id: 'audius', label: 'Audius 320K Charts', icon: '⚡' },
+    { id: 'audius', label: getTranslation(language, 'trending.tagAudius') || 'Audius 320K Charts', icon: '⚡' },
     { id: 'soundcloud', label: getTranslation(language, 'trending.tagSoundcloud'), icon: '☁️' },
     { id: 'all', label: getTranslation(language, 'trending.tagAll'), icon: '🔥' },
     { id: 'edm', label: getTranslation(language, 'trending.tagEdm'), icon: '🎛️' },
     { id: 'hiphop', label: getTranslation(language, 'trending.tagHiphop'), icon: '🎤' },
-    { id: 'lofi', label: 'Lo-Fi Chillout', icon: '☕' },
+    { id: 'lofi', label: getTranslation(language, 'trending.tagLofi') || 'Lo-Fi Chillout', icon: '☕' },
     { id: 'rock', label: getTranslation(language, 'trending.tagRock'), icon: '🎸' },
     { id: 'acoustic', label: getTranslation(language, 'trending.tagAcoustic'), icon: '🪕' },
   ];
@@ -983,7 +983,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
           </div>
 
           <h1 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight leading-tight">
-            {featured.title}
+            {sanitizeTrackTitle(featured.title)}
           </h1>
 
           <p className="text-sm font-medium text-[#a0a0b2]">
@@ -1059,10 +1059,16 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                style={isActive ? {
+                  backgroundColor: accentColor,
+                  color: getContrastTextColor(accentColor),
+                  boxShadow: `0 0 14px ${accentColor}40`,
+                  borderColor: accentColor,
+                } : undefined}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 border ${
                   isActive
-                    ? 'bg-white text-black font-bold shadow-[0_0_12px_rgba(255,255,255,0.2)]'
-                    : 'bg-[#0e0e12] text-[#888899] hover:text-white hover:bg-[#16161e] border border-[#1c1c24]'
+                    ? 'font-bold'
+                    : 'bg-[#0e0e12] text-[#888899] hover:text-white hover:bg-[#16161e] border-[#1c1c24]'
                 }`}
               >
                 <span>{cat.icon}</span>
@@ -1113,8 +1119,8 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
                   backgroundColor: isCurrent ? `${accentColor}18` : undefined,
                   boxShadow: isCurrent ? `0 0 14px ${accentColor}30` : undefined,
                 }}
-                className={`p-3 rounded-xl bg-[#09090c] hover:bg-[#121218] border transition-all flex items-center justify-between gap-3 group cursor-pointer shadow-sm ${
-                  isCurrent ? '' : 'border-[#161620] hover:border-[#2a2a38]'
+                className={`card-hover-accent p-3 rounded-xl bg-[#09090c] hover:bg-[#121218] border transition-all flex items-center justify-between gap-3 group cursor-pointer shadow-sm ${
+                  isCurrent ? '' : 'border-[#161620]'
                 }`}
               >
                 <div className="flex items-center gap-3 overflow-hidden">
@@ -1163,11 +1169,11 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
                   {/* Song Info */}
                   <div className="overflow-hidden">
                     <p 
-                      className="text-xs font-bold text-white truncate transition-colors" 
+                      className="card-title-accent text-xs font-bold text-white truncate transition-colors" 
                       style={{ color: isCurrent ? accentColor : undefined }}
                       title={item.title}
                     >
-                      {item.title}
+                      {sanitizeTrackTitle(item.title)}
                     </p>
                     <p className="text-[11px] text-[#8e8e9f] truncate font-mono mt-0.5">
                       {item.artist}
@@ -1239,7 +1245,6 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
               <Compass className="w-4 h-4 text-white" />
               {getTranslation(language, 'trending.discoverMore')}
             </h2>
-            <span className="text-xs text-[#777] font-mono">{getTranslation(language, 'album.trackCount', { count: remaining.length })}</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
@@ -1247,7 +1252,7 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
               <div
                 key={idx}
                 onClick={() => onPlaySearchResult(item)}
-                className="p-2.5 rounded-xl bg-[#09090c] hover:bg-[#121218] border border-[#161620] hover:border-[#2a2a38] transition-all flex flex-col group cursor-pointer"
+                className="card-hover-accent p-2.5 rounded-xl bg-[#09090c] hover:bg-[#121218] border border-[#161620] transition-all flex flex-col group cursor-pointer"
               >
                 <div className="relative aspect-square w-full rounded-lg overflow-hidden mb-2 bg-[#14141c]">
                   {item.thumbnail ? (
@@ -1281,8 +1286,8 @@ export const HomeTrendingView: React.FC<HomeTrendingViewProps> = ({
                   </div>
                 </div>
 
-                <p className="text-xs font-bold text-white truncate group-hover:text-[#ff2a55] transition-colors" title={item.title}>
-                  {item.title}
+                <p className="card-title-accent text-xs font-bold text-white truncate transition-colors" title={item.title}>
+                  {sanitizeTrackTitle(item.title)}
                 </p>
                 <p className="text-[11px] text-[#777] truncate font-mono mt-0.5">
                   {item.artist}

@@ -68,7 +68,7 @@ export const AlbumsView: React.FC<AlbumsViewProps> = ({
     <div className="flex-1 p-6 lg:p-8 overflow-y-auto max-w-7xl mx-auto select-none space-y-6">
       {/* ─── MODAL TẠO ALBUM MỚI ────────────────────────────────────────── */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-[#0a0a0d] border border-[#1e1e28] rounded-2xl p-6 shadow-2xl relative">
             <button
               onClick={() => setIsCreateModalOpen(false)}
