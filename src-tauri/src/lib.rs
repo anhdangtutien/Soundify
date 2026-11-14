@@ -900,6 +900,11 @@ async fn check_for_updates(current_build_date: Option<String>) -> Result<AppUpda
         })
     });
 
+    let exe_updated_at = exe_asset
+        .and_then(|a| a["updated_at"].as_str().or_else(|| a["created_at"].as_str()))
+        .unwrap_or("")
+        .to_string();
+
     let download_url = exe_asset
         .and_then(|a| a["browser_download_url"].as_str())
         .unwrap_or(&html_url)
@@ -908,8 +913,15 @@ async fn check_for_updates(current_build_date: Option<String>) -> Result<AppUpda
     let current_version = env!("CARGO_PKG_VERSION");
     let clean_tag = tag_name.trim_start_matches('v').to_string();
 
+    // Prioritize the actual .exe binary asset update timestamp (for patch builds without version bump)
+    let effective_remote_date = if !exe_updated_at.is_empty() {
+        exe_updated_at
+    } else {
+        published_at
+    };
+
     let base_date = current_build_date.unwrap_or_else(|| "2026-11-13T17:56:02Z".to_string());
-    let is_newer_date = !published_at.is_empty() && published_at > base_date;
+    let is_newer_date = !effective_remote_date.is_empty() && effective_remote_date > base_date;
     let is_newer_version = !clean_tag.is_empty() && clean_tag != current_version;
     let has_update = is_newer_date || is_newer_version;
 
@@ -922,7 +934,7 @@ async fn check_for_updates(current_build_date: Option<String>) -> Result<AppUpda
         } else {
             name
         },
-        published_at,
+        published_at: effective_remote_date,
         release_notes: body,
         download_url,
         release_url: html_url,

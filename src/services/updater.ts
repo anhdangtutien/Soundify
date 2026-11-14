@@ -66,17 +66,18 @@ export async function checkGitHubUpdate(force = false): Promise<{ hasUpdate: boo
     const tagName = (data.tag_name || '').replace(/^v/, '');
     const exeAsset = data.assets?.find((a: any) => (a.name || '').endsWith('.exe'));
     const downloadUrl = exeAsset?.browser_download_url || data.html_url || 'https://github.com/anhdangtutien/Spytify/releases';
+    const effectiveRemoteDate = exeAsset?.updated_at || exeAsset?.created_at || publishedAt;
 
     const info: UpdateInfo = {
       version: data.tag_name || `v${CURRENT_VERSION}`,
       name: data.name || `Spytify ${data.tag_name || ''}`,
-      publishedAt: publishedAt,
+      publishedAt: effectiveRemoteDate,
       notes: data.body || '',
       downloadUrl,
       releaseUrl: data.html_url || 'https://github.com/anhdangtutien/Spytify/releases',
     };
 
-    const remoteTime = new Date(publishedAt).getTime();
+    const remoteTime = new Date(effectiveRemoteDate).getTime();
     const localTime = new Date(CURRENT_BUILD_DATE).getTime();
 
     const isNewerBuild = remoteTime > localTime;
@@ -90,7 +91,7 @@ export async function checkGitHubUpdate(force = false): Promise<{ hasUpdate: boo
 
     if (!force) {
       const dismissed = localStorage.getItem('spytify_dismissed_update_time');
-      if (dismissed && dismissed === publishedAt) {
+      if (dismissed && dismissed === effectiveRemoteDate) {
         return { hasUpdate: false, info };
       }
     }
