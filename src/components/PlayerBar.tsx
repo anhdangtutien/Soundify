@@ -209,7 +209,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
         className="h-7 bg-[#060608] hover:bg-[#0c0c12] border-t border-[#14141a] px-4 flex items-center justify-between select-none cursor-pointer group/minibar transition-colors z-50 text-xs flex-shrink-0"
       >
         {/* Left: Mini Track Status */}
-        <div className="flex items-center gap-2 truncate max-w-[45%]">
+        <div className="flex items-center gap-2 truncate max-w-[75%]">
           <Disc 
             className={`w-3.5 h-3.5 flex-shrink-0 ${isPlaying ? 'animate-spin' : 'text-[#666]'}`} 
             style={{ color: isPlaying ? accentColor : undefined }} 
@@ -217,33 +217,6 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           <span className="font-mono text-[11px] text-zinc-300 group-hover/minibar:text-white truncate">
             {currentTrack ? `${currentTrack.title} — ${currentTrack.artist}` : getTranslation(language, 'player.noTrack')}
           </span>
-        </div>
-
-        {/* Center: Mini Quick Controls */}
-        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={onPrev}
-            title={getTranslation(language, 'player.prev')}
-            className="text-[#666] hover:text-white transition-colors cursor-pointer"
-          >
-            <SkipBack className="w-3.5 h-3.5 fill-current" />
-          </button>
-          <button
-            onClick={onTogglePlay}
-            disabled={!currentTrack}
-            title={isPlaying ? getTranslation(language, 'player.pause') : getTranslation(language, 'player.play')}
-            style={{ backgroundColor: currentTrack ? accentColor : '#222', color: '#fff' }}
-            className="w-5 h-5 rounded-full flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-40"
-          >
-            {isPlaying ? <Pause className="w-2.5 h-2.5 fill-current" /> : <Play className="w-2.5 h-2.5 fill-current ml-0.5" />}
-          </button>
-          <button
-            onClick={onNext}
-            title={getTranslation(language, 'player.next')}
-            className="text-[#666] hover:text-white transition-colors cursor-pointer"
-          >
-            <SkipForward className="w-3.5 h-3.5 fill-current" />
-          </button>
         </div>
 
         {/* Right: Expand Button */}
